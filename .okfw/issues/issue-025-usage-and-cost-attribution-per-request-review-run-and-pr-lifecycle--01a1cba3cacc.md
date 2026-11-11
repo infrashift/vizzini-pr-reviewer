@@ -16,7 +16,7 @@ description: "Attribute LLM usage and dollar cost to who asked (human), what ask
 
 # ISSUE-025: Usage and cost attribution per request, review run and PR lifecycle
 
-**Status:** open (design) · **Raised:** 2026-11-11 · **Builds on:** [ADR-0004](/decisions/adr-0004-openai-compatible-transport-through-a-litellm-proxy--01a1c9b61537.md) (LiteLLM transport)
+**Status:** open (design agreed 2026-11-11) · **Raised:** 2026-11-11 · **Builds on:** [ADR-0004](/decisions/adr-0004-openai-compatible-transport-through-a-litellm-proxy--01a1c9b61537.md) (LiteLLM transport)
 
 ## Goal
 Answer "what is AI review costing us, and for what?":
@@ -54,6 +54,16 @@ and roll up by repository, team, requester, agent and model.
 - **Identity is self-reported metadata.** Use LiteLLM virtual keys per team or service for enforceable chargeback, and treat requester and agent metadata as analytics.
 - **Privacy:** don't store prompts or diffs in spend logs by default. Requester identity is personal data, so define retention (LiteLLM supports spend-log retention limits).
 - **Effort:** Vizzini doesn't set an effort or thinking budget today. Recording "effort" requires plumbing it through the request first.
+
+## Decision log
+- **2026-11-11:** the user agreed the suggested implementation:
+  - LiteLLM (Postgres) remains the per-request ledger, and Vizzini adds business context as request metadata.
+  - W3C trace-context correlation IDs (`run_id`, `pr_key`, iteration).
+  - A `usage` block in the report.
+  - The library stays stateless, and run-level facts live outside it.
+  - Value metrics (cost per accepted finding, repair waste) and the caveats on pricing, identity, privacy and effort.
+
+  The open question remains where run facts live (a `vizzini_runs` table written by a collector, mrman or CI).
 
 ## Acceptance criteria
 - [ ] ADR on correlation IDs, metadata keys and where run facts live (decide the open question above)

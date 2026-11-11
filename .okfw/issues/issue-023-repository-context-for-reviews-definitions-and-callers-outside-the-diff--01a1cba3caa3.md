@@ -59,3 +59,9 @@ Implemented as [ADR-0014](/decisions/adr-0014-repository-context-from-definition
 - The TypeScript chunk receives `saveAudit` from `src/audit.ts:9-12`.
 
 Whether this improves real reviews is for [ISSUE-022](/issues/issue-022-head-to-head-review-benchmark-against-pr-agent-and-kodus--01a1cba3ca8f.md)'s benchmark to measure.
+
+## Live run with `--repo` (2026-11-11, vizzini-uat run 20261111T173847Z, no forge)
+**72/72 hard checks; recall 100% for both models on both fixtures.** Each fixture chunk received one snippet: `OrderRepository.FindByCustomerAsync` for C#, `saveAudit` for TypeScript.
+
+- **Consistent with use:** both models' C# fixes copy the repository's shape. They propose `OrderRepository.CountByCustomerPrefixAsync` (a sibling of `FindByCustomerAsync`) with an `@prefix` `DbParameter`, mirroring its `@customer`.
+- **Not conclusive:** the fixture's ADR already prescribes that fix, and every planted defect is visible in the diff alone. These fixtures can't show context *changing* an outcome. Measuring that needs context-dependent defects, added to [ISSUE-022](/issues/issue-022-head-to-head-review-benchmark-against-pr-agent-and-kodus--01a1cba3ca8f.md).

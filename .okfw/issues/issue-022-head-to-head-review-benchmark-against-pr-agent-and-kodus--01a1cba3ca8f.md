@@ -29,6 +29,7 @@ The live UATs measure **recall** on planted, fairly textbook defects. Both model
   - The seeded C# and TypeScript fixtures (ground truth exists).
   - A **labelled real-PR set**: 20–30 historical PRs from permissive OSS repos whose later fix commits identify a real bug the PR introduced ("bug-introducing commit" + "fixing commit" pairs). Each is labelled with the defect lines.
   - A few clean PRs, to measure false positives.
+  - **Context-dependent defects** (from ISSUE-023's live run): seeded changes whose bug is visible only outside the diff, run with and without `--repo` as an A/B pair. Examples: a signature change that breaks an unchanged caller, a dereference of a callee that can return null, or a duplicate of validation the callee already does.
 - **Metrics per tool and model:**
   - recall and precision (a finding counts as true if it overlaps a labelled defect, or if a human judges it valid);
   - findings per PR and decoy hits;
