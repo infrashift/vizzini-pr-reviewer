@@ -11,6 +11,7 @@ package risk
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sync"
 
 	"github.com/infrashift/vizzini-pr-reviewer/internal/analysis"
@@ -101,6 +102,47 @@ func Combine(files []FileRisk, p *Policy) int {
 // combined score and its band. Files are sorted highest contribution first.
 func Score(files []FileChange, p *Policy) Assessment {
 	return analysis.ScoreChanges(files, p)
+}
+
+// DefaultExcludes returns the generated and vendored path globs a review
+// drops before scoring when no exclude list is configured (go.sum, vendor/**,
+// lock files and the like). Each call returns a fresh copy.
+func DefaultExcludes() []string {
+	return slices.Clone(diff.DefaultExcludes)
+}
+
+// Excluder drops paths the way AssessPatch and a review do, for embedders
+// that score their own parsed files with ScoreFile and must leave out the
+// same paths to report the same score.
+type Excluder struct {
+	patterns []string
+}
+
+// NewExcluder validates exclude and returns a matcher for it. As in
+// AssessPatch, nil selects DefaultExcludes and an empty, non-nil slice
+// excludes nothing.
+func NewExcluder(exclude []string) (*Excluder, error) {
+	if exclude == nil {
+		exclude = diff.DefaultExcludes
+	}
+	for _, p := range exclude {
+		if _, err := diff.MatchGlob(p, "x"); err != nil {
+			return nil, fmt.Errorf("invalid exclude pattern %q: %w", p, err)
+		}
+	}
+	return &Excluder{patterns: slices.Clone(exclude)}, nil
+}
+
+// Excluded reports whether path (slash-separated, from the repository root)
+// matches one of the patterns.
+func (e *Excluder) Excluded(path string) bool {
+	for _, p := range e.patterns {
+		// Patterns were validated in NewExcluder.
+		if ok, _ := diff.MatchGlob(p, path); ok {
+			return true
+		}
+	}
+	return false
 }
 
 // AssessPatch reads a unified diff and assesses it exactly as a review

@@ -66,6 +66,7 @@ a, err := risk.AssessPatch(patch, policy, nil) // nil → default excludes, as i
 | `AssessPatch(r, policy, exclude)` | Score a unified diff exactly as a review would |
 | `Score(changes, policy)` | The same from `[]FileChange` (path, added and deleted line text, binary), for callers with their own diff model |
 | `ScoreFile(&change, policy)` / `Combine(files, policy)` | Per-file results in your own order, then the total. Useful when one path appears twice, as in a patch series |
+| `NewExcluder(exclude)` / `DefaultExcludes()` | Drop the same generated and vendored paths a review drops (nil → the defaults) before calling `Score` or `ScoreFile`, so your total matches `base_risk_score` |
 | `ParseReport(data)` | The risk fields of a review someone else ran (`pr-review --format json`, or a marshaled `ReviewOutput`); `Divergence()` is how far the model's score sits above the base |
 
 `auto_approve` from a parsed report is a suggestion. A human still decides

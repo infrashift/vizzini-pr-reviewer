@@ -141,6 +141,59 @@ func TestScore_MatchesAssessPatchAndKeepsDuplicates(t *testing.T) {
 	}
 }
 
+// An embedder filtering its own files with an Excluder must drop exactly
+// what AssessPatch drops, or its score drifts from the review's.
+func TestExcluder_MatchesAssessPatch(t *testing.T) {
+	ex, err := risk.NewExcluder(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]bool{
+		"go.sum": true, "sub/go.sum": true, "vendor/a/b.go": true, "api/x.pb.go": true, "Cargo.lock": true,
+		"internal/auth/login.go": false, "docs/a.md": false, "vendored/a.go": false,
+	} {
+		if got := ex.Excluded(path); got != want {
+			t.Errorf("Excluded(%q) = %v, want %v", path, got, want)
+		}
+	}
+
+	p := risk.DefaultPolicy()
+	whole, err := risk.AssessPatch(strings.NewReader(authPatch), p, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var kept []risk.FileRisk
+	for _, f := range whole.Files {
+		if !ex.Excluded(f.Path) {
+			kept = append(kept, f)
+		}
+	}
+	filtered, err := risk.AssessPatch(strings.NewReader(authPatch), p, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if risk.Combine(kept, p) != filtered.Score || len(kept) != len(filtered.Files) {
+		t.Errorf("Excluder keeps %+v, AssessPatch %+v", kept, filtered.Files)
+	}
+
+	none, err := risk.NewExcluder([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if none.Excluded("go.sum") {
+		t.Error("an empty exclude list must keep everything")
+	}
+	if _, err := risk.NewExcluder([]string{"["}); err == nil {
+		t.Error("malformed exclude pattern accepted")
+	}
+
+	d := risk.DefaultExcludes()
+	d[0] = "changed"
+	if risk.DefaultExcludes()[0] == "changed" {
+		t.Error("DefaultExcludes shares its backing array")
+	}
+}
+
 // The package's reason to exist is that embedders can link it without the
 // LLM stack. Guard that against a future import.
 func TestPackageIsADependencyLeaf(t *testing.T) {
