@@ -109,7 +109,8 @@ func (e *Engine) parse(patch io.Reader) (*diff.Diff, error) {
 // the answers. A patch with nothing reviewable returns an empty review
 // without calling the model.
 func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions) (*ReviewOutput, error) { //nolint:gocritic // hugeParam: public API; options by value keep embedders' call sites simple and safe
-	ctx, attr, meter := begin(ctx, "review")
+	ctx, attr, meter, finish := begin(ctx, "review")
+	defer finish()
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err
@@ -232,7 +233,8 @@ func (e *Engine) autoApprove(out *ReviewOutput) bool {
 // Describe writes a pull request description. The model sees every changed
 // file's header and as much content as fits in one chunk.
 func (e *Engine) Describe(ctx context.Context, patch io.Reader) (*PRDescription, error) {
-	ctx, _, _ = begin(ctx, "describe")
+	ctx, _, _, finish := begin(ctx, "describe")
+	defer finish()
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err
@@ -274,7 +276,8 @@ func (e *Engine) Describe(ctx context.Context, patch io.Reader) (*PRDescription,
 // Improve asks the model for concrete code suggestions on every chunk, sorted
 // by file and line. Oversized hunks are always included.
 func (e *Engine) Improve(ctx context.Context, patch io.Reader) ([]CodeSuggestion, error) {
-	ctx, _, _ = begin(ctx, "improve")
+	ctx, _, _, finish := begin(ctx, "improve")
+	defer finish()
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err

@@ -899,3 +899,74 @@ func TestDescribe_TaggedWithItsMode(t *testing.T) {
 		t.Errorf("a run id that is not a UUID gives no trace id, got %q", h)
 	}
 }
+
+// ISSUE-025 follow-up: every mode's run lands in a RunRecorder, and any
+// report kind can carry its run id, attribution and usage.
+func TestRunRecorder_AllModesAndReports(t *testing.T) {
+	srv := llmtest.NewServer(t, func(_ int, req *openai.ChatCompletionRequest) llmtest.Reply {
+		usage := openai.Usage{PromptTokens: 300, CompletionTokens: 30}
+		switch req.Metadata["vizzini.mode"] {
+		case "describe":
+			return llmtest.Reply{Usage: usage, Cost: "0.001",
+				Content: `{"title":"t","type":"Feature","summary":"s","changes":[{"file":"internal/store/users.go","description":"d"}]}`}
+		case "improve":
+			return llmtest.Reply{Usage: usage, Cost: "0.002", Content: `{"suggestions":[]}`}
+		default:
+			return answerByFile(1, req)
+		}
+	})
+	rec := &RunRecorder{}
+	ctx := WithRunRecorder(WithAttribution(context.Background(), Attribution{PRKey: "pr#1", Requester: "bob"}), rec)
+	e := newEngine(t, srv)
+	d, err := e.Describe(ctx, fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := e.Improve(ctx, fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Review(ctx, fixture(t), ReviewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	runs := rec.Runs()
+	if len(runs) != 3 || runs[0].Mode != "describe" || runs[1].Mode != "improve" || runs[2].Mode != "review" {
+		t.Fatalf("runs %+v", runs)
+	}
+	ids := map[string]bool{}
+	for _, r := range runs {
+		ids[r.RunID] = true
+		if r.PRKey != "pr#1" || r.Requester != "bob" || r.Usage.Requests < 1 {
+			t.Errorf("run %+v", r)
+		}
+	}
+	if len(ids) != 3 {
+		t.Error("each engine call is its own run with its own id")
+	}
+	if c := runs[1].Usage.CostUSD; c == nil || *c != 0.002 || runs[1].Usage.InputTokens != 300 {
+		t.Errorf("improve usage %+v", runs[1].Usage)
+	}
+
+	for name, v := range map[string]any{"describe": d, "improve": s} {
+		run := runs[0]
+		if name == "improve" {
+			run = runs[1]
+		}
+		b, err := MarshalReportWithRun(v, &run)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		for _, want := range []string{`"run_id": "` + run.RunID + `"`, `"pr_key": "pr#1"`, `"requester": "bob"`, `"usage": {`, `"input_tokens": 300`} {
+			if !strings.Contains(string(b), want) {
+				t.Errorf("%s report lacks %s:\n%s", name, want, b)
+			}
+		}
+		if strings.Contains(string(b), `"mode"`) {
+			t.Errorf("%s report must not repeat the mode (the kind says it)", name)
+		}
+	}
+	// A run that is nil adds nothing; a review already carries its own.
+	if b, err := MarshalReportWithRun(d, nil); err != nil || strings.Contains(string(b), "run_id") {
+		t.Errorf("nil run: %v %s", err, b)
+	}
+}

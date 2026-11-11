@@ -37,6 +37,29 @@ var reportValidator = sync.OnceValues(schema.New)
 // *risk.Assessment becomes a RiskAssessment report, checked against the
 // closed #RiskAssessmentReport.
 func MarshalReport(v any) ([]byte, error) {
+	return marshalReport(v, nil)
+}
+
+// MarshalReportWithRun is MarshalReport plus run's ID, attribution and
+// usage, for report kinds whose result has no room for them (Describe,
+// Improve, Plan, RunCommand; collect run with a RunRecorder). A nil run
+// adds nothing. A *ReviewOutput already carries its own, so run is ignored.
+func MarshalReportWithRun(v any, run *RunInfo) ([]byte, error) {
+	if _, isReview := v.(*ReviewOutput); isReview || run == nil {
+		return marshalReport(v, nil)
+	}
+	extra, err := json.Marshal(struct {
+		Attribution
+		Usage *Usage `json:"usage,omitempty"`
+	}{run.Attribution, &run.Usage})
+	if err != nil {
+		return nil, err
+	}
+	return marshalReport(v, extra)
+}
+
+// marshalReport encodes v as a report; extra, a JSON object, adds fields.
+func marshalReport(v any, extra []byte) ([]byte, error) {
 	var (
 		kind string
 		body = v
@@ -81,7 +104,15 @@ func MarshalReport(v any) ([]byte, error) {
 	if len(fields) > 2 { // not "{}"
 		raw.WriteByte(',')
 	}
-	raw.Write(fields[1:])
+	if len(extra) > 2 { // not "{}"
+		raw.Write(fields[1 : len(fields)-1])
+		if len(fields) > 2 {
+			raw.WriteByte(',')
+		}
+		raw.Write(extra[1:])
+	} else {
+		raw.Write(fields[1:])
+	}
 
 	val, err := reportValidator()
 	if err != nil {

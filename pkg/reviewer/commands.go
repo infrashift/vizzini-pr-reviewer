@@ -151,7 +151,8 @@ func (c *Command) String() string {
 // thread history are sent to the model; suggestions must stay inside that
 // scope.
 func (e *Engine) RunCommand(ctx context.Context, patch io.Reader, cmd *Command, thread []ThreadMessage) (*CommandResult, error) {
-	ctx, _, _ = begin(ctx, "command")
+	ctx, _, _, finish := begin(ctx, "command")
+	defer finish()
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err

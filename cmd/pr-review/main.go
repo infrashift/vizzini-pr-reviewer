@@ -165,6 +165,8 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 	}
 
 	ctx = reviewer.WithAttribution(ctx, opts.attr)
+	rec := &reviewer.RunRecorder{}
+	ctx = reviewer.WithRunRecorder(ctx, rec)
 	ctx, cancel := context.WithTimeout(ctx, opts.timeout)
 	defer cancel()
 
@@ -175,7 +177,12 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 	if opts.format == "json" {
 		// A schema-validated report with apiVersion/kind (ADR-0010), so
 		// policy engines like garmr can consume it directly.
-		report, rerr := reviewer.MarshalReport(result)
+		// Every kind carries its run's id, attribution and usage (ISSUE-025).
+		var run *reviewer.RunInfo
+		if runs := rec.Runs(); len(runs) > 0 {
+			run = &runs[len(runs)-1]
+		}
+		report, rerr := reviewer.MarshalReportWithRun(result, run)
 		if rerr != nil {
 			return nil, nil, rerr
 		}

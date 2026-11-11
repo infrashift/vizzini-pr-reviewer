@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/infrashift/vizzini-pr-reviewer/internal/llm"
@@ -41,6 +43,37 @@ type Usage = llm.Usage
 
 type attributionKey struct{}
 
+// RunInfo is one engine call: its attribution (RunID always set), the
+// mode, and what its requests consumed.
+type RunInfo struct {
+	Attribution
+	Mode  string `json:"mode"`
+	Usage Usage  `json:"usage"`
+}
+
+// RunRecorder collects a RunInfo from every engine call made with a
+// context carrying it (WithRunRecorder), so callers get usage from modes
+// whose results have no room for it: Describe, Improve, Plan and
+// RunCommand. Safe for concurrent use.
+type RunRecorder struct {
+	mu   sync.Mutex
+	runs []RunInfo
+}
+
+// Runs returns the recorded runs, oldest first.
+func (r *RunRecorder) Runs() []RunInfo {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.runs)
+}
+
+type recorderKey struct{}
+
+// WithRunRecorder returns ctx with r collecting every engine call's run.
+func WithRunRecorder(ctx context.Context, r *RunRecorder) context.Context {
+	return context.WithValue(ctx, recorderKey{}, r)
+}
+
 // WithAttribution returns ctx carrying a for every request made with it.
 func WithAttribution(ctx context.Context, a Attribution) context.Context { //nolint:gocritic // hugeParam: a context value is copied by design
 	return context.WithValue(ctx, attributionKey{}, a)
@@ -68,8 +101,9 @@ func NewRunID() string {
 
 // begin prepares ctx for one mode's requests: the attribution (with a run
 // ID generated if missing) as request metadata, the requester as the user,
-// the run ID as the trace ID, and a fresh meter.
-func begin(ctx context.Context, mode string) (context.Context, Attribution, *llm.Meter) {
+// the run ID as the trace ID, and a fresh meter. Call finish when the mode
+// returns: it hands the run to the context's RunRecorder, if any.
+func begin(ctx context.Context, mode string) (_ context.Context, _ Attribution, _ *llm.Meter, finish func()) {
 	a := AttributionFrom(ctx)
 	if a.RunID == "" {
 		a.RunID = NewRunID()
@@ -85,5 +119,14 @@ func begin(ctx context.Context, mode string) (context.Context, Attribution, *llm
 	)
 	ctx = llm.WithUser(ctx, a.Requester)
 	ctx = llm.WithTraceID(ctx, strings.ReplaceAll(strings.ToLower(a.RunID), "-", ""))
-	return llm.WithMeter(ctx, m), a, m
+	rec, _ := ctx.Value(recorderKey{}).(*RunRecorder)
+	finish = func() {
+		if rec == nil {
+			return
+		}
+		rec.mu.Lock()
+		defer rec.mu.Unlock()
+		rec.runs = append(rec.runs, RunInfo{Attribution: a, Mode: mode, Usage: m.Usage()})
+	}
+	return llm.WithMeter(ctx, m), a, m, finish
 }

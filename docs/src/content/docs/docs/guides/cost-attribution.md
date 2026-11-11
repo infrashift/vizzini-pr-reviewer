@@ -32,10 +32,10 @@ mode (review, describe, improve, plan, command) then tags its requests.
 `--run-id` defaults to a generated UUIDv7, which sorts by time. Each attempt
 and repair is tagged, so the tokens spent on invalid answers are visible.
 
-## What the review report carries
+## What the reports carry
 
-The JSON report includes `run_id`, the attribution fields, and a `usage`
-block:
+Every JSON report includes `run_id`, the attribution fields, and a `usage`
+block. That covers review, describe, improve, plan and command reports:
 
 ```json
 "usage": {"requests": 1, "retries": 0, "repairs": 0,
@@ -45,6 +45,11 @@ block:
 
 `cost_usd` is the sum of LiteLLM's `x-litellm-response-cost` header, so it
 matches the spend logs exactly.
+
+From Go, `ReviewOutput` carries these itself. For the other modes, put a
+`reviewer.RunRecorder` on the context with `reviewer.WithRunRecorder`. Every
+engine call then records a `RunInfo` (attribution, mode and usage), and
+`reviewer.MarshalReportWithRun(result, &run)` adds it to the report.
 
 ## Setting up LiteLLM
 

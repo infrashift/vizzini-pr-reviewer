@@ -473,3 +473,21 @@ func TestRun_Attribution(t *testing.T) {
 		t.Errorf("request metadata %v user %q", md, srv.Requests()[0].User)
 	}
 }
+
+func TestRun_DescribeReportCarriesUsage(t *testing.T) {
+	srv := llmtest.NewServer(t, func(int, *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Cost: "0.004", Usage: openai.Usage{PromptTokens: 200, CompletionTokens: 20},
+			Content: `{"title":"t","type":"Feature","summary":"s","changes":[]}`}
+	})
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	r := runCLI(t, env, patch, "--mode", "describe", "--format", "json", "--pr", "pr#3", "--requester", "carol")
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	for _, want := range []string{`"kind": "PRDescription"`, `"run_id": "`, `"pr_key": "pr#3"`, `"requester": "carol"`,
+		`"agent": "pr-review"`, `"input_tokens": 200`, `"cost_usd": 0.004`} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("describe report lacks %s:\n%s", want, r.stdout)
+		}
+	}
+}

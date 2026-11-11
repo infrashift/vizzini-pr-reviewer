@@ -102,3 +102,10 @@ func TestAPIVersionMatchesSchema(t *testing.T) {
 		t.Errorf("APIVersion %q rejected by #Report: %v", APIVersion, err)
 	}
 }
+
+func TestMarshalReportWithRun_ValidatesUsage(t *testing.T) {
+	bad := &RunInfo{Attribution: Attribution{RunID: "r"}, Usage: Usage{Requests: -1}}
+	if _, err := MarshalReportWithRun(&PRDescription{Title: "t", Type: "Feature", Summary: "s", Changes: []FileChange{}}, bad); err == nil {
+		t.Error("a negative request count must fail the #Report schema")
+	}
+}

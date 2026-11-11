@@ -153,6 +153,13 @@ package review
 #Report: {
 	apiVersion: #APIVersion
 	kind:       #ReportKind
+	// The run that produced the report (ISSUE-025, ADR-0015).
+	run_id?:    string & !=""
+	pr_key?:    string & !=""
+	iteration?: string & !=""
+	requester?: string & !=""
+	agent?:     string & !=""
+	usage?:     #Usage
 	...
 }
 
