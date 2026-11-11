@@ -8,7 +8,7 @@ tags:
   - "review"
   - "context"
   - "quality"
-  - "open"
+  - "closed"
 created: "2026-11-11T11:24:31-06:00"
 timestamp: "2026-11-11T11:24:31-06:00"
 description: "Give the model the definitions of symbols the diff uses and the callers of symbols it changes, read from the repository at the PR head within a token budget, so reviews can reason beyond the diff."
@@ -16,7 +16,7 @@ description: "Give the model the definitions of symbols the diff uses and the ca
 
 # ISSUE-023: Repository context for reviews (definitions and callers outside the diff)
 
-**Status:** open · **Raised:** 2026-11-11 · **Touches:** [ADR-0007](/decisions/adr-0007-anchor-findings-to-the-diff-and-merge-chunk-results-deterministically--01a1c9d9c501.md) (anchoring), [ISSUE-008](/issues/issue-008-knowledge-base-grounding-okf-rag--01a1c9b6157f.md) (knowledge grounding)
+**Status:** closed · **Raised:** 2026-11-11 · **Touches:** [ADR-0007](/decisions/adr-0007-anchor-findings-to-the-diff-and-merge-chunk-results-deterministically--01a1c9d9c501.md) (anchoring), [ISSUE-008](/issues/issue-008-knowledge-base-grounding-okf-rag--01a1c9b6157f.md) (knowledge grounding)
 
 ## Problem
 Vizzini sees only the diff, plus lint output and knowledge documents. A model that sees `orders.FindByCustomerAsync(customer, ct)` can't check what that method does, and a change to a function's contract can't be checked against its callers. Many real defects live in exactly that gap. PR-Agent (dynamic/RAG context) and Kodus (AST) both go beyond the diff.
@@ -39,8 +39,23 @@ Vizzini sees only the diff, plus lint output and knowledge documents. A model th
 - **Pure Go, no new dependency:** scanning plus regexps, not a parser. Precision is "good enough to help", not a language server.
 
 ## Acceptance criteria
-- [ ] Symbol extraction tests per family (used vs defined, keywords and stop list dropped)
-- [ ] Definition and caller retrieval tests on a small multi-language fixture repo, including exclusion of shown regions, skipped directories and determinism
-- [ ] Budget and ordering tests, and an engine test that the `<context>` block reaches the prompt and findings stay anchored to the diff
-- [ ] CLI `--repo`, docs, an ADR
-- [ ] vizzini-uat passes `--repo`; the C# fixture's controller sees `OrderRepository.FindByCustomerAsync`
+- [x] Symbol extraction tests per family (used vs defined, keywords and stop list dropped)
+- [x] Definition and caller retrieval tests on a small multi-language fixture repo, including exclusion of shown regions, skipped directories and determinism
+- [x] Budget and ordering tests, and an engine test that the `<context>` block reaches the prompt and findings stay anchored to the diff
+- [x] CLI `--repo`, docs, an ADR
+- [x] vizzini-uat passes `--repo`; the C# fixture's controller sees `OrderRepository.FindByCustomerAsync`
+
+## Resolution (2026-11-11)
+Implemented as [ADR-0014](/decisions/adr-0014-repository-context-from-definitions-and-callers-by-pattern-within-a-budget--01a1cba8c1c8.md): `internal/repoctx` (extraction and scan) and `pkg/reviewer/context.go` (per-chunk selection), with `ReviewOptions.Repo`, `--repo`, `Config.MaxContextTokens` and the report field `context_snippets`. The guide is at Guides → Repository Context.
+
+**Tests:**
+- Extraction tables for 6 language families.
+- A multi-language scan fixture covering the skipped directories, excludes, the size cap, `MaxFiles` and determinism.
+- Engine tests: the `<context>` block reaches the prompt with a definition and a caller, shown regions are excluded, a finding on a context line is repaired, and the budget and the no-repo case behave.
+- A CLI `--repo` test.
+
+**vizzini-uat stub run** (Vizzini `f1703d2`, `--repo .`, 20/20):
+- The C# controller's chunk receives `src/Repositories/OrderRepository.cs:8-24`, the full `FindByCustomerAsync` with its parameterized query.
+- The TypeScript chunk receives `saveAudit` from `src/audit.ts:9-12`.
+
+Whether this improves real reviews is for [ISSUE-022](/issues/issue-022-head-to-head-review-benchmark-against-pr-agent-and-kodus--01a1cba3ca8f.md)'s benchmark to measure.
