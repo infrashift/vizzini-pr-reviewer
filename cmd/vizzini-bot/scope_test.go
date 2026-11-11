@@ -132,3 +132,41 @@ func TestReviewScope(t *testing.T) {
 		}
 	}
 }
+
+// Every bot comment records the head its run reviewed: a resolution or a
+// command answer is enough for the next run to know nothing changed.
+func TestReviewedHeads(t *testing.T) {
+	h1, h2, h3 := strings.Repeat("a1", 20), strings.Repeat("b2", 20), strings.Repeat("c3", 20)
+	threads := []remoteThread{{ID: "1", Comments: []remoteComment{
+		{Body: "finding " + (&marker{FP: "v1:x", Run: "r", Head: h1, Category: "Logic", Start: 1, End: 1}).String()},
+		{Body: "Resolved by vizzini-bot …\n\n<!-- vizzini:reviewed head=" + h2 + " run=r2 -->"},
+		{Body: "an answer <!-- vizzini:reply-to=9 run=r3 head=" + h3 + " -->"},
+		{Body: "a person writing head=" + strings.Repeat("d4", 20)},
+		{Body: "slice 1 <!-- vizzini:fp=v1:y run=r0 -->"},
+	}}}
+	if got := reviewedHeads(threads); !slices.Equal(got, []string{h1, h2, h3}) {
+		t.Errorf("heads %v", got)
+	}
+}
+
+func TestReviewScope_AResolutionRecordsTheHead(t *testing.T) {
+	dir, git, _ := scopeRepo(t)
+	srv := llmtest.NewServer(t, func(_ int, _ *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"summary":"s","risk_score":5,"findings":[]}`}
+	})
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	old := strings.Repeat("ab", 20) // not in this repository
+	head := git("rev-parse", "HEAD")
+	b, _ := json.Marshal(map[string]any{"threads": []any{map[string]any{
+		"id": "5", "path": "a.go", "is_resolved": true, "comments": []any{
+			map[string]any{"id": "1", "body": "finding\n\n" + (&marker{FP: "v1:z", Run: "r0", Head: old, Category: "Logic", Start: 3, End: 3}).String()},
+			map[string]any{"id": "2", "body": "Resolved.\n\n<!-- vizzini:reviewed head=" + head + " run=r1 -->"},
+		}}}})
+	f := &fakeMrman{threadsOut: string(b)}
+	f.install(t)
+	_, stdout, stderr := runBot(t, env, "--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+	var res botResult
+	if err := json.Unmarshal([]byte(stdout), &res); err != nil || res.Mode != "unchanged" || len(srv.Requests()) != 0 {
+		t.Errorf("result %s, %d requests: %s", stdout, len(srv.Requests()), stderr)
+	}
+}

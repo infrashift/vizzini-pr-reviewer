@@ -126,7 +126,7 @@ func TestBot_AnswersCommandsOnce(t *testing.T) {
 	}
 	first, second := read(replies[0]), read(replies[1])
 	if !strings.Contains(strings.Join(replies[0], " "), "--thread 77 --parent 2") ||
-		!strings.Contains(first, "concatenated into the SQL") || !strings.Contains(first, "<!-- vizzini:reply-to=2 run=") {
+		!strings.Contains(first, "concatenated into the SQL") || !strings.Contains(first, "<!-- vizzini:reply-to=2 run=") || !strings.Contains(first, " head=") {
 		t.Errorf("reply to 2: %v\n%s", replies[0], first)
 	}
 	if !strings.Contains(second, "I could not run that") || !strings.Contains(second, "<!-- vizzini:reply-to=3 run=") {

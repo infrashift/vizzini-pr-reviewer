@@ -188,7 +188,7 @@ func TestBot_ThreadMemoryAcrossPushes(t *testing.T) {
 		t.Fatalf("run 3: exit %d, result %s: %s", code, stdout, stderr)
 	}
 	resolve := strings.Join(f.calls[len(f.calls)-1], " ")
-	for _, want := range []string{"review resolve", "--thread 77", "--grant-policy", "--run-id", "--agent vizzini-bot", "no longer reports this"} {
+	for _, want := range []string{"review resolve", "--thread 77", "--grant-policy", "--run-id", "--agent vizzini-bot", "no longer reports this", "<!-- vizzini:reviewed head="} {
 		if !strings.Contains(resolve, want) {
 			t.Errorf("resolve call %q lacks %q", resolve, want)
 		}

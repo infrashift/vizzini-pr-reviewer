@@ -33,7 +33,7 @@ import (
 var (
 	// commandLineRE finds a /vizzini command on a line of its own.
 	commandLineRE = regexp.MustCompile(`(?im)^[ \t]*/vizzini[ \t]+(\S[^\r\n]*)$`)
-	replyMarkerRE = regexp.MustCompile(`<!-- vizzini:reply-to=(\S+) run=\S+ -->`)
+	replyMarkerRE = regexp.MustCompile(`<!-- vizzini:reply-to=(\S+) run=\S+(?: head=[0-9a-f]+)? -->`)
 	// explicitTargetRE is a FILE:LINES target as ParseCommand reads it.
 	explicitTargetRE = regexp.MustCompile(`^\S+:L?\d+(?:-L?\d+)?$`)
 )
@@ -142,7 +142,8 @@ func answerCommands(ctx context.Context, opts *options, slug, policy string, dif
 			res.CommandFailures = append(res.CommandFailures, p.Comment.ID)
 			continue
 		}
-		body += fmt.Sprintf("\n\n_Answered by %s._\n\n<!-- vizzini:reply-to=%s run=%s -->", agentName, p.Comment.ID, opts.attr.RunID)
+		body += fmt.Sprintf("\n\n_Answered by %s._\n\n<!-- vizzini:reply-to=%s run=%s head=%s -->",
+			agentName, p.Comment.ID, opts.attr.RunID, opts.attr.Iteration)
 		if err := reply(ctx, opts, slug, policy, p.Thread.ID, p.Comment.ID, body, stderr); err != nil {
 			if errors.Is(err, errDenied) {
 				return err

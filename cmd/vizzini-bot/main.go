@@ -205,7 +205,7 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 	if err != nil {
 		return err
 	}
-	if rerr := reviewAndPost(ctx, opts, engine, slug, mine, res, stdout, stderr); rerr != nil || opts.dryRun {
+	if rerr := reviewAndPost(ctx, opts, engine, slug, mine, reviewedHeads(threads), res, stdout, stderr); rerr != nil || opts.dryRun {
 		return rerr
 	}
 	if opts.maxCommands <= 0 {
@@ -225,8 +225,8 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 // reviewAndPost reviews what changed since the last reviewed head (or
 // everything) and posts and resolves.
 func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, slug string, mine []botThread,
-	res *botResult, stdout, stderr io.Writer) error {
-	sc, err := reviewScope(ctx, opts, mine)
+	heads []string, res *botResult, stdout, stderr io.Writer) error {
+	sc, err := reviewScope(ctx, opts, heads)
 	if err != nil {
 		return err
 	}
@@ -523,7 +523,8 @@ func submitNew(ctx context.Context, opts *options, slug, policy string, comments
 func resolveGone(ctx context.Context, opts *options, slug, policy string, ids []string, res *botResult, stderr io.Writer) error {
 	args := make([]string, 0, 14+2*len(ids))
 	args = append(args, "review", "resolve", "--session", slug,
-		"--reply", fmt.Sprintf("Resolved by %s: the code here changed and the review of %.12s no longer reports this.", agentName, opts.attr.Iteration),
+		"--reply", fmt.Sprintf("Resolved by %s: the code here changed and the review of %.12s no longer reports this.\n\n"+
+			"<!-- vizzini:reviewed head=%s run=%s -->", agentName, opts.attr.Iteration, opts.attr.Iteration, opts.attr.RunID),
 		"--grant-policy", policy, "--garmr", opts.garmr, "--run-id", opts.attr.RunID, "--agent", agentName)
 	for _, id := range ids {
 		args = append(args, "--thread", id)
