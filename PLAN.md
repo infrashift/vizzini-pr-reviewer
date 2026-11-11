@@ -79,7 +79,7 @@ Phases are mirrored as issues in the project OKF wiki (`.okfw/issues/`). See [Wi
 
 ### Implementation Tasks
 
-* [ ] Author `schema/review.cue` defining `#Severity`, `#Category`, `#Finding`, and `#ReviewOutput`:
+* [x] Author `schema/review.cue` defining `#Severity`, `#Category`, `#Finding`, and `#ReviewOutput`:
 ```cue
 package review
 
@@ -106,13 +106,13 @@ package review
 ```
 
 
-* [ ] Implement `internal/schema/validator.go` embedding `schema/review.cue` via `//go:embed` and validating raw JSON bytes using `cuecontext.New()`.
-* [ ] Implement `internal/llm/client.go` using `text/template` and `go-openai` configured with custom `BaseURL` (for LiteLLM / mock Anthropic endpoints), retry backoff, and JSON output mode.
+* [x] Implement `internal/schema/validator.go` embedding `schema/review.cue` via `//go:embed` and validating raw JSON bytes using `cuecontext.New()`.
+* [x] Implement `internal/llm/client.go` using `text/template` and `go-openai` configured with custom `BaseURL` (for LiteLLM / mock Anthropic endpoints), retry backoff, and JSON output mode.
 
 ### Definition of Done (Verification)
 
-* [ ] `make vet-cue` succeeds with zero warnings.
-* [ ] `make test` passes table-driven tests verifying that malformed LLM JSON or invalid severity strings (e.g., `"High"` instead of `"Major"`) are rejected by the CUE validator.
+* [x] `make vet-cue` succeeds with zero warnings.
+* [x] `make test` passes table-driven tests verifying that malformed LLM JSON or invalid severity strings (e.g., `"High"` instead of `"Major"`) are rejected by the CUE validator.
 
 ---
 
