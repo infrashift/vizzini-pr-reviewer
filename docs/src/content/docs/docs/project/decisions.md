@@ -43,6 +43,20 @@ It keeps no state, no globals and no hidden config, so mrman can embed it
 directly. The CLI is a thin wrapper. New interfaces or dependencies need a
 new ADR.
 
+## ADR-0007: Findings anchored to the diff
+
+After schema validation, every finding must name a file in its chunk and
+overlap a changed hunk's new lines. Misplaced findings go back to the model
+through the same repair loop. Chunk results merge deterministically: findings
+by severity, `risk_score` as the maximum.
+
+## ADR-0008: Deterministic risk, conservative auto-approve
+
+Risk is `max(diff-derived score, model score)`, so the model can raise it but
+never lower it. Auto-approval also requires that no sensitive path (auth,
+security, crypto, schema, migrations) was touched, nothing was skipped, and
+something was actually reviewed. See [Risk & Auto-Approve](../../guides/risk/).
+
 ## ADR-0006: Offline token counting
 
 Tokenizer encodings are pinned by checksum and pre-seeded into

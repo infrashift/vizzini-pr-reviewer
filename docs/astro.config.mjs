@@ -39,6 +39,7 @@ export default defineConfig({
 						{ label: 'Embedding in Go', slug: 'docs/guides/embedding' },
 						{ label: 'Lint-Aware Reviews', slug: 'docs/guides/lint' },
 						{ label: 'Dependency Walkthroughs', slug: 'docs/guides/walkthrough' },
+						{ label: 'Risk & Auto-Approve', slug: 'docs/guides/risk' },
 						{ label: 'Running Offline', slug: 'docs/guides/offline' },
 					],
 				},

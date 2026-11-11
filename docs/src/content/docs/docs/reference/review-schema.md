@@ -42,7 +42,7 @@ package review
 | `title` | A short imperative headline |
 | `body` | What is wrong, why it matters, how it fails |
 | `suggestion` | Optional replacement code or a concrete fix |
-| `risk_score` | The model's 0–100 estimate. A deterministic score is planned |
+| `risk_score` | The model's 0–100 estimate. Vizzini reports `max(this, its own deterministic score)`; see [Risk & Auto-Approve](../../guides/risk/) |
 
 ## Rules worth knowing
 
@@ -65,5 +65,6 @@ The same package defines the describe and improve outputs (`#PRDescription`,
 }
 ```
 
-Path risk weights, OKF citations and implementation plans will be added here
+`#RiskPolicy` holds the path weights and auto-approve rules
+([Risk & Auto-Approve](../../guides/risk/)). OKF citations and implementation plans will be added here
 as their milestones land. See the [roadmap](../../project/roadmap/).

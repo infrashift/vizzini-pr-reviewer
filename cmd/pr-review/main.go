@@ -68,8 +68,9 @@ type options struct {
 	timeout        time.Duration
 	skipOversized  bool
 	// failOn is nil unless --fail-on was given; nil selects the schema default.
-	failOn   []reviewer.Severity
-	lintJSON string
+	failOn     []reviewer.Severity
+	lintJSON   string
+	riskPolicy string
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -108,7 +109,16 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 	if apiKey == "" {
 		apiKey = getenv("LITELLM_API_KEY")
 	}
+	var riskPolicy []byte
+	if opts.riskPolicy != "" {
+		data, rerr := os.ReadFile(opts.riskPolicy) //nolint:gosec // G703: reading the user-named policy file is the point
+		if rerr != nil {
+			return nil, nil, fmt.Errorf("--risk-policy: %w", rerr)
+		}
+		riskPolicy = data
+	}
 	engine, err := reviewer.New(reviewer.Config{
+		RiskPolicy:     riskPolicy,
 		BaseURL:        opts.litellmURL,
 		APIKey:         apiKey,
 		Model:          opts.model,
@@ -207,6 +217,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.IntVar(&o.concurrency, "concurrency", 0, "parallel LLM requests (default 4)")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "overall deadline")
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
+	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
 	fs.StringVar(&o.lintJSON, "lint-json", "", "review mode: golangci-lint JSON report (run from the repo root) to explain on changed lines")
 	fs.Func("fail-on", "review mode: comma-separated severities that exit 2, or none (default Critical,Major)", func(s string) error {
 		o.failOn = []reviewer.Severity{}

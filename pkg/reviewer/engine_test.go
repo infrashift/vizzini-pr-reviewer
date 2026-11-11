@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"reflect"
@@ -449,4 +450,99 @@ func between(s, start, end string) string {
 	}
 	in, _, _ := strings.Cut(after, end)
 	return in
+}
+
+const docsPatch = `diff --git a/docs/guide.md b/docs/guide.md
+--- a/docs/guide.md
++++ b/docs/guide.md
+@@ -1,2 +1,3 @@
+ # Guide
++Run make test before committing.
+ Done.
+`
+
+func reviewReply(risk int, severity string) llmtest.Handler {
+	findings := "[]"
+	if severity != "" {
+		findings = `[{"file":"docs/guide.md","start_line":2,"end_line":2,"severity":"` + severity + `","category":"Maintainability","title":"t","body":"b"}]`
+	}
+	return func(int, *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: fmt.Sprintf(`{"summary":"s","risk_score":%d,"findings":%s}`, risk, findings)}
+	}
+}
+
+func TestReview_RiskAndAutoApprove(t *testing.T) {
+	tests := []struct {
+		name        string
+		patch       string
+		handler     llmtest.Handler
+		cfg         func(*Config)
+		opts        ReviewOptions
+		wantApprove bool
+	}{
+		{"docs only, clean review", docsPatch, reviewReply(3, ""), nil, ReviewOptions{}, true},
+		{"docs only, Minor finding", docsPatch, reviewReply(3, "Minor"), nil, ReviewOptions{}, true},
+		{"docs only, Major finding", docsPatch, reviewReply(3, "Major"), nil, ReviewOptions{}, false},
+		{"docs only, Critical finding", docsPatch, reviewReply(3, "Critical"), nil, ReviewOptions{}, false},
+		{"model raises the risk", docsPatch, reviewReply(60, ""), nil, ReviewOptions{}, false},
+		{"threshold lowered by policy", docsPatch, reviewReply(3, ""), func(c *Config) { c.RiskPolicy = []byte(`{"auto_approve_threshold":0}`) }, ReviewOptions{}, false},
+		{"security-critical diff, clean review", strings.ReplaceAll(mustRead(t), "internal/store/", "internal/auth/"), answerByFileNoFindings, nil, ReviewOptions{}, false},
+		{"same diff outside auth", mustRead(t), answerByFileNoFindings, nil, ReviewOptions{}, true},
+		{"sensitivity raised by policy", strings.ReplaceAll(mustRead(t), "internal/store/", "internal/auth/"), answerByFileNoFindings, func(c *Config) { c.RiskPolicy = []byte(`{"sensitive_weight": 5}`) }, ReviewOptions{}, true},
+		{"only lockfiles", "diff --git a/go.sum b/go.sum\n--- a/go.sum\n+++ b/go.sum\n@@ -1 +1,2 @@\n a\n+b\n", reviewReply(0, ""), nil, ReviewOptions{}, false},
+		{"oversized hunk skipped", docsPatch, reviewReply(0, ""), func(c *Config) { c.MaxChunkTokens = 10 }, ReviewOptions{SkipOversized: true}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := llmtest.NewServer(t, tt.handler)
+			var mut []func(*Config)
+			if tt.cfg != nil {
+				mut = append(mut, tt.cfg)
+			}
+			out, err := newEngine(t, srv, mut...).Review(context.Background(), strings.NewReader(tt.patch), tt.opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if out.AutoApprove != tt.wantApprove {
+				t.Errorf("AutoApprove = %v, want %v (risk %d = max(base %d, model %d), findings %d, chunks %d, skipped %v)",
+					out.AutoApprove, tt.wantApprove, out.RiskScore, out.BaseRiskScore, out.ModelRiskScore, len(out.Findings), out.Chunks, out.Skipped)
+			}
+			if out.RiskScore != max(out.BaseRiskScore, out.ModelRiskScore) {
+				t.Errorf("RiskScore %d != max(%d, %d)", out.RiskScore, out.BaseRiskScore, out.ModelRiskScore)
+			}
+		})
+	}
+}
+
+func answerByFileNoFindings(int, *openai.ChatCompletionRequest) llmtest.Reply {
+	return llmtest.Reply{Content: `{"summary":"Looks fine.","risk_score":5,"findings":[]}`}
+}
+
+func TestReview_BaseRiskBreakdown(t *testing.T) {
+	srv := llmtest.NewServer(t, answerByFileNoFindings)
+	auth := strings.ReplaceAll(mustRead(t), "internal/store/", "internal/auth/")
+	out, err := newEngine(t, srv).Review(context.Background(), strings.NewReader(auth), ReviewOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.RiskFiles) != 2 || out.RiskFiles[0].Path != "internal/auth/users.go" || out.RiskFiles[0].Weight != 3 {
+		t.Errorf("breakdown %+v, want the auth file first with weight 3", out.RiskFiles)
+	}
+	if out.ModelRiskScore != 5 || out.BaseRiskScore <= out.ModelRiskScore || out.RiskScore != out.BaseRiskScore {
+		t.Errorf("scores: risk %d base %d model %d", out.RiskScore, out.BaseRiskScore, out.ModelRiskScore)
+	}
+}
+
+func TestNew_RejectsBadRiskPolicy(t *testing.T) {
+	srv := llmtest.NewServer(t, answerByFile)
+	for name, policy := range map[string]string{
+		"schema violation": `{"default_weight": -1}`,
+		"malformed glob":   `{"weights": [{"pattern": "[", "weight": 1}]}`,
+		"not JSON":         `{`,
+	} {
+		_, err := New(Config{BaseURL: srv.BaseURL(), Model: "m", RiskPolicy: []byte(policy)})
+		if err == nil || !strings.Contains(err.Error(), "risk policy") {
+			t.Errorf("%s: err = %v", name, err)
+		}
+	}
 }

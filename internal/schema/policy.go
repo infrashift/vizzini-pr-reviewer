@@ -33,6 +33,34 @@ func (v *Validator) Policy(failOn []Severity) (*PolicyGate, error) {
 	return &p, nil
 }
 
+// RiskWeight mirrors #RiskWeight.
+type RiskWeight struct {
+	Pattern string  `json:"pattern"`
+	Weight  float64 `json:"weight"`
+}
+
+// RiskPolicy mirrors #RiskPolicy: path weights and scoring parameters.
+type RiskPolicy struct {
+	Weights              []RiskWeight `json:"weights"`
+	DefaultWeight        float64      `json:"default_weight"`
+	Scale                float64      `json:"scale"`
+	AutoApproveThreshold int          `json:"auto_approve_threshold"`
+	SensitiveWeight      float64      `json:"sensitive_weight"`
+}
+
+// RiskPolicy validates a JSON risk policy against #RiskPolicy. Fields left
+// out take their schema defaults; nil or empty data selects every default.
+func (v *Validator) RiskPolicy(data []byte) (*RiskPolicy, error) {
+	if len(data) == 0 {
+		data = []byte("{}")
+	}
+	var p RiskPolicy
+	if err := v.Validate("#RiskPolicy", data, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 // Blocks reports whether findings of severity s fail the gate.
 func (p *PolicyGate) Blocks(s Severity) bool {
 	return slices.Contains(p.FailOn, s)

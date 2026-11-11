@@ -127,6 +127,7 @@ func TestRun_Errors(t *testing.T) {
 		{"lint-json outside review", base, []string{"--mode", "describe", "--lint-json", "x.json"}, "--lint-json applies only to --mode review"},
 		{"lint-json from stdin", base, []string{"--lint-json", "-"}, "--lint-json must be a file"},
 		{"lint-json missing", base, []string{"--lint-json", "/does/not/exist.json"}, "--lint-json: open /does/not/exist.json"},
+		{"risk-policy missing", base, []string{"--risk-policy", "/does/not/exist.json"}, "--risk-policy: open /does/not/exist.json"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -232,5 +233,39 @@ func TestRun_LintJSON(t *testing.T) {
 	}
 	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "internal/store/users.go:42:9 gosec: G202") {
 		t.Errorf("prompt lacks the diagnostic:\n%s", p)
+	}
+}
+
+func TestRun_RiskPolicyAndAutoApprove(t *testing.T) {
+	srv := reviewWith(t, "")
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+
+	r := runCLI(t, env, patch, "--format", "json")
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	for _, want := range []string{`"auto_approve": true`, `"base_risk_score": `, `"model_risk_score": 10`, `"risk_files": [`} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("JSON lacks %s:\n%s", want, r.stdout)
+		}
+	}
+
+	dir := t.TempDir()
+	strict := filepath.Join(dir, "strict.json")
+	if err := os.WriteFile(strict, []byte(`{"auto_approve_threshold": 0}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r = runCLI(t, env, patch, "--format", "json", "--risk-policy", strict)
+	if r.code != exitOK || !strings.Contains(r.stdout, `"auto_approve": false`) {
+		t.Errorf("strict policy: exit %d, stdout:\n%s", r.code, r.stdout)
+	}
+
+	bad := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(bad, []byte(`{"scale": 0}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r = runCLI(t, env, patch, "--risk-policy", bad)
+	if r.code != exitError || !strings.Contains(r.stderr, "risk policy: schema validation failed") {
+		t.Errorf("invalid policy: exit %d, stderr %q", r.code, r.stderr)
 	}
 }

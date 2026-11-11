@@ -132,6 +132,13 @@ func excluded(p string, patterns []string) bool {
 	return false
 }
 
+// MatchGlob matches a slash-separated path against a pattern with the same
+// semantics as the exclude globs (see DefaultExcludes). It is also used for
+// risk path weights.
+func MatchGlob(pattern, name string) (bool, error) {
+	return matchGlob(pattern, name)
+}
+
 // matchGlob matches a slash-separated path against a pattern. See
 // DefaultExcludes for the semantics.
 func matchGlob(pattern, name string) (bool, error) {

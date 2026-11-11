@@ -19,7 +19,10 @@ func FormatReview(r *ReviewOutput) string {
 		b.WriteString(r.Summary)
 		b.WriteString("\n\n")
 	}
-	fmt.Fprintf(&b, "**Risk:** %d/100 · **Findings:** %s\n", r.RiskScore, countBySeverity(r.Findings))
+	fmt.Fprintf(&b, "**Risk:** %d/100 (diff %d, model %d) · **Findings:** %s\n", r.RiskScore, r.BaseRiskScore, r.ModelRiskScore, countBySeverity(r.Findings))
+	if r.AutoApprove {
+		b.WriteString("\n**Auto-approve:** yes. Low risk and no Critical or Major findings.\n")
+	}
 
 	for i := range r.Findings {
 		f := &r.Findings[i]

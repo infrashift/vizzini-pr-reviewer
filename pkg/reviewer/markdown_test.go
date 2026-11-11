@@ -7,8 +7,10 @@ import (
 
 func TestFormatReview(t *testing.T) {
 	r := &ReviewOutput{
-		Summary:   "Query is built by concatenation.",
-		RiskScore: 92,
+		Summary:        "Query is built by concatenation.",
+		RiskScore:      92,
+		BaseRiskScore:  40,
+		ModelRiskScore: 92,
 		Findings: []Finding{
 			{File: "internal/store/users.go", StartLine: 44, EndLine: 45, Severity: SeverityCritical, Category: CategorySecurity,
 				Title: "SQL injection", Body: "name is concatenated.", Suggestion: "row := q(ctx, \"... $1\", name)"},
@@ -20,7 +22,7 @@ func TestFormatReview(t *testing.T) {
 	}
 	want := "## Review\n\n" +
 		"Query is built by concatenation.\n\n" +
-		"**Risk:** 92/100 · **Findings:** 2 (1 Critical, 1 Trivial)\n" +
+		"**Risk:** 92/100 (diff 40, model 92) · **Findings:** 2 (1 Critical, 1 Trivial)\n" +
 		"\n### [CRITICAL] SQL injection\n\n" +
 		"`internal/store/users.go:44-45` · Security\n\n" +
 		"name is concatenated.\n" +
@@ -40,6 +42,16 @@ func TestFormatReview_NoFindings(t *testing.T) {
 	got := FormatReview(&ReviewOutput{Summary: "Fine.", Findings: []Finding{}})
 	if !strings.Contains(got, "**Findings:** none") || strings.Contains(got, "###") {
 		t.Errorf("got:\n%s", got)
+	}
+}
+
+func TestFormatReview_AutoApprove(t *testing.T) {
+	got := FormatReview(&ReviewOutput{Summary: "Docs only.", RiskScore: 4, BaseRiskScore: 4, ModelRiskScore: 2, Findings: []Finding{}, AutoApprove: true})
+	if !strings.Contains(got, "**Risk:** 4/100 (diff 4, model 2)") || !strings.Contains(got, "**Auto-approve:** yes") {
+		t.Errorf("got:\n%s", got)
+	}
+	if strings.Contains(FormatReview(&ReviewOutput{Findings: []Finding{}}), "Auto-approve") {
+		t.Error("auto-approve line shown when not approved")
 	}
 }
 

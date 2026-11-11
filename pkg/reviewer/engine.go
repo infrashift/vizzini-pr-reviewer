@@ -33,6 +33,7 @@ type Engine struct {
 	llm         *llm.Client
 	validator   *schema.Validator
 	chunker     *chunker.Chunker
+	risk        *schema.RiskPolicy
 	exclude     []string
 	concurrency int
 }
@@ -59,11 +60,18 @@ func New(cfg Config) (*Engine, error) { //nolint:gocritic // hugeParam: one-shot
 	if err != nil {
 		return nil, err
 	}
+	risk, err := v.RiskPolicy(cfg.RiskPolicy)
+	if err != nil {
+		return nil, fmt.Errorf("risk policy: %w", err)
+	}
+	if err := analysis.ValidateRiskPatterns(risk); err != nil {
+		return nil, fmt.Errorf("risk policy: %w", err)
+	}
 	conc := cfg.Concurrency
 	if conc <= 0 {
 		conc = defaultConcurrency
 	}
-	return &Engine{llm: client, validator: v, chunker: ch, exclude: cfg.Exclude, concurrency: conc}, nil
+	return &Engine{llm: client, validator: v, chunker: ch, risk: risk, exclude: cfg.Exclude, concurrency: conc}, nil
 }
 
 // Policy returns a severity gate validated by the #PolicyGate schema. A nil
@@ -91,7 +99,8 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 			return nil, err
 		}
 	}
-	out := &ReviewOutput{Findings: []Finding{}, Excluded: d.Excluded}
+	risk := analysis.ScoreRisk(d.Files, e.risk)
+	out := &ReviewOutput{Findings: []Finding{}, Excluded: d.Excluded, BaseRiskScore: risk.Score, RiskScore: risk.Score, RiskFiles: risk.Files}
 
 	var chunks []chunker.Chunk
 	for _, c := range e.chunker.Chunk(d.Files) {
@@ -124,7 +133,7 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 
 	summaries := make([]string, 0, len(results))
 	for i, r := range results {
-		out.RiskScore = max(out.RiskScore, r.RiskScore)
+		out.ModelRiskScore = max(out.ModelRiskScore, r.RiskScore)
 		out.Findings = append(out.Findings, r.Findings...)
 		if len(results) == 1 {
 			summaries = append(summaries, r.Summary)
@@ -133,6 +142,8 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 		}
 	}
 	out.Summary = strings.Join(summaries, "\n\n")
+	out.RiskScore = max(out.BaseRiskScore, out.ModelRiskScore)
+	out.AutoApprove = e.autoApprove(out)
 	slices.SortStableFunc(out.Findings, func(a, b Finding) int {
 		return cmp.Or(
 			cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)),
@@ -142,6 +153,26 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 		)
 	})
 	return out, nil
+}
+
+// autoApprove applies the Milestone 4.4 rule. It is deliberately strict: a
+// change with nothing reviewed (e.g. only lockfiles) or with skipped hunks
+// always needs a human.
+func (e *Engine) autoApprove(out *ReviewOutput) bool {
+	if out.Chunks == 0 || len(out.Skipped) > 0 || out.RiskScore > e.risk.AutoApproveThreshold {
+		return false
+	}
+	for i := range out.RiskFiles {
+		if out.RiskFiles[i].Weight >= e.risk.SensitiveWeight {
+			return false
+		}
+	}
+	for i := range out.Findings {
+		if s := out.Findings[i].Severity; s == SeverityCritical || s == SeverityMajor {
+			return false
+		}
+	}
+	return true
 }
 
 // Describe writes a pull request description. The model sees every changed

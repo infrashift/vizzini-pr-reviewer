@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/infrashift/vizzini-pr-reviewer/internal/analysis"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/schema"
 )
 
@@ -43,6 +44,9 @@ const (
 	PRTypeChore    = schema.PRTypeChore
 )
 
+// FileRisk is one file's contribution to the deterministic risk score.
+type FileRisk = analysis.FileRisk
+
 // PolicyGate lists the severities that block a change (Milestone 4.1).
 // Build one with Engine.Policy so it is validated by the schema.
 type PolicyGate = schema.PolicyGate
@@ -64,8 +68,22 @@ type ReviewOutput struct {
 	// Summary is the model's summary. With several chunks it holds one
 	// paragraph per chunk, prefixed "Part i of n:".
 	Summary string `json:"summary"`
-	// RiskScore is the highest risk score any chunk reported (0–100).
+	// RiskScore is max(BaseRiskScore, ModelRiskScore), in 0..100: the model
+	// can raise the risk of a change but never lower it below what the diff
+	// itself shows.
 	RiskScore int `json:"risk_score"`
+	// BaseRiskScore is the deterministic blast-radius score computed from the
+	// diff and the risk policy (Milestone 4.4).
+	BaseRiskScore int `json:"base_risk_score"`
+	// ModelRiskScore is the highest risk score any chunk's answer reported.
+	ModelRiskScore int `json:"model_risk_score"`
+	// RiskFiles explains BaseRiskScore per file, highest contribution first.
+	RiskFiles []FileRisk `json:"risk_files,omitempty"`
+	// AutoApprove is true only when something was reviewed, nothing was
+	// skipped, no touched file is sensitive (weight at or above the policy's
+	// sensitive_weight), RiskScore is at or below auto_approve_threshold, and
+	// there are no Critical or Major findings.
+	AutoApprove bool `json:"auto_approve"`
 	// Findings are sorted by severity (most severe first), then file and line.
 	Findings []Finding `json:"findings"`
 	// Excluded lists generated or vendored paths that were not reviewed.
@@ -121,4 +139,8 @@ type Config struct {
 	Exclude []string
 	// Concurrency bounds parallel LLM requests. Default 4.
 	Concurrency int
+	// RiskPolicy is a JSON document validated against #RiskPolicy in
+	// schema/review.cue (path weights, scale, auto_approve_threshold).
+	// Omitted fields, or a nil RiskPolicy, take the schema defaults.
+	RiskPolicy []byte
 }

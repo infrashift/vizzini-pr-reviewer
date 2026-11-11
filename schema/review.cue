@@ -57,3 +57,35 @@ package review
 #PolicyGate: {
 	fail_on: [...#Severity] | *["Critical", "Major"]
 }
+
+// Risk scoring (Milestone 4.4). Each changed file's points are its weight
+// times (changed lines + 5 x added cyclomatic complexity). The score is
+// 100 x (1 - e^(-total/scale)), so it rises quickly at first and never
+// exceeds 100. Weights are matched in order and the first match wins, so list
+// specific patterns before general ones. A pattern without "/" matches the
+// base name at any depth; "**" matches any number of directories.
+#RiskWeight: {
+	pattern: string & !=""
+	weight:  number & >=0 & <=10
+}
+
+#RiskPolicy: {
+	weights: [...#RiskWeight] | *[
+		{pattern: "*_test.go", weight: 0.3},
+		{pattern: "**/testdata/**", weight: 0.2},
+		{pattern: "**/docs/**", weight: 0.1},
+		{pattern: "*.md", weight: 0.1},
+		{pattern: "**/auth/**", weight: 3},
+		{pattern: "**/security/**", weight: 3},
+		{pattern: "**/crypto/**", weight: 3},
+		{pattern: "**/schema/**", weight: 2.5},
+		{pattern: "**/migrations/**", weight: 2.5},
+	]
+	default_weight:         number & >=0 & <=10 | *1
+	scale:                  number & >0 | *150
+	auto_approve_threshold: int & >=0 & <=100 | *20
+	// Touching any file whose weight is at least sensitive_weight rules out
+	// auto-approval however small the change: a one-line auth fix still
+	// needs a human.
+	sensitive_weight: number & >0 | *2.5
+}

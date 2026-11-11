@@ -188,8 +188,8 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **User Story Context:** Calculate a blast radius score based on touched files so low-risk changes can be automatically approved.
 * **Technical Spec (`internal/analysis/risk.go`):**
-* [ ] Compute a deterministic base score (`0–100`) combining hunk line count, cyclomatic complexity delta, and path risk weights defined in CUE (e.g., `auth/**` or `schema/**` = high weight; `docs/**` or `*_test.go` = low weight).
-* [ ] Emit `AutoApprove: true` in `ReviewOutput` only when `RiskScore <= threshold` AND zero `Critical`/`Major` findings exist.
+* [x] Compute a deterministic base score (`0–100`) combining hunk line count, cyclomatic complexity delta, and path risk weights defined in CUE (e.g., `auth/**` or `schema/**` = high weight; `docs/**` or `*_test.go` = low weight).
+* [x] Emit `AutoApprove: true` in `ReviewOutput` only when `RiskScore <= threshold` AND zero `Critical`/`Major` findings exist.
 
 
 * **Verification:** Table-driven tests validating risk calculation and auto-approval gating on documentation-only vs. security-critical diffs.
