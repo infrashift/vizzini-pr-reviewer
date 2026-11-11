@@ -65,6 +65,13 @@ func New(cfg Config) (*Engine, error) { //nolint:gocritic // hugeParam: one-shot
 	return &Engine{llm: client, validator: v, chunker: ch, exclude: cfg.Exclude, concurrency: conc}, nil
 }
 
+// Policy returns a severity gate validated by the #PolicyGate schema. A nil
+// failOn selects the schema default (Critical and Major); an empty, non-nil
+// slice blocks nothing. Unknown severities are rejected.
+func (e *Engine) Policy(failOn []Severity) (*PolicyGate, error) {
+	return e.validator.Policy(failOn)
+}
+
 func (e *Engine) parse(patch io.Reader) (*diff.Diff, error) {
 	return diff.Parse(patch, diff.Options{Exclude: e.exclude})
 }

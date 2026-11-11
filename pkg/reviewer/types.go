@@ -42,6 +42,10 @@ const (
 	PRTypeChore    = schema.PRTypeChore
 )
 
+// PolicyGate lists the severities that block a change (Milestone 4.1).
+// Build one with Engine.Policy so it is validated by the schema.
+type PolicyGate = schema.PolicyGate
+
 // Finding is one review comment anchored to new-file lines.
 type Finding = schema.Finding
 

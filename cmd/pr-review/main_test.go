@@ -57,22 +57,25 @@ func TestRun_ModesAndFormats(t *testing.T) {
 	srv := mockProxy(t)
 	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m", "VIZZINI_API_KEY": "k"}
 
+	// The mock review has a Critical finding, so review mode trips the default
+	// policy gate (exit 2) while still printing its full output.
 	tests := []struct {
-		args []string
-		want []string
+		args     []string
+		wantCode int
+		want     []string
 	}{
-		{[]string{"--mode", "review"}, []string{"## Review", "### [CRITICAL] SQL injection", "`internal/store/users.go:42` · Security"}},
-		{[]string{"--mode", "review", "--format", "json"}, []string{`"risk_score": 90`, `"severity": "Critical"`, `"chunks": 1`}},
-		{[]string{"--mode", "describe"}, []string{"# Inline the user query", "**Type:** Refactor"}},
-		{[]string{"--mode", "describe", "--format", "json"}, []string{`"type": "Refactor"`}},
-		{[]string{"--mode", "improve"}, []string{"## Suggested Improvements", "### Bind it"}},
-		{[]string{"--mode", "improve", "--format", "json"}, []string{`"suggestions": [`, `"improved_code": "y"`}},
+		{[]string{"--mode", "review"}, exitPolicy, []string{"## Review", "### [CRITICAL] SQL injection", "`internal/store/users.go:42` · Security"}},
+		{[]string{"--mode", "review", "--format", "json"}, exitPolicy, []string{`"risk_score": 90`, `"severity": "Critical"`, `"chunks": 1`}},
+		{[]string{"--mode", "describe"}, exitOK, []string{"# Inline the user query", "**Type:** Refactor"}},
+		{[]string{"--mode", "describe", "--format", "json"}, exitOK, []string{`"type": "Refactor"`}},
+		{[]string{"--mode", "improve"}, exitOK, []string{"## Suggested Improvements", "### Bind it"}},
+		{[]string{"--mode", "improve", "--format", "json"}, exitOK, []string{`"suggestions": [`, `"improved_code": "y"`}},
 	}
 	for _, tt := range tests {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
 			r := runCLI(t, env, patch, tt.args...)
-			if r.code != exitOK {
-				t.Fatalf("exit %d, stderr: %s", r.code, r.stderr)
+			if r.code != tt.wantCode {
+				t.Fatalf("exit %d, want %d; stderr: %s", r.code, tt.wantCode, r.stderr)
 			}
 			for _, w := range tt.want {
 				if !strings.Contains(r.stdout, w) {
@@ -93,7 +96,7 @@ func TestRun_PatchFileAndFlagsOverrideEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	env := map[string]string{"VIZZINI_LITELLM_URL": "http://127.0.0.1:1/v1", "VIZZINI_MODEL": "env-model", "LITELLM_API_KEY": "fallback-key"}
-	r := runCLI(t, env, "", "--patch-file", path, "--litellm-url", srv.BaseURL(), "--model", "flag-model", "--format", "json")
+	r := runCLI(t, env, "", "--patch-file", path, "--litellm-url", srv.BaseURL(), "--model", "flag-model", "--format", "json", "--fail-on", "none")
 	if r.code != exitOK {
 		t.Fatalf("exit %d: %s", r.code, r.stderr)
 	}
@@ -119,6 +122,8 @@ func TestRun_Errors(t *testing.T) {
 		{"unknown flag", base, []string{"--nope"}, "flag provided but not defined"},
 		{"missing patch file", base, []string{"--patch-file", "/does/not/exist.patch"}, "no such file"},
 		{"describe empty patch", base, []string{"--mode", "describe"}, "no reviewable changes"},
+		{"unknown fail-on severity", base, []string{"--fail-on", "High"}, `--fail-on: schema validation failed: #PolicyGate.fail_on.0: conflicting values "Critical" and "High"`},
+		{"fail-on outside review", base, []string{"--mode", "improve", "--fail-on", "Minor"}, "--fail-on applies only to --mode review"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,5 +146,68 @@ func TestRun_Help(t *testing.T) {
 	r := runCLI(t, nil, "", "-h")
 	if r.code != exitOK || !strings.Contains(r.stderr, "Usage: pr-review") || !strings.Contains(r.stderr, "VIZZINI_API_KEY") {
 		t.Errorf("exit %d, stderr:\n%s", r.code, r.stderr)
+	}
+}
+
+// reviewWith answers every review with one finding of the given severity, or
+// none when sev is empty.
+func reviewWith(t *testing.T, sev string) *llmtest.Server {
+	t.Helper()
+	findings := "[]"
+	if sev != "" {
+		findings = `[{"file":"internal/store/users.go","start_line":42,"end_line":42,"severity":"` + sev + `","category":"Logic","title":"t","body":"b"}]`
+	}
+	return llmtest.NewServer(t, func(int, *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"summary":"s","risk_score":10,"findings":` + findings + `}`}
+	})
+}
+
+func TestRun_PolicyGateExitCodes(t *testing.T) {
+	tests := []struct {
+		finding string
+		failOn  []string // nil: default gate
+		want    int
+	}{
+		{"Critical", nil, exitPolicy},
+		{"Major", nil, exitPolicy},
+		{"Minor", nil, exitOK},
+		{"Trivial", nil, exitOK},
+		{"", nil, exitOK},
+		{"Minor", []string{"--fail-on", "Minor"}, exitPolicy},
+		{"Critical", []string{"--fail-on", "Minor"}, exitOK},
+		{"Trivial", []string{"--fail-on", "Critical,Major,Minor,Trivial"}, exitPolicy},
+		{"Major", []string{"--fail-on", " Critical , Major "}, exitPolicy},
+		{"Critical", []string{"--fail-on", "none"}, exitOK},
+		{"Critical", []string{"--fail-on", ""}, exitOK},
+	}
+	for _, tt := range tests {
+		name := tt.finding + " " + strings.Join(tt.failOn, "=")
+		t.Run(name, func(t *testing.T) {
+			srv := reviewWith(t, tt.finding)
+			env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+			r := runCLI(t, env, patch, tt.failOn...)
+			if r.code != tt.want {
+				t.Fatalf("exit %d, want %d; stderr: %s", r.code, tt.want, r.stderr)
+			}
+			if !strings.Contains(r.stdout, "## Review") {
+				t.Error("review output missing; the gate must not suppress it")
+			}
+			gateMsg := strings.Contains(r.stderr, "policy gate failed: 1 finding(s) at")
+			if gateMsg != (tt.want == exitPolicy) {
+				t.Errorf("stderr %q: gate message present = %v, want %v", r.stderr, gateMsg, tt.want == exitPolicy)
+			}
+		})
+	}
+}
+
+// An invalid gate is rejected before any tokens are spent.
+func TestRun_InvalidGateMakesNoRequests(t *testing.T) {
+	srv := reviewWith(t, "Critical")
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	if r := runCLI(t, env, patch, "--fail-on", "Blocker"); r.code != exitError {
+		t.Fatalf("exit %d, want %d", r.code, exitError)
+	}
+	if n := len(srv.Requests()); n != 0 {
+		t.Errorf("%d LLM requests made despite an invalid --fail-on", n)
 	}
 }

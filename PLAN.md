@@ -150,8 +150,8 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **User Story Context:** Tag findings with a CUE-enforced severity enum (`Critical`, `Major`, `Minor`, `Trivial`) so blocking policies only trigger on high-risk issues.
 * **Technical Spec (`internal/schema/policy.go`):**
-* [ ] Add `#PolicyGate` in `schema/review.cue` specifying `fail_on: [...#Severity]` (default: `["Critical", "Major"]`).
-* [ ] Return exit code `2` in `cmd/pr-review` when findings match `fail_on`, and `0` when only `Minor` or `Trivial` items exist.
+* [x] Add `#PolicyGate` in `schema/review.cue` specifying `fail_on: [...#Severity]` (default: `["Critical", "Major"]`).
+* [x] Return exit code `2` in `cmd/pr-review` when findings match `fail_on`, and `0` when only `Minor` or `Trivial` items exist.
 
 
 * **Verification:** Unit tests verifying exit codes and policy evaluation across all severity permutations.

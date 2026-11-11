@@ -24,6 +24,7 @@ pr-review --patch-file change.patch --mode describe --format json
 | `--concurrency` | `4` | Parallel LLM requests |
 | `--timeout` | `10m` | Overall deadline |
 | `--skip-oversized` | `false` | Review mode: skip hunks larger than the token budget |
+| `--fail-on` | `Critical,Major` | Review mode: comma-separated severities that make `pr-review` exit `2`, or `none` |
 
 ## Environment
 
@@ -50,6 +51,27 @@ anchored to the diff before it is printed.
 |---|---|
 | `0` | Success |
 | `1` | Any error: bad flags, unreadable patch, proxy failure, or an answer the model could not repair |
-| `2` | Reserved for the severity policy gate (roadmap 4.1) |
+| `2` | Review mode: at least one finding has a severity listed in `--fail-on` |
+
+## Policy gate
+
+The gate's default comes from `#PolicyGate` in `schema/review.cue`, which
+blocks on `Critical` and `Major`. The review is always printed in full, and
+the gate only decides the exit code, so a CI job can post the review and then
+fail:
+
+```sh
+git diff origin/main...HEAD | pr-review --mode review > review.md
+status=$?   # 0 pass, 2 blocked by policy, 1 error
+```
+
+```sh
+pr-review --fail-on Critical            # block only on Critical
+pr-review --fail-on Critical,Major,Minor
+pr-review --fail-on none                # report, never block
+```
+
+An unknown severity such as `--fail-on High` is rejected before any request
+is made.
 
 Interrupting with Ctrl-C or SIGTERM cancels in-flight requests.

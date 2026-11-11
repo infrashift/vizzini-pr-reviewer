@@ -54,9 +54,16 @@ package review
 - **An omitted `findings` field means no findings.** CUE treats the open list
   `[...#Finding]` as concrete with default `[]`.
 
-## Planned extensions
+## Other definitions
 
-The same CUE package will carry the severity policy gate (`fail_on`), path
-risk weights for blast-radius scoring, citations of OKF knowledge-base
-documents, and a schema for implementation plans. See the
-[roadmap](../../project/roadmap/).
+The same package defines the describe and improve outputs (`#PRDescription`,
+`#CodeSuggestion`) and the policy gate:
+
+```cue
+#PolicyGate: {
+	fail_on: [...#Severity] | *["Critical", "Major"]
+}
+```
+
+Path risk weights, OKF citations and implementation plans will be added here
+as their milestones land. See the [roadmap](../../project/roadmap/).

@@ -345,3 +345,29 @@ func TestNew_RequiresProxyAndModel(t *testing.T) {
 		t.Error("want error without Model")
 	}
 }
+
+func TestEnginePolicy(t *testing.T) {
+	srv := llmtest.NewServer(t, answerByFile)
+	e := newEngine(t, srv)
+	out, err := e.Review(context.Background(), fixture(t), ReviewOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	def, err := e.Policy(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := def.Blocking(out.Findings); len(b) != 1 || b[0].Severity != SeverityCritical {
+		t.Errorf("default gate blocking %+v, want the Critical finding only", b)
+	}
+	minor, err := e.Policy([]Severity{SeverityMinor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := minor.Blocking(out.Findings); len(b) != 1 || b[0].Severity != SeverityMinor {
+		t.Errorf("Minor gate blocking %+v", b)
+	}
+	if _, err := e.Policy([]Severity{"Blocker"}); !errors.Is(err, schema.ErrInvalid) {
+		t.Errorf("unknown severity err = %v", err)
+	}
+}

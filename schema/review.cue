@@ -51,3 +51,9 @@ package review
 #ImproveOutput: {
 	suggestions: [...#CodeSuggestion]
 }
+
+// Policy gate (Milestone 4.1): which severities block a change. The CLI exits
+// with code 2 when any finding's severity is listed in fail_on.
+#PolicyGate: {
+	fail_on: [...#Severity] | *["Critical", "Major"]
+}

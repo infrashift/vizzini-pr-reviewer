@@ -1,8 +1,8 @@
 // Command pr-review runs a Vizzini review of a unified diff from the command
 // line, for CI jobs, UBI9 containers and QEMU microVMs.
 //
-// Exit codes: 0 success, 1 error (including usage errors). Exit code 2 is
-// reserved for the severity policy gate.
+// Exit codes: 0 success, 1 error (including usage errors), 2 the review has
+// findings at a severity listed in --fail-on (default Critical and Major).
 package main
 
 import (
@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -21,8 +22,9 @@ import (
 )
 
 const (
-	exitOK    = 0
-	exitError = 1
+	exitOK     = 0
+	exitError  = 1
+	exitPolicy = 2
 )
 
 func main() {
@@ -40,6 +42,11 @@ validated against Vizzini's CUE schema before it is printed.
 Examples:
   git diff main...HEAD | pr-review --mode review
   pr-review --patch-file change.patch --mode describe --format json
+
+Exit codes:
+  0  success
+  1  error
+  2  review mode: a finding's severity is listed in --fail-on
 
 Environment:
   VIZZINI_LITELLM_URL   default for --litellm-url
@@ -60,6 +67,8 @@ type options struct {
 	concurrency    int
 	timeout        time.Duration
 	skipOversized  bool
+	// failOn is nil unless --fail-on was given; nil selects the schema default.
+	failOn []reviewer.Severity
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -67,17 +76,33 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	if errors.Is(err, flag.ErrHelp) {
 		return exitOK
 	}
+	var blocking []reviewer.Finding
+	var gate *reviewer.PolicyGate
 	if err == nil {
-		err = execute(ctx, opts, stdin, stdout, getenv)
+		blocking, gate, err = execute(ctx, opts, stdin, stdout, getenv)
 	}
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "pr-review:", err)
 		return exitError
 	}
+	if len(blocking) > 0 {
+		_, _ = fmt.Fprintf(stderr, "pr-review: policy gate failed: %d finding(s) at %s\n", len(blocking), joinSeverities(gate.FailOn))
+		return exitPolicy
+	}
 	return exitOK
 }
 
-func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
+func joinSeverities(s []reviewer.Severity) string {
+	out := make([]string, 0, len(s))
+	for _, x := range s {
+		out = append(out, string(x))
+	}
+	return strings.Join(out, ", ")
+}
+
+// execute runs the mode and writes its output. In review mode it returns the
+// findings that fail the policy gate, and the gate itself.
+func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writer, getenv func(string) string) ([]reviewer.Finding, *reviewer.PolicyGate, error) {
 	apiKey := getenv("VIZZINI_API_KEY")
 	if apiKey == "" {
 		apiKey = getenv("LITELLM_API_KEY")
@@ -90,12 +115,20 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		Concurrency:    opts.concurrency,
 	})
 	if err != nil {
-		return err
+		return nil, nil, err
+	}
+
+	// Validate the gate before spending tokens on a review.
+	var gate *reviewer.PolicyGate
+	if opts.mode == "review" {
+		if gate, err = engine.Policy(opts.failOn); err != nil {
+			return nil, nil, fmt.Errorf("--fail-on: %w", err)
+		}
 	}
 
 	patch, closePatch, err := openPatch(opts.patchFile, stdin)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer closePatch()
 
@@ -104,7 +137,7 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 
 	result, text, err := dispatch(ctx, engine, opts, patch)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	if opts.format == "json" {
 		enc := json.NewEncoder(stdout)
@@ -114,9 +147,13 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		_, err = io.WriteString(stdout, text)
 	}
 	if err != nil {
-		return fmt.Errorf("write output: %w", err)
+		return nil, nil, fmt.Errorf("write output: %w", err)
 	}
-	return nil
+	if r, ok := result.(*reviewer.ReviewOutput); ok && gate != nil {
+		blocking := gate.Blocking(r.Findings)
+		return blocking, gate, nil
+	}
+	return nil, nil, nil
 }
 
 // dispatch runs the selected mode and returns its JSON value and Markdown.
@@ -160,6 +197,18 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.IntVar(&o.concurrency, "concurrency", 0, "parallel LLM requests (default 4)")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "overall deadline")
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
+	fs.Func("fail-on", "review mode: comma-separated severities that exit 2, or none (default Critical,Major)", func(s string) error {
+		o.failOn = []reviewer.Severity{}
+		if s == "none" {
+			return nil
+		}
+		for _, part := range strings.Split(s, ",") {
+			if part = strings.TrimSpace(part); part != "" {
+				o.failOn = append(o.failOn, reviewer.Severity(part))
+			}
+		}
+		return nil
+	})
 
 	if err := fs.Parse(args); err != nil {
 		return nil, err
@@ -171,6 +220,9 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	case "describe", "review", "improve":
 	default:
 		return nil, fmt.Errorf("--mode must be describe, review or improve, got %q", o.mode)
+	}
+	if o.failOn != nil && o.mode != "review" {
+		return nil, errors.New("--fail-on applies only to --mode review")
 	}
 	switch o.format {
 	case "json", "markdown":
