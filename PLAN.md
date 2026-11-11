@@ -162,9 +162,9 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **User Story Context:** Ingest stdout from standard Go linters and AST scanners into the LLM context so the AI explains syntax/lint errors and proposes fixes without hallucinating rules.
 * **Technical Spec (`internal/analysis/linter.go`):**
-* [ ] Parse JSON diagnostics from `golangci-lint run --out-format=json` (or injected `io.Reader`).
-* [ ] Filter diagnostics to only lines modified within the active `gitdiff.File` hunks.
-* [ ] Inject matched linter diagnostics into the `review.tmpl` prompt section prior to LLM inference.
+* [x] Parse JSON diagnostics from `golangci-lint run --out-format=json` (or injected `io.Reader`).
+* [x] Filter diagnostics to only lines modified within the active `gitdiff.File` hunks.
+* [x] Inject matched linter diagnostics into the `review.tmpl` prompt section prior to LLM inference.
 
 
 * **Verification:** Fixture test feeding sample `golangci-lint` JSON output and confirming prompt injection only includes overlapping diff lines.

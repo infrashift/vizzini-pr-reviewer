@@ -68,7 +68,8 @@ type options struct {
 	timeout        time.Duration
 	skipOversized  bool
 	// failOn is nil unless --fail-on was given; nil selects the schema default.
-	failOn []reviewer.Severity
+	failOn   []reviewer.Severity
+	lintJSON string
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -172,7 +173,16 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 		}
 		return map[string]any{"suggestions": s}, reviewer.FormatSuggestions(s), nil
 	default: // "review"; parseFlags rejects anything else
-		r, rerr := engine.Review(ctx, patch, reviewer.ReviewOptions{SkipOversized: opts.skipOversized})
+		ropts := reviewer.ReviewOptions{SkipOversized: opts.skipOversized}
+		if opts.lintJSON != "" {
+			lint, closeLint, lerr := openPatch(opts.lintJSON, nil)
+			if lerr != nil {
+				return nil, "", fmt.Errorf("--lint-json: %w", lerr)
+			}
+			defer closeLint()
+			ropts.LintReport = lint
+		}
+		r, rerr := engine.Review(ctx, patch, ropts)
 		if rerr != nil {
 			return nil, "", rerr
 		}
@@ -197,6 +207,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.IntVar(&o.concurrency, "concurrency", 0, "parallel LLM requests (default 4)")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "overall deadline")
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
+	fs.StringVar(&o.lintJSON, "lint-json", "", "review mode: golangci-lint JSON report (run from the repo root) to explain on changed lines")
 	fs.Func("fail-on", "review mode: comma-separated severities that exit 2, or none (default Critical,Major)", func(s string) error {
 		o.failOn = []reviewer.Severity{}
 		if s == "none" {
@@ -223,6 +234,12 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	}
 	if o.failOn != nil && o.mode != "review" {
 		return nil, errors.New("--fail-on applies only to --mode review")
+	}
+	if o.lintJSON != "" && o.mode != "review" {
+		return nil, errors.New("--lint-json applies only to --mode review")
+	}
+	if o.lintJSON == "-" {
+		return nil, errors.New("--lint-json must be a file; stdin is reserved for the patch")
 	}
 	switch o.format {
 	case "json", "markdown":

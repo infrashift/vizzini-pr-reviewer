@@ -1,0 +1,7 @@
+{"Issues":[
+{"FromLinter":"gosec","Text":"G202: SQL string concatenation","Severity":"","SourceLines":["\tq := \"SELECT id, name FROM users WHERE name = '\" + name + \"'\""],"Pos":{"Filename":"internal/store/users.go","Offset":1201,"Line":44,"Column":7},"ExpectNoLint":false,"ExpectedNoLintLinter":""},
+{"FromLinter":"revive","Text":"exported function FindUser should have comment or be unexported","Severity":"","SourceLines":["\tif name == \"\" {"],"Pos":{"Filename":"internal/store/users.go","Offset":1100,"Line":41,"Column":1},"ExpectNoLint":false,"ExpectedNoLintLinter":""},
+{"FromLinter":"gocyclo","Text":"cyclomatic complexity 31 of func `Migrate` is high (> 30)","Severity":"","SourceLines":["func Migrate() error {"],"Pos":{"Filename":"internal/store/users.go","Offset":4000,"Line":120,"Column":1},"ExpectNoLint":false,"ExpectedNoLintLinter":""},
+{"FromLinter":"errcheck","Text":"Error return value of `r.ParseForm` is not checked","Severity":"","SourceLines":["\t_ = r.ParseForm()"],"Pos":{"Filename":"./internal/api/handler.go","Offset":80,"Line":4,"Column":13},"ExpectNoLint":false,"ExpectedNoLintLinter":""},
+{"FromLinter":"unused","Text":"func `helper` is unused","Severity":"","SourceLines":["func helper() {}"],"Pos":{"Filename":"internal/other/x.go","Offset":10,"Line":3,"Column":6},"ExpectNoLint":false,"ExpectedNoLintLinter":""}
+],"Report":{"Linters":[{"Name":"errcheck","Enabled":true},{"Name":"gosec","Enabled":true}]}}

@@ -1,0 +1,31 @@
+diff --git a/internal/store/users.go b/internal/store/users.go
+index 3f1c2aa..9b7e410 100644
+--- a/internal/store/users.go
++++ b/internal/store/users.go
+@@ -41,6 +41,7 @@ func (s *Store) FindUser(ctx context.Context, name string) (*User, error) {
+ 	if name == "" {
+ 		return nil, ErrEmptyName
+ 	}
+-	row := s.db.QueryRowContext(ctx, "SELECT id, name FROM users WHERE name = $1", name)
++	q := "SELECT id, name FROM users WHERE name = '" + name + "'"
++	row := s.db.QueryRowContext(ctx, q)
+ 	var u User
+ 	return &u, row.Scan(&u.ID, &u.Name)
+diff --git a/go.sum b/go.sum
+index 5555555..6666666 100644
+--- a/go.sum
++++ b/go.sum
+@@ -1 +1,2 @@
+ a v1 h1:x=
++b v1 h1:y=
+diff --git a/internal/api/handler.go b/internal/api/handler.go
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/internal/api/handler.go
+@@ -0,0 +1,5 @@
++package api
++
++func Handle(w http.ResponseWriter, r *http.Request) {
++	_ = r.ParseForm()
++}

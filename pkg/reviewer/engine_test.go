@@ -371,3 +371,82 @@ func TestEnginePolicy(t *testing.T) {
 		t.Errorf("unknown severity err = %v", err)
 	}
 }
+
+func TestReview_InjectsLintOnChangedLinesOnly(t *testing.T) {
+	lint, err := os.ReadFile("testdata/golangci.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("single chunk", func(t *testing.T) {
+		srv := llmtest.NewServer(t, answerByFile)
+		out, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{LintReport: bytes.NewReader(lint)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out.Diagnostics != 2 {
+			t.Errorf("Diagnostics = %d, want 2", out.Diagnostics)
+		}
+		prompt := llmtest.UserPrompt(&srv.Requests()[0])
+		block := between(prompt, "<lint>\n", "</lint>")
+		want := "internal/api/handler.go:4:13 errcheck: Error return value of `r.ParseForm` is not checked\n" +
+			"internal/store/users.go:44:7 gosec: G202: SQL string concatenation\n"
+		if block != want {
+			t.Errorf("lint block:\n%q\nwant:\n%q", block, want)
+		}
+		for _, absent := range []string{"revive", "gocyclo", "unused", "internal/other/x.go"} {
+			if strings.Contains(prompt, absent) {
+				t.Errorf("prompt contains %q, which is not on a changed line", absent)
+			}
+		}
+	})
+
+	t.Run("each chunk gets only its own diagnostics", func(t *testing.T) {
+		srv := llmtest.NewServer(t, answerByFile)
+		out, err := newEngine(t, srv, func(c *Config) { c.MaxChunkTokens = 150 }).
+			Review(context.Background(), fixture(t), ReviewOptions{LintReport: bytes.NewReader(lint)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out.Chunks != 2 || out.Diagnostics != 2 {
+			t.Fatalf("chunks %d diagnostics %d, want 2 and 2", out.Chunks, out.Diagnostics)
+		}
+		for _, req := range srv.Requests() {
+			p := llmtest.UserPrompt(&req)
+			users := strings.Contains(p, "### internal/store/users.go")
+			if strings.Contains(p, "gosec") != users || strings.Contains(p, "errcheck") == users {
+				t.Errorf("chunk with users.go=%v got the wrong diagnostics:\n%s", users, between(p, "<lint>", "</lint>"))
+			}
+		}
+	})
+
+	t.Run("no report, no lint section", func(t *testing.T) {
+		srv := llmtest.NewServer(t, answerByFile)
+		if _, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(llmtest.UserPrompt(&srv.Requests()[0]), "<lint>") {
+			t.Error("lint section rendered without a report")
+		}
+	})
+
+	t.Run("malformed report fails before any request", func(t *testing.T) {
+		srv := llmtest.NewServer(t, answerByFile)
+		_, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{LintReport: strings.NewReader("{")})
+		if err == nil || !strings.Contains(err.Error(), "golangci-lint JSON") {
+			t.Errorf("err = %v", err)
+		}
+		if len(srv.Requests()) != 0 {
+			t.Error("LLM called despite a malformed lint report")
+		}
+	})
+}
+
+func between(s, start, end string) string {
+	_, after, ok := strings.Cut(s, start)
+	if !ok {
+		return ""
+	}
+	in, _, _ := strings.Cut(after, end)
+	return in
+}

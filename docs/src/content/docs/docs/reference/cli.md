@@ -24,6 +24,7 @@ pr-review --patch-file change.patch --mode describe --format json
 | `--concurrency` | `4` | Parallel LLM requests |
 | `--timeout` | `10m` | Overall deadline |
 | `--skip-oversized` | `false` | Review mode: skip hunks larger than the token budget |
+| `--lint-json` | | Review mode: golangci-lint JSON report whose diagnostics on changed lines the model should explain. See [Lint-Aware Reviews](../../guides/lint/) |
 | `--fail-on` | `Critical,Major` | Review mode: comma-separated severities that make `pr-review` exit `2`, or `none` |
 
 ## Environment

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/infrashift/vizzini-pr-reviewer/internal/analysis"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/chunker"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/diff"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/llm"
@@ -84,6 +85,12 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 	if err != nil {
 		return nil, err
 	}
+	var diags []analysis.Diagnostic
+	if opts.LintReport != nil {
+		if diags, err = analysis.ParseGolangciJSON(opts.LintReport); err != nil {
+			return nil, err
+		}
+	}
 	out := &ReviewOutput{Findings: []Finding{}, Excluded: d.Excluded}
 
 	var chunks []chunker.Chunk
@@ -100,9 +107,15 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 		return out, nil
 	}
 
+	lint := make([][]string, len(chunks))
+	for i := range chunks {
+		lint[i] = chunkLint(diags, &chunks[i])
+		out.Diagnostics += len(lint[i])
+	}
+
 	results := make([]*schema.ReviewOutput, len(chunks))
 	if err := e.forEach(ctx, len(chunks), func(ctx context.Context, i int) error {
-		r, err := e.reviewChunk(ctx, &chunks[i], i+1, len(chunks))
+		r, err := e.reviewChunk(ctx, &chunks[i], i+1, len(chunks), lint[i])
 		results[i] = r
 		return err
 	}); err != nil {
@@ -201,8 +214,8 @@ func (e *Engine) Improve(ctx context.Context, patch io.Reader) ([]CodeSuggestion
 
 // reviewChunk sends one chunk for review and returns the first answer that
 // passes the schema and whose findings are anchored to this chunk.
-func (e *Engine) reviewChunk(ctx context.Context, c *chunker.Chunk, part, parts int) (*schema.ReviewOutput, error) {
-	p, err := llm.Render("review", llm.ReviewData{Diff: c.Render(), Part: part, Parts: parts})
+func (e *Engine) reviewChunk(ctx context.Context, c *chunker.Chunk, part, parts int, lint []string) (*schema.ReviewOutput, error) {
+	p, err := llm.Render("review", llm.ReviewData{Diff: c.Render(), Part: part, Parts: parts, Lint: lint})
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +236,24 @@ func (e *Engine) reviewChunk(ctx context.Context, c *chunker.Chunk, part, parts 
 		return nil
 	})
 	return out, err
+}
+
+// chunkLint returns the diagnostics on lines this chunk adds, formatted for
+// the prompt. A split file contributes only the hunks in this chunk.
+func chunkLint(diags []analysis.Diagnostic, c *chunker.Chunk) []string {
+	if len(diags) == 0 {
+		return nil
+	}
+	files := make([]*diff.File, 0, len(c.Parts))
+	for _, p := range c.Parts {
+		files = append(files, &diff.File{Path: p.File.Path, Source: p.File.Source, Hunks: p.Hunks})
+	}
+	matched := analysis.OnChangedLines(diags, files)
+	out := make([]string, 0, len(matched))
+	for _, d := range matched {
+		out = append(out, d.String())
+	}
+	return out
 }
 
 // improveChunk is reviewChunk for improvement suggestions.

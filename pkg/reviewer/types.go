@@ -1,6 +1,7 @@
 package reviewer
 
 import (
+	"io"
 	"net/http"
 	"time"
 
@@ -74,6 +75,9 @@ type ReviewOutput struct {
 	Skipped []string `json:"skipped,omitempty"`
 	// Chunks is the number of LLM requests the review took.
 	Chunks int `json:"chunks"`
+	// Diagnostics counts the linter diagnostics on changed lines that were
+	// added to the prompts (see ReviewOptions.LintReport).
+	Diagnostics int `json:"diagnostics,omitempty"`
 }
 
 // ReviewOptions tunes a single Review call.
@@ -82,6 +86,11 @@ type ReviewOptions struct {
 	// of sending it in a chunk of its own. Skipped files are reported in
 	// ReviewOutput.Skipped.
 	SkipOversized bool
+	// LintReport, if set, is golangci-lint JSON output (v1 --out-format=json
+	// or v2 --output.json.path=stdout) produced from the repository root.
+	// Diagnostics on lines the diff adds are given to the model so it can
+	// explain them and propose fixes; all others are ignored.
+	LintReport io.Reader
 }
 
 // Config configures an Engine. Zero values select the defaults.

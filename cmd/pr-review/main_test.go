@@ -124,6 +124,9 @@ func TestRun_Errors(t *testing.T) {
 		{"describe empty patch", base, []string{"--mode", "describe"}, "no reviewable changes"},
 		{"unknown fail-on severity", base, []string{"--fail-on", "High"}, `--fail-on: schema validation failed: #PolicyGate.fail_on.0: conflicting values "Critical" and "High"`},
 		{"fail-on outside review", base, []string{"--mode", "improve", "--fail-on", "Minor"}, "--fail-on applies only to --mode review"},
+		{"lint-json outside review", base, []string{"--mode", "describe", "--lint-json", "x.json"}, "--lint-json applies only to --mode review"},
+		{"lint-json from stdin", base, []string{"--lint-json", "-"}, "--lint-json must be a file"},
+		{"lint-json missing", base, []string{"--lint-json", "/does/not/exist.json"}, "--lint-json: open /does/not/exist.json"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -209,5 +212,25 @@ func TestRun_InvalidGateMakesNoRequests(t *testing.T) {
 	}
 	if n := len(srv.Requests()); n != 0 {
 		t.Errorf("%d LLM requests made despite an invalid --fail-on", n)
+	}
+}
+
+func TestRun_LintJSON(t *testing.T) {
+	srv := mockProxy(t)
+	path := filepath.Join(t.TempDir(), "lint.json")
+	report := `{"Issues":[{"FromLinter":"gosec","Text":"G202: SQL string concatenation","Pos":{"Filename":"internal/store/users.go","Line":42,"Column":9}}]}`
+	if err := os.WriteFile(path, []byte(report), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	r := runCLI(t, env, patch, "--lint-json", path, "--format", "json", "--fail-on", "none")
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	if !strings.Contains(r.stdout, `"diagnostics": 1`) {
+		t.Errorf("JSON output lacks the diagnostics count:\n%s", r.stdout)
+	}
+	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "internal/store/users.go:42:9 gosec: G202") {
+		t.Errorf("prompt lacks the diagnostic:\n%s", p)
 	}
 }

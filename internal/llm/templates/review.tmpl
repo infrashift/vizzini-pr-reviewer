@@ -42,7 +42,15 @@ Each file starts with a "### <path> (<change>)" header. Each hunk line reads
 "<old line> <new line> <op> <text>", where op is "+" (added), "-" (deleted)
 or blank (context), and a missing number means the line does not exist on
 that side.
+{{if .Lint}}
+Static analysis flagged these changed lines. This is real tool output, not a
+guess: for each issue that matters, add a finding that explains it in plain
+terms and proposes a fix. Do not invent lint findings beyond this list.
 
+<lint>
+{{range .Lint}}{{.}}
+{{end}}</lint>
+{{end}}
 <diff>
 {{.Diff}}
 </diff>

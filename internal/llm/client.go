@@ -50,6 +50,9 @@ type ReviewData struct {
 	Diff string
 	// Part and Parts number the chunk within the whole patch, starting at 1.
 	Part, Parts int
+	// Lint holds linter diagnostics on this chunk's changed lines, one
+	// "file:line:col linter: text" entry each (Milestone 4.2).
+	Lint []string
 }
 
 // DescribeData feeds the "describe" template.

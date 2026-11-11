@@ -296,6 +296,19 @@ func TestRenderReview(t *testing.T) {
 	}
 }
 
+func TestRenderReview_Lint(t *testing.T) {
+	p, err := Render("review", ReviewData{Diff: "D", Part: 1, Parts: 1, Lint: []string{"a.go:3:1 errcheck: x", "b.go:9 gosec: y"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(p.User, "<lint>\na.go:3:1 errcheck: x\nb.go:9 gosec: y\n</lint>") {
+		t.Errorf("lint block missing or malformed:\n%s", p.User)
+	}
+	if strings.Index(p.User, "<lint>") > strings.Index(p.User, "<diff>") {
+		t.Error("lint section should precede the diff")
+	}
+}
+
 func TestRenderDescribe(t *testing.T) {
 	p, err := Render("describe", DescribeData{Files: []string{"### a.go (modified)", "### b.go (added)"}, Diff: "DIFF", Truncated: true})
 	if err != nil {
