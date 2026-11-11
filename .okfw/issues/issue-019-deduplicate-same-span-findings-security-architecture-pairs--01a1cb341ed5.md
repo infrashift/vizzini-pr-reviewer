@@ -8,7 +8,7 @@ tags:
   - "review"
   - "llm"
   - "findings"
-  - "open"
+  - "closed"
 created: "2026-11-11T09:22:33-06:00"
 timestamp: "2026-11-11T09:22:33-06:00"
 description: "A model sometimes reports one problem twice on the same lines, once by its nature (Security) and once as an ADR violation (Architecture); Vizzini's merge only sorts, so both reach the report, mrman and the PR."
@@ -16,7 +16,7 @@ description: "A model sometimes reports one problem twice on the same lines, onc
 
 # ISSUE-019: Deduplicate same-span findings (Security + Architecture pairs)
 
-**Status:** open · **Raised:** 2026-11-11, from the live TypeScript UAT ([ISSUE-018](/issues/issue-018-prove-sarif-lint-input-with-real-eslint-typescript-javascript-output--01a1cb1c9e84.md)) · **Touches:** [ADR-0007](/decisions/adr-0007-anchor-findings-to-the-diff-and-merge-chunk-results-deterministically--01a1c9d9c501.md) (deterministic merge)
+**Status:** closed · **Raised:** 2026-11-11, from the live TypeScript UAT ([ISSUE-018](/issues/issue-018-prove-sarif-lint-input-with-real-eslint-typescript-javascript-output--01a1cb1c9e84.md)) · **Touches:** [ADR-0007](/decisions/adr-0007-anchor-findings-to-the-diff-and-merge-chunk-results-deterministically--01a1c9d9c501.md) (deterministic merge)
 
 ## Problem
 In vizzini-uat run 20261111T150647Z (`ts-seeded`), Opus 5.5 reported **15 findings for 11 distinct problems**. Four problems were each reported twice on the same lines:
@@ -57,4 +57,23 @@ Which category should a merged finding keep? Keeping Security plus citations los
 - [x] Unit test showing that two distinct problems on the same span (e.g. `eval` + `no-unsafe-return`) do **not** merge
 - [x] Merge stays deterministic: the same inputs in any chunk order give the same output
 - [x] garmr policy pack and `garmr test` suites updated if VZ-002's trigger changes (not needed: the merged finding stays Architecture)
-- [ ] vizzini-uat live rerun of `ts-seeded`: Opus reports one finding per problem (11, with 10/10 recall still met), and Sonnet's output is unchanged
+- [x] vizzini-uat live rerun of `ts-seeded`: Opus reports one finding per problem (11, with 10/10 recall still met), and Sonnet's output is unchanged
+
+## Resolution (2026-11-11)
+Implemented as [ADR-0012](/decisions/adr-0012-fold-same-span-duplicate-findings-that-cite-the-same-knowledge-document--01a1cb3ca045.md), with the category rule decided as **Architecture**, so garmr VZ-002 is unchanged. Two parts:
+1. **Prompt rule:** the knowledge section asks for one finding per problem.
+2. **Deterministic fold** in `Engine.Review`: same file, overlapping lines, exactly one Architecture, a shared citation. It keeps the higher severity, the specific title, both bodies, the union of the spans, and all citations. The count goes in the new `merged_findings` (closed `#ReviewReport`).
+
+**Tests:**
+- `TestFoldDuplicates_*`: the four live pairs, seven look-alikes that must not fold, all 24 input orderings, and that the result still validates.
+- `TestReview_FoldsSameSpanDuplicates`: end to end through the mock LLM, including the prompt rule and the report field.
+
+**Live rerun** (vizzini-uat run 20261111T153406Z, `ts-seeded`, no forge leg):
+
+| | before (20261111T150647Z) | after |
+|---|---|---|
+| Opus 5.5 findings | 15 (4 duplicate pairs) | **11**, 10/10 recall |
+| Sonnet 5.5 findings | 11 | 11, 10/10 recall |
+| Hard checks | 46/46 | 36/36 |
+
+`merged_findings` was 0 for both models: the prompt rule alone stopped the duplicates this run, so the fold didn't need to act. It remains the deterministic backstop for when a model ignores the rule. Model output varies between runs, so this is one observation, not a guarantee.
