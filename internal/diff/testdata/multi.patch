@@ -1,0 +1,77 @@
+From 0123456789abcdef Mon Sep 17 00:00:00 2001
+Subject: [PATCH] fixture: mixed changes
+
+diff --git a/internal/app/service.go b/internal/app/service.go
+index 1111111..2222222 100644
+--- a/internal/app/service.go
++++ b/internal/app/service.go
+@@ -1,3 +1,4 @@
+ package app
++import "errors"
+ // Run runs.
+ func Run() error {
+@@ -10,3 +11,3 @@ func Run() error {
+     x := 1
+-    return nil
++    return errors.New("boom")
+ }
+diff --git a/go.sum b/go.sum
+index 5555555..6666666 100644
+--- a/go.sum
++++ b/go.sum
+@@ -1 +1,2 @@
+ a v1 h1:x=
++b v1 h1:y=
+diff --git a/docs/README.md b/docs/README.md
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/docs/README.md
+@@ -0,0 +1,2 @@
++# Docs
++Hello.
+diff --git a/vendor/github.com/x/y/y.go b/vendor/github.com/x/y/y.go
+index 7777777..8888888 100644
+--- a/vendor/github.com/x/y/y.go
++++ b/vendor/github.com/x/y/y.go
+@@ -1 +1 @@
+-package y
++package y // v2
+diff --git a/old.txt b/old.txt
+deleted file mode 100644
+index 4444444..0000000
+--- a/old.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-bye
+diff --git a/api/v1/types.pb.go b/api/v1/types.pb.go
+index aaaaaaa..bbbbbbb 100644
+--- a/api/v1/types.pb.go
++++ b/api/v1/types.pb.go
+@@ -1 +1 @@
+-// generated v1
++// generated v2
+diff --git a/scripts/run b/scripts/run.sh
+old mode 100644
+new mode 100755
+similarity index 100%
+rename from scripts/run
+rename to scripts/run.sh
+diff --git a/web/yarn.lock b/web/yarn.lock
+index ccccccc..ddddddd 100644
+--- a/web/yarn.lock
++++ b/web/yarn.lock
+@@ -1 +1 @@
+-left-pad@1.0.0
++left-pad@1.1.0
+diff --git a/assets/logo.png b/assets/logo.png
+new file mode 100644
+index 0000000..9999999
+Binary files /dev/null and b/assets/logo.png differ
+diff --git a/internal/gql/models_gen.go b/internal/gql/models_gen.go
+index eeeeeee..fffffff 100644
+--- a/internal/gql/models_gen.go
++++ b/internal/gql/models_gen.go
+@@ -1 +1 @@
+-package gql
++package gql // regenerated

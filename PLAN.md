@@ -52,14 +52,14 @@ Phases are mirrored as issues in the project OKF wiki (`.okfw/issues/`). See [Wi
 
 ### Implementation Tasks
 
-* [ ] Initialize `go.mod` and create the `Makefile` with `test`, `vet-cue`, `lint`, and `build` targets.
-* [ ] Implement `internal/diff/parser.go` using `github.com/bluekeyes/go-gitdiff`:
+* [x] Initialize `go.mod` and create the `Makefile` with `test`, `vet-cue`, `lint`, and `build` targets.
+* [x] Implement `internal/diff/parser.go` using `github.com/bluekeyes/go-gitdiff`:
 * Parse unified `.patch` streams into structured file and text fragments.
 * Exclude generated paths matching configurable globs (`*.pb.go`, `*_gen.go`, `go.sum`, `vendor/**`, `*.lock`).
 * Annotate each hunk line with explicit old/new line numbers so the LLM can anchor comments accurately.
 
 
-* [ ] Implement `internal/chunker/chunker.go` using `github.com/pkoukk/tiktoken-go` (`cl100k_base` / `o200k_base`):
+* [x] Implement `internal/chunker/chunker.go` using `github.com/pkoukk/tiktoken-go` (`cl100k_base` / `o200k_base`):
 * Pack parsed files into `Chunk` slices where total tokens remain below `MaxChunkTokens` (default: 6000).
 * If a single file exceeds `MaxChunkTokens`, split at hunk boundaries (`*gitdiff.TextFragment`).
 
@@ -67,7 +67,7 @@ Phases are mirrored as issues in the project OKF wiki (`.okfw/issues/`). See [Wi
 
 ### Definition of Done (Verification)
 
-* [ ] `make test` passes unit tests in `internal/diff` and `internal/chunker` covering binary diffs, ignored lockfiles, multi-file packing, and oversized single-file hunk splitting.
+* [x] `make test` passes unit tests in `internal/diff` and `internal/chunker` covering binary diffs, ignored lockfiles, multi-file packing, and oversized single-file hunk splitting.
 
 ---
 

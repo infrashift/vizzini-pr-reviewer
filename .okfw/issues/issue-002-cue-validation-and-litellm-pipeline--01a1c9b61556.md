@@ -29,6 +29,8 @@ Enforce deterministic schemas on all LLM outputs and wire prompt execution throu
 
 ## Notes
 - Serialize use of a shared CUE context, or build one per call (see ADR-0003). Keep `-race` green.
+- `make vet-cue` currently prints a skip message while `schema/` doesn't exist (added in ISSUE-001). Once `schema/review.cue` lands it runs `cue vet ./schema/...` for real. Confirm it fails on a deliberately broken schema.
+- Pinned CUE Go API: match the installed `cue` CLI (v0.17.1).
 
 ## Related
 - [ADR-0003: CUE as the strict LLM output boundary](/decisions/adr-0003-cue-as-the-strict-llm-output-boundary--01a1c9b61530.md)
