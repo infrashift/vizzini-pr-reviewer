@@ -283,3 +283,30 @@ func TestValidateReview_ArchitectureRequiresCitation(t *testing.T) {
 		t.Errorf("cited Logic finding rejected: %v", err)
 	}
 }
+
+const validPlan = `{"summary":"Add retries.","affected_files":[{"path":"internal/llm/client.go","change":"modify","reason":"r"},{"path":"internal/llm/retry.go","change":"create","reason":"r"}],` +
+	`"phases":[{"name":"Retry","steps":[{"title":"Add backoff","description":"d","files":["internal/llm/retry.go"]}]}],"verification":["make test"]}`
+
+func TestValidatePlan(t *testing.T) {
+	v := newValidator(t)
+	got, err := v.ValidatePlan([]byte(validPlan))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.AffectedFiles) != 2 || got.Phases[0].Steps[0].Files[0] != "internal/llm/retry.go" || got.Verification[0] != "make test" {
+		t.Errorf("decoded %+v", got)
+	}
+	for name, bad := range map[string]string{
+		"no affected files":  strings.Replace(validPlan, `"affected_files":[{"path":"internal/llm/client.go","change":"modify","reason":"r"},{"path":"internal/llm/retry.go","change":"create","reason":"r"}]`, `"affected_files":[]`, 1),
+		"no phases":          strings.Replace(validPlan, `"phases":[{"name":"Retry","steps":[{"title":"Add backoff","description":"d","files":["internal/llm/retry.go"]}]}]`, `"phases":[]`, 1),
+		"phase without step": strings.Replace(validPlan, `"steps":[{"title":"Add backoff","description":"d","files":["internal/llm/retry.go"]}]`, `"steps":[]`, 1),
+		"bad change kind":    strings.Replace(validPlan, `"change":"modify"`, `"change":"rename"`, 1),
+		"no verification":    strings.Replace(validPlan, `"verification":["make test"]`, `"verification":[]`, 1),
+		"empty command":      strings.Replace(validPlan, `"verification":["make test"]`, `"verification":[""]`, 1),
+		"unknown field":      strings.Replace(validPlan, `"summary":"Add retries."`, `"summary":"Add retries.","eta":"2d"`, 1),
+	} {
+		if _, err := v.ValidatePlan([]byte(bad)); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: err = %v, want ErrInvalid", name, err)
+		}
+	}
+}

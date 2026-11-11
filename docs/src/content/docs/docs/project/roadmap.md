@@ -25,4 +25,4 @@ and lint passing.
 | 4.4 Risk scoring (done) | A deterministic 0–100 blast-radius score from lines changed, complexity delta and CUE path weights. `AutoApprove` only for low risk with no Critical or Major findings |
 | 4.5 OKF grounding (done) | Matches changed paths against an Open Knowledge Format wiki and cites design decisions in findings |
 | 4.6 Slash commands (done) | `/explain`, `/refactor` and `/docstrings` scoped to a file and line range inside a mrman review thread |
-| 4.7 Pre-code planning (next) | Turns an issue payload into a CUE-validated implementation plan for coding agents |
+| 4.7 Pre-code planning (done) | Turns an issue payload into a CUE-validated implementation plan for coding agents |

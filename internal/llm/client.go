@@ -88,6 +88,17 @@ type CommandData struct {
 	Thread []ThreadMessage
 }
 
+// PlanData feeds the "plan" template.
+type PlanData struct {
+	Title    string
+	Body     string
+	Labels   []string
+	FileTree string
+	// TreeOmitted counts paths left out of FileTree for budget.
+	TreeOmitted int
+	OKFIndex    string
+}
+
 // ThreadMessage is one comment in a review thread.
 type ThreadMessage struct {
 	Author string `json:"author"`

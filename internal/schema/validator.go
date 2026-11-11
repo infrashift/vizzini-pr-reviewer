@@ -119,6 +119,36 @@ type Explanation struct {
 	Answer string `json:"answer"`
 }
 
+// AffectedFile mirrors #AffectedFile.
+type AffectedFile struct {
+	Path   string `json:"path"`
+	Change string `json:"change"`
+	Reason string `json:"reason"`
+}
+
+// PlanStep mirrors #PlanStep.
+type PlanStep struct {
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Files       []string `json:"files"`
+}
+
+// PlanPhase mirrors #PlanPhase.
+type PlanPhase struct {
+	Name  string     `json:"name"`
+	Steps []PlanStep `json:"steps"`
+}
+
+// ImplementationPlan mirrors #ImplementationPlan.
+type ImplementationPlan struct {
+	Summary       string         `json:"summary"`
+	AffectedFiles []AffectedFile `json:"affected_files"`
+	Phases        []PlanPhase    `json:"phases"`
+	Verification  []string       `json:"verification"`
+	Risks         []string       `json:"risks,omitempty"`
+	References    []string       `json:"references,omitempty"`
+}
+
 // ImproveOutput mirrors #ImproveOutput.
 type ImproveOutput struct {
 	Suggestions []CodeSuggestion `json:"suggestions"`
@@ -164,6 +194,15 @@ func (v *Validator) ValidateDescription(data []byte) (*PRDescription, error) {
 func (v *Validator) ValidateExplanation(data []byte) (*Explanation, error) {
 	var out Explanation
 	if err := v.Validate("#Explanation", data, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ValidatePlan validates raw JSON against #ImplementationPlan and decodes it.
+func (v *Validator) ValidatePlan(data []byte) (*ImplementationPlan, error) {
+	var out ImplementationPlan
+	if err := v.Validate("#ImplementationPlan", data, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

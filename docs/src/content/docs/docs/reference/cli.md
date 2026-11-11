@@ -16,7 +16,10 @@ pr-review --patch-file change.patch --mode describe --format json
 | Flag | Default | Meaning |
 |---|---|---|
 | `--patch-file` | `-` | Unified diff to read. `-` reads stdin |
-| `--mode` | `review` | `describe`, `review`, `improve` or `command` |
+| `--mode` | `review` | `describe`, `review`, `improve`, `command` or `plan` |
+| `--issue` | | Plan mode: JSON issue file `{title, body, labels}`. See [Pre-Code Planning](../../guides/planning/) |
+| `--tree` | | Plan mode: repository paths, one per line (`git ls-files > tree.txt`) |
+| `--okf-index` | | Plan mode: the knowledge base's root `index.md` |
 | `--command` | | Command mode: a [slash command](../../guides/commands/), e.g. `"/explain a.go:44-45 why?"` |
 | `--thread` | | Command mode: JSON file with the thread history, `[{"author": "...", "body": "..."}]` |
 | `--litellm-url` | `$VIZZINI_LITELLM_URL` | OpenAI-compatible API root, e.g. `http://litellm:4000/v1` |
@@ -46,6 +49,7 @@ pr-review --patch-file change.patch --mode describe --format json
 | `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], knowledge_docs[], excluded[], skipped[], chunks, diagnostics}` with findings sorted most severe first |
 | `describe` | `{title, type, summary, changes[]}` |
 | `improve` | `{suggestions: [{file, start_line, end_line, category, summary, existing_code, improved_code}]}` |
+| `plan` | `{summary, affected_files[], phases[], verification[], risks[], references[]}` (no patch is read) |
 | `command` | `{command, answer}` for `/explain`; `{command, suggestions[]}` for `/refactor` and `/docstrings` |
 
 Every model answer is validated against [the schema](../review-schema/) and

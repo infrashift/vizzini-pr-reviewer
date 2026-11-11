@@ -225,8 +225,8 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **User Story Context:** Analyze an issue ticket and generate a structured implementation plan before code is written.
 * **Technical Spec (`pkg/reviewer/planner.go`):**
-* [ ] Accept an `IssuePayload` struct (title, body, labels) alongside a repository file tree summary and OKF `index.md`.
-* [ ] Output a CUE-validated `#ImplementationPlan` containing affected files, phased steps, and verification commands formatted for direct handoff to coding agents.
+* [x] Accept an `IssuePayload` struct (title, body, labels) alongside a repository file tree summary and OKF `index.md`.
+* [x] Output a CUE-validated `#ImplementationPlan` containing affected files, phased steps, and verification commands formatted for direct handoff to coding agents.
 
 
 * **Verification:** Unit test validating `#ImplementationPlan` CUE unification against a mocked issue payload.

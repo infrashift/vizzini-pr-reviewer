@@ -51,10 +51,12 @@ offline QEMU microVMs.
 and pass their tests today. That includes the severity policy gate
 (`--fail-on`), lint-aware reviews (`--lint-json`), risk scoring with
 auto-approve, dependency-ordered walkthroughs, and design-decision citations
-from an OKF knowledge base (`--knowledge`). Slash commands and pre-code
-planning are next on the
-[roadmap](https://infrashift.github.io/vizzini-pr-reviewer/docs/project/roadmap/).
-Expect sharp edges.
+from an OKF knowledge base (`--knowledge`), `/explain` `/refactor`
+`/docstrings` slash commands, and issue-to-plan handoff for coding agents
+(`--mode plan`). Every milestone on the
+[roadmap](https://infrashift.github.io/vizzini-pr-reviewer/docs/project/roadmap/)
+is implemented. What's left before a tag is a run against a real model and a
+release pipeline. Expect sharp edges.
 
 ## Try it from source
 

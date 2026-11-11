@@ -102,3 +102,34 @@ package review
 #Explanation: {
 	answer: string & !=""
 }
+
+// Pre-code planning (Milestone 4.7): a plan a coding agent can execute.
+#FileChangeKind: "create" | "modify" | "delete"
+
+#AffectedFile: {
+	path:   string & !=""
+	change: #FileChangeKind
+	reason: string & !=""
+}
+
+#PlanStep: {
+	title:       string & !=""
+	description: string & !=""
+	files: [...string & !=""]
+}
+
+#PlanPhase: {
+	name: string & !=""
+	steps: [#PlanStep, ...#PlanStep]
+}
+
+#ImplementationPlan: {
+	summary: string & !=""
+	affected_files: [#AffectedFile, ...#AffectedFile]
+	phases: [#PlanPhase, ...#PlanPhase]
+	// Shell commands that prove the work is done (tests, linters, builds).
+	verification: [string & !="", ...string & !=""]
+	risks?: [...string & !=""]
+	// Knowledge-base concepts (paths listed in the OKF index) the plan follows.
+	references?: [...string & !=""]
+}

@@ -116,7 +116,7 @@ func TestRun_Errors(t *testing.T) {
 	}{
 		{"missing url", map[string]string{"VIZZINI_MODEL": "m"}, nil, "--litellm-url (or VIZZINI_LITELLM_URL) is required"},
 		{"missing model", map[string]string{"VIZZINI_LITELLM_URL": "http://x/v1"}, nil, "--model (or VIZZINI_MODEL) is required"},
-		{"bad mode", base, []string{"--mode", "explain"}, "--mode must be describe, review, improve or command"},
+		{"bad mode", base, []string{"--mode", "explain"}, "--mode must be describe, review, improve, command or plan"},
 		{"bad format", base, []string{"--format", "yaml"}, "--format must be json or markdown"},
 		{"stray argument", base, []string{"extra"}, "unexpected arguments"},
 		{"unknown flag", base, []string{"--nope"}, "flag provided but not defined"},
@@ -132,6 +132,9 @@ func TestRun_Errors(t *testing.T) {
 		{"thread outside command", base, []string{"--thread", "t.json"}, "--thread applies only to --mode command"},
 		{"bad command", base, []string{"--mode", "command", "--command", "/summarize x.go:1"}, "unknown command /summarize"},
 		{"command out of scope", base, []string{"--mode", "command", "--command", "/explain nope.go:1"}, "nope.go is not part of this diff"},
+		{"plan without issue", base, []string{"--mode", "plan"}, "--issue and --mode plan go together"},
+		{"tree outside plan", base, []string{"--tree", "t.txt"}, "--tree and --okf-index apply only to --mode plan"},
+		{"issue missing", base, []string{"--mode", "plan", "--issue", "/does/not/exist.json"}, "--issue: open /does/not/exist.json"},
 		{"knowledge outside review", base, []string{"--mode", "improve", "--knowledge", "."}, "--knowledge applies only to --mode review"},
 		{"knowledge missing", base, []string{"--knowledge", "/does/not/exist"}, "--knowledge: stat /does/not/exist"},
 		{"knowledge not a dir", base, []string{"--knowledge", "main.go"}, "--knowledge: main.go is not a directory"},
@@ -315,5 +318,30 @@ func TestRun_CommandMode(t *testing.T) {
 	r = runCLI(t, env, patch, "--mode", "command", "--command", "/explain internal/store/users.go:42", "--format", "json")
 	if r.code != exitOK || !strings.Contains(r.stdout, `"answer": "It builds SQL from input."`) {
 		t.Errorf("json: exit %d stdout %s", r.code, r.stdout)
+	}
+}
+
+func TestRun_PlanMode(t *testing.T) {
+	plan := `{"summary":"s","affected_files":[{"path":"a.go","change":"modify","reason":"r"}],"phases":[{"name":"p","steps":[{"title":"t","description":"d","files":["a.go"]}]}],"verification":["make test"]}`
+	srv := llmtest.NewServer(t, func(int, *openai.ChatCompletionRequest) llmtest.Reply { return llmtest.Reply{Content: plan} })
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	dir := t.TempDir()
+	issue, tree := filepath.Join(dir, "issue.json"), filepath.Join(dir, "tree.txt")
+	if err := os.WriteFile(issue, []byte(`{"title":"Fix a","body":"b","labels":["bug"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tree, []byte("a.go\n\nb.go\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// stdin is not read in plan mode: an unreadable patch source must not matter.
+	r := runCLI(t, env, "not a patch", "--mode", "plan", "--issue", issue, "--tree", tree)
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	if !strings.HasPrefix(r.stdout, "# Plan: Fix a\n") || !strings.Contains(r.stdout, "- [ ] **t**: d (`a.go`)") {
+		t.Errorf("stdout:\n%s", r.stdout)
+	}
+	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "<tree>\na.go\nb.go\n</tree>") {
+		t.Errorf("tree not sent:\n%s", p)
 	}
 }

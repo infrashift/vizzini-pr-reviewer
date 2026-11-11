@@ -74,6 +74,9 @@ type options struct {
 	knowledge  string
 	command    string
 	thread     string
+	issue      string
+	tree       string
+	okfIndex   string
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -140,11 +143,15 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		}
 	}
 
-	patch, closePatch, err := openPatch(opts.patchFile, stdin)
-	if err != nil {
-		return nil, nil, err
+	var patch io.Reader = strings.NewReader("")
+	if opts.mode != "plan" { // a plan starts from an issue, not a diff
+		p, closePatch, perr := openPatch(opts.patchFile, stdin)
+		if perr != nil {
+			return nil, nil, perr
+		}
+		defer closePatch()
+		patch = p
 	}
-	defer closePatch()
 
 	ctx, cancel := context.WithTimeout(ctx, opts.timeout)
 	defer cancel()
@@ -179,6 +186,16 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 			return nil, "", derr
 		}
 		return d, reviewer.FormatDescription(d), nil
+	case "plan":
+		req, perr := planRequest(opts)
+		if perr != nil {
+			return nil, "", perr
+		}
+		plan, perr := engine.Plan(ctx, &req)
+		if perr != nil {
+			return nil, "", perr
+		}
+		return plan, reviewer.FormatPlan(req.Issue.Title, plan), nil
 	case "command":
 		cmd, cerr := reviewer.ParseCommand(opts.command)
 		if cerr != nil {
@@ -242,7 +259,10 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		fs.PrintDefaults()
 	}
 	fs.StringVar(&o.patchFile, "patch-file", "-", "unified diff to review; - reads stdin")
-	fs.StringVar(&o.mode, "mode", "review", "describe | review | improve | command")
+	fs.StringVar(&o.mode, "mode", "review", "describe | review | improve | command | plan")
+	fs.StringVar(&o.issue, "issue", "", `plan mode: JSON issue file, {"title": ..., "body": ..., "labels": [...]}`)
+	fs.StringVar(&o.tree, "tree", "", "plan mode: file listing repository paths, one per line (e.g. git ls-files > tree.txt)")
+	fs.StringVar(&o.okfIndex, "okf-index", "", "plan mode: the knowledge base's root index.md (e.g. .okfw/index.md)")
 	fs.StringVar(&o.command, "command", "", `command mode: slash command, e.g. "/explain internal/store/users.go:44-45 why?"`)
 	fs.StringVar(&o.thread, "thread", "", "command mode: JSON file with the thread history, [{\"author\": ..., \"body\": ...}]")
 	fs.StringVar(&o.litellmURL, "litellm-url", getenv("VIZZINI_LITELLM_URL"), "OpenAI-compatible API root of the LiteLLM proxy, e.g. http://litellm:4000/v1")
@@ -275,9 +295,15 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		return nil, fmt.Errorf("unexpected arguments: %v", fs.Args())
 	}
 	switch o.mode {
-	case "describe", "review", "improve", "command":
+	case "describe", "review", "improve", "command", "plan":
 	default:
-		return nil, fmt.Errorf("--mode must be describe, review, improve or command, got %q", o.mode)
+		return nil, fmt.Errorf("--mode must be describe, review, improve, command or plan, got %q", o.mode)
+	}
+	if (o.mode == "plan") != (o.issue != "") {
+		return nil, errors.New("--issue and --mode plan go together")
+	}
+	if (o.tree != "" || o.okfIndex != "") && o.mode != "plan" {
+		return nil, errors.New("--tree and --okf-index apply only to --mode plan")
 	}
 	if (o.mode == "command") != (o.command != "") {
 		return nil, errors.New("--command and --mode command go together")
@@ -312,6 +338,37 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		return nil, errors.New("--timeout must be positive")
 	}
 	return o, nil
+}
+
+// planRequest reads the plan-mode input files.
+func planRequest(opts *options) (reviewer.PlanRequest, error) {
+	var req reviewer.PlanRequest
+	data, err := os.ReadFile(opts.issue) //nolint:gosec // G703: reading the user-named issue file is the point
+	if err != nil {
+		return req, fmt.Errorf("--issue: %w", err)
+	}
+	if err := json.Unmarshal(data, &req.Issue); err != nil {
+		return req, fmt.Errorf("--issue: %w", err)
+	}
+	if opts.tree != "" {
+		t, terr := os.ReadFile(opts.tree) //nolint:gosec // G703: reading the user-named tree file is the point
+		if terr != nil {
+			return req, fmt.Errorf("--tree: %w", terr)
+		}
+		for _, l := range strings.Split(string(t), "\n") {
+			if l = strings.TrimSpace(l); l != "" {
+				req.FileTree = append(req.FileTree, l)
+			}
+		}
+	}
+	if opts.okfIndex != "" {
+		idx, ierr := os.ReadFile(opts.okfIndex) //nolint:gosec // G703: reading the user-named index file is the point
+		if ierr != nil {
+			return req, fmt.Errorf("--okf-index: %w", ierr)
+		}
+		req.OKFIndex = string(idx)
+	}
+	return req, nil
 }
 
 func openPatch(name string, stdin io.Reader) (io.Reader, func(), error) {

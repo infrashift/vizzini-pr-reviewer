@@ -42,6 +42,7 @@ export default defineConfig({
 						{ label: 'Risk & Auto-Approve', slug: 'docs/guides/risk' },
 						{ label: 'Knowledge-Grounded Reviews', slug: 'docs/guides/knowledge' },
 						{ label: 'Slash Commands', slug: 'docs/guides/commands' },
+						{ label: 'Pre-Code Planning', slug: 'docs/guides/planning' },
 						{ label: 'Running Offline', slug: 'docs/guides/offline' },
 					],
 				},

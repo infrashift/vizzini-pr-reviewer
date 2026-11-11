@@ -176,3 +176,39 @@ func FormatCommandResult(r *CommandResult) string {
 	}
 	return b.String()
 }
+
+// FormatPlan renders an implementation plan as a Markdown checklist a coding
+// agent can work through phase by phase (the same shape as PLAN.md).
+func FormatPlan(title string, p *ImplementationPlan) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Plan: %s\n\n%s\n", title, p.Summary)
+	b.WriteString("\n## Affected files\n\n")
+	for _, f := range p.AffectedFiles {
+		fmt.Fprintf(&b, "- `%s` (%s): %s\n", f.Path, f.Change, f.Reason)
+	}
+	for i, ph := range p.Phases {
+		fmt.Fprintf(&b, "\n## Phase %d: %s\n\n", i+1, ph.Name)
+		for _, st := range ph.Steps {
+			fmt.Fprintf(&b, "- [ ] **%s**: %s", st.Title, st.Description)
+			if len(st.Files) > 0 {
+				fmt.Fprintf(&b, " (%s)", codeList(st.Files))
+			}
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("\n## Verification\n\n```sh\n")
+	for _, v := range p.Verification {
+		b.WriteString(v + "\n")
+	}
+	b.WriteString("```\n")
+	if len(p.Risks) > 0 {
+		b.WriteString("\n## Risks\n\n")
+		for _, r := range p.Risks {
+			fmt.Fprintf(&b, "- %s\n", r)
+		}
+	}
+	if len(p.References) > 0 {
+		fmt.Fprintf(&b, "\n## References\n\n%s\n", codeList(p.References))
+	}
+	return b.String()
+}
