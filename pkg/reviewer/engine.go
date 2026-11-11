@@ -174,6 +174,7 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 	}
 	out.Summary = strings.Join(summaries, "\n\n")
 	out.RiskScore = max(out.BaseRiskScore, out.ModelRiskScore)
+	out.Findings, out.MergedFindings = foldDuplicates(out.Findings)
 	out.AutoApprove = e.autoApprove(out)
 	slices.SortStableFunc(out.Findings, func(a, b Finding) int {
 		return cmp.Or(

@@ -52,9 +52,9 @@ ADR-0007's merge sorts findings by severity, file, line and title. It never comp
 Which category should a merged finding keep? Keeping Security plus citations loses VZ-002's Architecture signal. Keeping Architecture understates severity labeling. A likely answer: keep the problem's own category, and change VZ-002 to "any finding citing a knowledge document is an architecture violation". That needs a coordinated garmr policy-pack change.
 
 ## Acceptance criteria
-- [ ] Decide the option(s) and the category rule, recorded as an ADR or an amendment to ADR-0007
-- [ ] Unit test with the four observed pair shapes: each folds into one finding with max severity and the union of citations
-- [ ] Unit test showing that two distinct problems on the same span (e.g. `eval` + `no-unsafe-return`) do **not** merge
-- [ ] Merge stays deterministic: the same inputs in any chunk order give the same output
-- [ ] garmr policy pack and `garmr test` suites updated if VZ-002's trigger changes
+- [x] Decide the option(s) and the category rule, recorded as an ADR or an amendment to ADR-0007
+- [x] Unit test with the four observed pair shapes: each folds into one finding with max severity and the union of citations
+- [x] Unit test showing that two distinct problems on the same span (e.g. `eval` + `no-unsafe-return`) do **not** merge
+- [x] Merge stays deterministic: the same inputs in any chunk order give the same output
+- [x] garmr policy pack and `garmr test` suites updated if VZ-002's trigger changes (not needed: the merged finding stays Architecture)
 - [ ] vizzini-uat live rerun of `ts-seeded`: Opus reports one finding per problem (11, with 10/10 recall still met), and Sonnet's output is unchanged

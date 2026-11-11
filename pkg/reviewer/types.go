@@ -98,6 +98,10 @@ type ReviewOutput struct {
 	// Diagnostics counts the linter diagnostics on changed lines that were
 	// added to the prompts (see ReviewOptions.LintReports).
 	Diagnostics int `json:"diagnostics,omitempty"`
+	// MergedFindings counts same-span duplicates folded into one finding:
+	// a problem the model reported both by its nature and as the knowledge
+	// document it violates (ISSUE-019, ADR-0012).
+	MergedFindings int `json:"merged_findings,omitempty"`
 	// KnowledgeDocs lists the IDs of the knowledge-base documents given to
 	// the model (see ReviewOptions.Knowledge), sorted.
 	KnowledgeDocs []string `json:"knowledge_docs,omitempty"`

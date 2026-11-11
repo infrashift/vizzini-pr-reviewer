@@ -701,3 +701,38 @@ func TestReview_PolyglotLintReports(t *testing.T) {
 		t.Errorf("bad second report: err = %v, want it named", err)
 	}
 }
+
+// ISSUE-019: a model that reports one problem twice (by nature and as the
+// ADR it breaks) gets one finding in the report; a different problem on the
+// same lines stays. The prompt also asks for one finding per problem.
+func TestReview_FoldsSameSpanDuplicates(t *testing.T) {
+	srv := llmtest.NewServer(t, func(int, *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"summary":"s","risk_score":90,"findings":[
+			{"file":"internal/store/users.go","start_line":44,"end_line":45,"severity":"Critical","category":"Security","title":"SQL injection via string-built query","body":"name is concatenated.","suggestion":"use $1","citations":["adr-0001-store"]},
+			{"file":"internal/store/users.go","start_line":44,"end_line":45,"severity":"Major","category":"Architecture","title":"SQL built by concatenation violates ADR-0001","body":"The store ADR forbids it.","citations":["adr-0001-store"]},
+			{"file":"internal/store/users.go","start_line":44,"end_line":44,"severity":"Minor","category":"Logic","title":"Error from Query ignored","body":"err is dropped."}]}`}
+	})
+	out, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{Knowledge: knowledgeFS()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.MergedFindings != 1 || len(out.Findings) != 2 {
+		t.Fatalf("merged %d, %d findings: %+v", out.MergedFindings, len(out.Findings), out.Findings)
+	}
+	m := out.Findings[0]
+	if m.Category != CategoryArchitecture || m.Severity != SeverityCritical || m.Title != "SQL injection via string-built query" ||
+		m.Suggestion != "use $1" || !reflect.DeepEqual(m.Citations, []string{"adr-0001-store"}) ||
+		!strings.Contains(m.Body, "Violates a documented design decision: The store ADR forbids it.") {
+		t.Errorf("merged finding %+v", m)
+	}
+	if out.Findings[1].Title != "Error from Query ignored" {
+		t.Errorf("distinct finding lost: %+v", out.Findings[1])
+	}
+	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "one finding per problem") {
+		t.Error("prompt lacks the one-finding-per-problem rule")
+	}
+	b, err := MarshalReport(out)
+	if err != nil || !strings.Contains(string(b), `"merged_findings": 1`) {
+		t.Errorf("report lacks merged_findings: %s", b)
+	}
+}

@@ -189,4 +189,6 @@ package review
 	skipped?: [...string & !=""]
 	chunks:       int & >=0
 	diagnostics?: int & >=0
+	// Same-span duplicates folded into one finding (ISSUE-019, ADR-0012).
+	merged_findings?: int & >=1
 }

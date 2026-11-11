@@ -47,7 +47,7 @@ git diff main...HEAD | pr-review --mode risk   # no model or proxy needed
 
 | Mode | JSON output |
 |---|---|
-| `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], knowledge_docs[], excluded[], skipped[], chunks, diagnostics}` with findings sorted most severe first |
+| `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], knowledge_docs[], excluded[], skipped[], chunks, diagnostics, merged_findings}` with findings sorted most severe first; `merged_findings` counts same-span duplicates folded into one ([knowledge guide](../../guides/knowledge/#one-finding-per-problem)) |
 | `describe` | `{title, type, summary, changes[]}` |
 | `improve` | `{suggestions: [{file, start_line, end_line, category, summary, existing_code, improved_code}]}` |
 | `plan` | `{summary, affected_files[], phases[], verification[], risks[], references[]}` (no patch is read) |

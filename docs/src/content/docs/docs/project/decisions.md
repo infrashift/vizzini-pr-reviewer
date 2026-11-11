@@ -56,6 +56,14 @@ overlap a changed hunk's new lines. Misplaced findings go back to the model
 through the same repair loop. Chunk results merge deterministically: findings
 by severity, `risk_score` as the maximum.
 
+## ADR-0012: One finding per problem
+
+A problem a model reports twice, once as a defect and once as the ADR it
+violates, is folded into one Architecture finding with the higher severity.
+Vizzini folds only pairs in the same file, with overlapping lines and a
+shared citation. The report's `merged_findings` counts them. See
+[Knowledge-Grounded Reviews](../../guides/knowledge/#one-finding-per-problem).
+
 ## ADR-0010: Reports with an envelope; policy in garmr
 
 JSON output carries `apiVersion: vizzini.infrashift.io/v1` and a `kind`, and

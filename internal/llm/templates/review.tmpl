@@ -59,7 +59,10 @@ terms and proposes a fix. Do not invent lint findings beyond this list.
 {{- if .Knowledge}}
 These are the project's own design documents for the code being changed. If
 the change violates one, report a finding with category "Architecture" that
-cites the document's id.
+cites the document's id. Report one finding per problem: when a problem is
+both a defect (say, a security hole) and a violation of one of these
+documents, report it once, as "Architecture" with the citation and the
+defect's severity, not twice.
 
 <knowledge>
 {{range .Knowledge}}<doc id="{{.ID}}" title="{{.Title}}">

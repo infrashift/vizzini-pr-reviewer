@@ -63,6 +63,28 @@ Every citation must be the ID of a document that chunk was actually given. An
 uncited Architecture finding, or a made-up ID, goes back to the model with the
 list of allowed IDs, just like a finding on a line that isn't in the diff.
 
+### One finding per problem
+
+A problem can be both a defect and a design violation, for example an
+`execSync` command built from input that an ADR also forbids. Some models
+report it twice: once as Security and once as Architecture. The prompt asks
+for a single Architecture finding that carries the citation. When a model
+still sends both, Vizzini folds the pair into one finding. It folds only when
+all of these hold:
+- both findings are in the same file and their lines overlap;
+- exactly one of them is Architecture;
+- they cite at least one document in common.
+
+The merged finding stays **Architecture**, so garmr's VZ-002 still reports
+the violated decision. It also takes:
+- the more severe severity;
+- the specific problem's title, and both bodies;
+- the span covering both findings;
+- the union of the citations.
+
+A different problem on the same line doesn't cite that document, so it stays
+separate. The review's `merged_findings` field counts the folded pairs.
+
 ## Budget
 
 Each chunk gets at most `MaxKnowledgeTokens` (default 2000) of documents,
