@@ -139,6 +139,9 @@ func TestRun_Errors(t *testing.T) {
 		{"knowledge outside review", base, []string{"--mode", "improve", "--knowledge", "."}, "--knowledge applies only to --mode review"},
 		{"knowledge missing", base, []string{"--knowledge", "/does/not/exist"}, "--knowledge: stat /does/not/exist"},
 		{"knowledge not a dir", base, []string{"--knowledge", "main.go"}, "--knowledge: main.go is not a directory"},
+		{"repo outside review", base, []string{"--mode", "describe", "--repo", "."}, "--repo applies only to --mode review"},
+		{"repo missing", base, []string{"--repo", "/does/not/exist"}, "--repo: stat /does/not/exist"},
+		{"repo not a dir", base, []string{"--repo", "main.go"}, "--repo: main.go is not a directory"},
 		{"risk-policy missing", base, []string{"--risk-policy", "/does/not/exist.json"}, "--risk-policy: open /does/not/exist.json"},
 	}
 	for _, tt := range tests {
@@ -417,5 +420,36 @@ func TestRun_RiskModeNeedsNoModel(t *testing.T) {
 		if r := runCLI(t, noEnv, patch, args...); r.code != exitError || r.stderr == "" {
 			t.Errorf("%s: exit %d stderr %q", name, r.code, r.stderr)
 		}
+	}
+}
+
+func TestRun_Repo(t *testing.T) {
+	dir := t.TempDir()
+	for name, body := range map[string]string{
+		"src/Repositories/OrderRepository.cs": "public class OrderRepository\n{\n    public Task<int> FindByCustomerAsync(string customer)\n    {\n        return Task.FromResult(1);\n    }\n}\n",
+		"src/Controllers/OrdersController.cs": "public class OrdersController\n{\n    public Task<int> Count(OrderRepository r) => r.FindByCustomerAsync(\"x\");\n}\n",
+	} {
+		p := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const repoPatch = "diff --git a/src/Controllers/OrdersController.cs b/src/Controllers/OrdersController.cs\n" +
+		"--- a/src/Controllers/OrdersController.cs\n+++ b/src/Controllers/OrdersController.cs\n" +
+		"@@ -1,3 +1,4 @@\n public class OrdersController\n {\n+    public Task<int> Count(OrderRepository r) => r.FindByCustomerAsync(\"x\");\n }\n"
+	srv := reviewWith(t, "")
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	r := runCLI(t, env, repoPatch, "--repo", dir, "--format", "json", "--fail-on", "none")
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	if !strings.Contains(r.stdout, `"context_snippets": 1`) {
+		t.Errorf("context_snippets missing:\n%s", r.stdout)
+	}
+	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, `symbol="FindByCustomerAsync"`) {
+		t.Errorf("prompt lacks the definition snippet:\n%s", p)
 	}
 }

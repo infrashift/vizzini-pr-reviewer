@@ -55,6 +55,19 @@ type ReviewData struct {
 	Lint []string
 	// Knowledge holds the OKF documents relevant to this chunk (Milestone 4.5).
 	Knowledge []KnowledgeDoc
+	// Context holds read-only code from outside the diff: definitions of
+	// symbols the chunk uses and callers of symbols it changes (ISSUE-023).
+	Context []ContextSnippet
+}
+
+// ContextSnippet is one region of a repository file given as context.
+type ContextSnippet struct {
+	Path       string
+	Start, End int
+	// Kind is "definition" or "caller"; Symbol is what it was found for.
+	Kind, Symbol string
+	// Text is the region with each line prefixed by its line number.
+	Text string
 }
 
 // KnowledgeDoc is one knowledge-base document given to the model.

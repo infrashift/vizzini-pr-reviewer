@@ -98,6 +98,9 @@ type ReviewOutput struct {
 	// Diagnostics counts the linter diagnostics on changed lines that were
 	// added to the prompts (see ReviewOptions.LintReports).
 	Diagnostics int `json:"diagnostics,omitempty"`
+	// ContextSnippets counts the repository-context snippets (definitions
+	// and callers outside the diff) given to the model (ISSUE-023).
+	ContextSnippets int `json:"context_snippets,omitempty"`
 	// MergedFindings counts same-span duplicates folded into one finding:
 	// a problem the model reported both by its nature and as the knowledge
 	// document it violates (ISSUE-019, ADR-0012).
@@ -129,6 +132,12 @@ type ReviewOptions struct {
 	// URIs (and absolute golangci-lint paths) under it are made relative;
 	// absolute locations outside it are ignored.
 	LintRoot string
+	// Repo, if set, is the repository at the change's head (e.g.
+	// os.DirFS(root)). The definitions of symbols a chunk uses and the call
+	// sites of symbols it changes are read from it and given to the model
+	// as read-only context, within Config.MaxContextTokens per chunk
+	// (ISSUE-023). Findings must still be on lines of the diff.
+	Repo fs.FS
 }
 
 // Config configures an Engine. Zero values select the defaults.
@@ -162,6 +171,9 @@ type Config struct {
 	// MaxKnowledgeTokens bounds the knowledge-base text added to each chunk's
 	// prompt. Default 2000.
 	MaxKnowledgeTokens int
+	// MaxContextTokens bounds the repository context (ReviewOptions.Repo)
+	// added to each chunk's prompt. Default 1500.
+	MaxContextTokens int
 	// RiskPolicy is a JSON document validated against #RiskPolicy in
 	// schema/review.cue (path weights, scale, auto_approve_threshold).
 	// Omitted fields, or a nil RiskPolicy, take the schema defaults.

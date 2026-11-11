@@ -75,6 +75,7 @@ type options struct {
 	lintJSON   []string
 	riskPolicy string
 	knowledge  string
+	repo       string
 	command    string
 	thread     string
 	issue      string
@@ -274,6 +275,16 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 			}
 			ropts.Knowledge = os.DirFS(opts.knowledge)
 		}
+		if opts.repo != "" {
+			st, serr := os.Stat(opts.repo) //nolint:gosec // G703: inspecting the user-named repository is the point
+			if serr != nil {
+				return nil, "", fmt.Errorf("--repo: %w", serr)
+			}
+			if !st.IsDir() {
+				return nil, "", fmt.Errorf("--repo: %s is not a directory", opts.repo)
+			}
+			ropts.Repo = os.DirFS(opts.repo)
+		}
 		// The reports stay open until the review is done.
 		var closers []func()
 		defer func() {
@@ -330,6 +341,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
 	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
 	fs.StringVar(&o.knowledge, "knowledge", "", "review mode: OKF knowledge-base directory (e.g. .okfw) whose relevant documents the model may cite")
+	fs.StringVar(&o.repo, "repo", "", "review mode: repository checkout at the change's head (e.g. .); definitions and callers outside the diff are given to the model as context")
 	fs.Func("lint-json", "review mode: linter report to explain on changed lines, golangci-lint JSON or SARIF (repeatable; run linters from the repo root)", func(s string) error {
 		o.lintJSON = append(o.lintJSON, s)
 		return nil
@@ -378,6 +390,9 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	}
 	if o.knowledge != "" && o.mode != "review" {
 		return nil, errors.New("--knowledge applies only to --mode review")
+	}
+	if o.repo != "" && o.mode != "review" {
+		return nil, errors.New("--repo applies only to --mode review")
 	}
 	if slices.Contains(o.lintJSON, "-") {
 		return nil, errors.New("--lint-json must be a file; stdin is reserved for the patch")

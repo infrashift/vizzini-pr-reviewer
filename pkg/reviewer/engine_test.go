@@ -736,3 +736,95 @@ func TestReview_FoldsSameSpanDuplicates(t *testing.T) {
 		t.Errorf("report lacks merged_findings: %s", b)
 	}
 }
+
+// ISSUE-023: repository context. The change calls FindByCustomerAsync (its
+// definition is elsewhere) and changes CountMatching (called elsewhere).
+const ctxPatch = `diff --git a/src/Controllers/OrdersController.cs b/src/Controllers/OrdersController.cs
+--- a/src/Controllers/OrdersController.cs
++++ b/src/Controllers/OrdersController.cs
+@@ -1,5 +1,8 @@
+ public sealed class OrdersController(OrderRepository orders)
+ {
+-    public int CountMatching(string prefix) => 0;
++    public async Task<int> CountMatching(string prefix, CancellationToken ct)
++    {
++        var found = await orders.FindByCustomerAsync(prefix, ct);
++        return found.Count; }
+     public int Other() => 1;
+ }
+`
+
+func ctxRepo() fstest.MapFS {
+	return fstest.MapFS{
+		"src/Controllers/OrdersController.cs": {Data: []byte("public sealed class OrdersController(OrderRepository orders)\n{\n    public async Task<int> CountMatching(string prefix, CancellationToken ct)\n    {\n        var found = await orders.FindByCustomerAsync(prefix, ct);\n        return found.Count; }\n    public int Other() => 1;\n}\n")},
+		"src/Repositories/OrderRepository.cs": {Data: []byte("public sealed class OrderRepository(DbConnection connection)\n{\n    public async Task<IReadOnlyList<Order>> FindByCustomerAsync(string customer, CancellationToken ct)\n    {\n        cmd.CommandText = \"SELECT id FROM orders WHERE customer = @customer\";\n        return await Read(cmd, ct);\n    }\n}\n")},
+		"src/Reports/Daily.cs":                {Data: []byte("public static class Daily\n{\n    public static int Run(OrdersController c) =>\n        c.CountMatching(\"a\");\n}\n")},
+	}
+}
+
+func TestReview_RepositoryContext(t *testing.T) {
+	answers := []string{
+		// First answer points at a context line, outside the diff: rejected.
+		`{"summary":"s","risk_score":40,"findings":[{"file":"src/Repositories/OrderRepository.cs","start_line":5,"end_line":5,"severity":"Major","category":"Logic","title":"t","body":"b"}]}`,
+		`{"summary":"s","risk_score":40,"findings":[{"file":"src/Controllers/OrdersController.cs","start_line":3,"end_line":3,"severity":"Major","category":"Logic","title":"Signature change breaks Daily.Run","body":"Daily.Run calls CountMatching(\"a\") without a token."}]}`,
+	}
+	srv := llmtest.NewServer(t, func(n int, _ *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: answers[min(n-1, len(answers)-1)]} // n is 1-based
+	})
+	out, err := newEngine(t, srv).Review(context.Background(), strings.NewReader(ctxPatch), ReviewOptions{Repo: ctxRepo()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.ContextSnippets != 2 || len(out.Findings) != 1 || out.Findings[0].File != "src/Controllers/OrdersController.cs" {
+		t.Fatalf("context %d, findings %+v", out.ContextSnippets, out.Findings)
+	}
+	reqs := srv.Requests()
+	p := llmtest.UserPrompt(&reqs[0])
+	for _, want := range []string{
+		"<context>",
+		`<snippet path="src/Repositories/OrderRepository.cs" lines="3-7" kind="definition" symbol="FindByCustomerAsync">`,
+		`3     public async Task<IReadOnlyList<Order>> FindByCustomerAsync(string customer, CancellationToken ct)`,
+		`<snippet path="src/Reports/Daily.cs" lines="2-5" kind="caller" symbol="CountMatching">`,
+		"Do not report findings on these lines",
+	} {
+		if !strings.Contains(p, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, p)
+		}
+	}
+	// The changed file's own lines are already in the diff: not repeated.
+	if strings.Contains(p, `path="src/Controllers/OrdersController.cs"`) {
+		t.Error("context repeats a region the diff shows")
+	}
+	// Anchoring is unchanged: the finding on a context line went back for repair.
+	if len(reqs) != 2 || !strings.Contains(reqs[1].Messages[len(reqs[1].Messages)-1].Content, "rejected") {
+		t.Errorf("a finding outside the diff must be repaired, got %d requests", len(reqs))
+	}
+	b, err := MarshalReport(out)
+	if err != nil || !strings.Contains(string(b), `"context_snippets": 2`) {
+		t.Errorf("report: %v %s", err, b)
+	}
+}
+
+func TestReview_RepositoryContextBudgetAndAbsence(t *testing.T) {
+	srv := llmtest.NewServer(t, answerByFileNoFindings)
+	tiny, err := newEngine(t, srv, func(c *Config) { c.MaxContextTokens = 5 }).
+		Review(context.Background(), strings.NewReader(ctxPatch), ReviewOptions{Repo: ctxRepo()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tiny.ContextSnippets != 0 {
+		t.Errorf("a 5-token budget fits no snippet, got %d", tiny.ContextSnippets)
+	}
+	none, err := newEngine(t, srv).Review(context.Background(), strings.NewReader(ctxPatch), ReviewOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if none.ContextSnippets != 0 {
+		t.Error("no Repo, no context")
+	}
+	for _, r := range srv.Requests() {
+		if strings.Contains(llmtest.UserPrompt(&r), "<context>") {
+			t.Error("prompt has a <context> block without snippets")
+		}
+	}
+}

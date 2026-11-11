@@ -70,6 +70,19 @@ defect's severity, not twice.
 </doc>
 {{end}}</knowledge>
 {{end}}
+{{- if .Context}}
+This is read-only code from elsewhere in the repository: definitions of
+symbols the change uses and call sites of symbols it changes. Use it to judge
+whether the change is correct (a contract it breaks, a caller it misses, a
+check the callee already does). Do not report findings on these lines: every
+finding must point at lines of the diff.
+
+<context>
+{{range .Context}}<snippet path="{{.Path}}" lines="{{.Start}}-{{.End}}" kind="{{.Kind}}" symbol="{{.Symbol}}">
+{{.Text}}
+</snippet>
+{{end}}</context>
+{{end}}
 <diff>
 {{.Diff}}
 </diff>

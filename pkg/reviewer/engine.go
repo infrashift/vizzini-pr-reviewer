@@ -38,6 +38,7 @@ type Engine struct {
 	exclude     []string
 	concurrency int
 	maxKnowTok  int
+	maxCtxTok   int
 }
 
 const defaultMaxKnowledgeTokens = 2000
@@ -46,6 +47,7 @@ const defaultMaxKnowledgeTokens = 2000
 type chunkContext struct {
 	lint      []string
 	knowledge []llm.KnowledgeDoc
+	context   []llm.ContextSnippet
 }
 
 // New validates cfg, loads the tokenizer and compiles the schema.
@@ -85,7 +87,11 @@ func New(cfg Config) (*Engine, error) { //nolint:gocritic // hugeParam: one-shot
 	if know <= 0 {
 		know = defaultMaxKnowledgeTokens
 	}
-	return &Engine{llm: client, validator: v, chunker: ch, risk: risk, exclude: cfg.Exclude, concurrency: conc, maxKnowTok: know}, nil
+	ctxTok := cfg.MaxContextTokens
+	if ctxTok <= 0 {
+		ctxTok = defaultMaxContextTokens
+	}
+	return &Engine{llm: client, validator: v, chunker: ch, risk: risk, exclude: cfg.Exclude, concurrency: conc, maxKnowTok: know, maxCtxTok: ctxTok}, nil
 }
 
 // Policy returns a severity gate validated by the #PolicyGate schema. A nil
@@ -102,7 +108,7 @@ func (e *Engine) parse(patch io.Reader) (*diff.Diff, error) {
 // Review asks the model for findings on every chunk of the patch and merges
 // the answers. A patch with nothing reviewable returns an empty review
 // without calling the model.
-func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions) (*ReviewOutput, error) {
+func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions) (*ReviewOutput, error) { //nolint:gocritic // hugeParam: public API; options by value keep embedders' call sites simple and safe
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err
@@ -152,6 +158,16 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 		out.KnowledgeDocs = append(out.KnowledgeDocs, id)
 	}
 	slices.Sort(out.KnowledgeDocs)
+	if opts.Repo != nil {
+		ctxs, cerr := e.repoContext(opts.Repo, chunks)
+		if cerr != nil {
+			return nil, cerr
+		}
+		for i := range chunks {
+			cctx[i].context = ctxs[i]
+			out.ContextSnippets += len(ctxs[i])
+		}
+	}
 
 	results := make([]*schema.ReviewOutput, len(chunks))
 	if err := e.forEach(ctx, len(chunks), func(ctx context.Context, i int) error {
@@ -278,7 +294,7 @@ func (e *Engine) Improve(ctx context.Context, patch io.Reader) ([]CodeSuggestion
 // reviewChunk sends one chunk for review and returns the first answer that
 // passes the schema and whose findings are anchored to this chunk.
 func (e *Engine) reviewChunk(ctx context.Context, c *chunker.Chunk, part, parts int, cc *chunkContext) (*schema.ReviewOutput, error) {
-	p, err := llm.Render("review", llm.ReviewData{Diff: c.Render(), Part: part, Parts: parts, Lint: cc.lint, Knowledge: cc.knowledge})
+	p, err := llm.Render("review", llm.ReviewData{Diff: c.Render(), Part: part, Parts: parts, Lint: cc.lint, Knowledge: cc.knowledge, Context: cc.context})
 	if err != nil {
 		return nil, err
 	}

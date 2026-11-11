@@ -191,4 +191,6 @@ package review
 	diagnostics?: int & >=0
 	// Same-span duplicates folded into one finding (ISSUE-019, ADR-0012).
 	merged_findings?: int & >=1
+	// Repository-context snippets given to the model (ISSUE-023, ADR-0014).
+	context_snippets?: int & >=1
 }

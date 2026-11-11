@@ -64,6 +64,13 @@ Vizzini folds only pairs in the same file, with overlapping lines and a
 shared citation. The report's `merged_findings` counts them. See
 [Knowledge-Grounded Reviews](../../guides/knowledge/#one-finding-per-problem).
 
+
+## ADR-0014: Repository context
+
+With `--repo`, each chunk also gets the definitions of what it calls and the
+callers of what it changes. They're found by language-family patterns in one
+deterministic scan, within a token budget. Findings still have to point at
+the diff. See [Repository Context](../../guides/repository-context/).
 ## ADR-0010: Reports with an envelope; policy in garmr
 
 JSON output carries `apiVersion: vizzini.infrashift.io/v1` and a `kind`, and

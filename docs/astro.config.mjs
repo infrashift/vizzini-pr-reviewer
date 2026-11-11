@@ -41,6 +41,7 @@ export default defineConfig({
 						{ label: 'Dependency Walkthroughs', slug: 'docs/guides/walkthrough' },
 						{ label: 'Risk & Auto-Approve', slug: 'docs/guides/risk' },
 						{ label: 'Knowledge-Grounded Reviews', slug: 'docs/guides/knowledge' },
+						{ label: 'Repository Context', slug: 'docs/guides/repository-context' },
 						{ label: 'Slash Commands', slug: 'docs/guides/commands' },
 						{ label: 'Pre-Code Planning', slug: 'docs/guides/planning' },
 						{ label: 'Policy with garmr', slug: 'docs/guides/garmr' },
