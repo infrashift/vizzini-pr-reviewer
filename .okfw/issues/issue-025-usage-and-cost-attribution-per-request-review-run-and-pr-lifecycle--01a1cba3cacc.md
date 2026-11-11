@@ -82,7 +82,14 @@ Implemented as [ADR-0015](/decisions/adr-0015-cost-attribution-through-litellm-s
 - Cost per finding was $0.0035–0.0070.
 - Per-PR lifecycle (C# fixture, 8 runs): $0.366, split review 35%, improve 31%, plan 22%, describe 12%.
 
-**Follow-ups:**
-- Describe, improve and plan reports carry no `usage` block (their costs are visible by `vizzini.mode`).
-- The UAT's cost summary now waits for the spend-log count to settle, because describe/improve/plan rows flush later (not yet re-run live).
-- mrman/CI integration should pass the real forge PR key and requester.
+**Follow-ups:** all done on 2026-11-11 (see below).
+
+## Follow-ups closed (2026-11-11)
+- **Usage in every report kind** (Vizzini `cc3f080`): every engine call hands a `RunInfo` (attribution, mode, usage) to a `RunRecorder` on the context. `MarshalReportWithRun` adds the run ID, attribution and `usage` to describe, improve, plan and command reports, and `#Report` types them. The CLI does this for every `--format json` report.
+- **Real PR key and requester:**
+  - **vizzini-uat** opens the ADO PR *before* the reviews, so every request carries `ado:dev.azure.com/<org>/<project>/<repo>#<id>`, and the requester is the PAT owner's ADO identity (`uat/ado.sh whoami`). The guide has Azure Pipelines and GitHub Actions examples.
+  - **mrman** runs no models by design (it reads reports), so there is nothing for it to attribute.
+- **Settling wait:** every report now counts its requests, so `uat/costs.sh` (now a standalone, rerunnable script) waits for exactly that many rows.
+- **Harness bug found:** the forge leg *exported* `XDG_DATA_HOME` for mrman, which moved rootless podman's storage for the rest of the run. Fixture builds silently re-pulled images, and the cost step could not reach the database. It is now scoped to mrman's own calls.
+
+**Live run 20261111T181101Z** (TypeScript, Sonnet, forge leg, 23/23): ADO PR #12. All four modes are attributed per run (describe $0.016, improve $0.039, plan $0.026, review $0.035 at $0.0035 per finding), and the PR lifecycle total is $0.116. LiteLLM recorded 4 of 4 requests.

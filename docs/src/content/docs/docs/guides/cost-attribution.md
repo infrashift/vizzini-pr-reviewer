@@ -19,6 +19,36 @@ Each flag has an environment variable: `VIZZINI_RUN_ID`, `VIZZINI_PR`,
 `reviewer.Attribution` on the context with `reviewer.WithAttribution`. Every
 mode (review, describe, improve, plan, command) then tags its requests.
 
+### In CI
+
+The CI system already knows the pull request and who started the run.
+
+Azure Pipelines (a PR build of an Azure Repos repository):
+
+```yaml
+- bash: |
+    org="$(basename "${SYSTEM_COLLECTIONURI%/}")"
+    git diff "origin/${SYSTEM_PULLREQUEST_TARGETBRANCH#refs/heads/}...HEAD" | pr-review --mode review --format json \
+      --pr "ado:dev.azure.com/$org/$SYSTEM_TEAMPROJECT/$BUILD_REPOSITORY_NAME#$SYSTEM_PULLREQUEST_PULLREQUESTID" \
+      --iteration "$BUILD_SOURCEVERSION" --requester "$BUILD_REQUESTEDFOREMAIL" --agent azure-pipelines
+```
+
+In a PR build, `BUILD_SOURCEVERSION` is the pull request's merge commit, not
+the source branch's head. It still changes with every push, which is what
+`iteration` is for.
+
+GitHub Actions:
+
+```yaml
+- run: |
+    git diff "origin/${{ github.base_ref }}...HEAD" | pr-review --mode review --format json \
+      --pr "github:github.com/${{ github.repository }}#${{ github.event.pull_request.number }}" \
+      --iteration "${{ github.event.pull_request.head.sha }}" --requester "${{ github.actor }}" --agent "github-actions"
+```
+
+Keep `pr_key` stable across pushes (forge, host, repository and number), so
+`vizzini_pr_costs` adds up a pull request's whole lifecycle.
+
 ## What each request carries
 
 | Where | Content |
