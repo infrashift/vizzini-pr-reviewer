@@ -32,6 +32,11 @@ git diff main...HEAD | pr-review --mode risk   # no model or proxy needed
 | `--skip-oversized` | `false` | Review mode: skip hunks larger than the token budget |
 | `--knowledge` | | Review mode: OKF bundle directory (e.g. `.okfw`) whose relevant documents the model may cite. See [Knowledge-Grounded Reviews](../../guides/knowledge/) |
 | `--repo` | | Review mode: the repository checkout at the change's head (e.g. `.`). The definitions of symbols the change uses and the callers of symbols it changes are given to the model as read-only context. See [Repository Context](../../guides/repository-context/) |
+| `--run-id` | generated UUIDv7 | Attribution: this run's ID. Every request carries it, as metadata and as the W3C trace ID (`VIZZINI_RUN_ID`). See [Cost Attribution](../../guides/cost-attribution/) |
+| `--pr` | — | Attribution: the pull request, e.g. `ado:dev.azure.com/org/project/repo#42` (`VIZZINI_PR`) |
+| `--iteration` | — | Attribution: the head commit reviewed (`VIZZINI_ITERATION`) |
+| `--requester` | — | Attribution: the human the run is for, sent as the proxy's end user (`VIZZINI_REQUESTER`) |
+| `--agent` | `pr-review` | Attribution: the tool asking (`VIZZINI_AGENT`) |
 | `--risk-policy` | | JSON risk policy (`#RiskPolicy`): path weights, threshold, sensitivity. See [Risk & Auto-Approve](../../guides/risk/) |
 | `--lint-json` | | Review mode, repeatable: a linter report, either golangci-lint JSON or SARIF, whose diagnostics on changed lines the model should explain. See [Lint-Aware Reviews](../../guides/lint/) |
 | `--fail-on` | `Critical,Major` | Review mode: comma-separated severities that make `pr-review` exit `2`, or `none` |
@@ -48,7 +53,7 @@ git diff main...HEAD | pr-review --mode risk   # no model or proxy needed
 
 | Mode | JSON output |
 |---|---|
-| `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], knowledge_docs[], excluded[], skipped[], chunks, diagnostics, merged_findings, context_snippets}` with findings sorted most severe first; `merged_findings` counts same-span duplicates folded into one ([knowledge guide](../../guides/knowledge/#one-finding-per-problem)); `context_snippets` counts the repository-context snippets given |
+| `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], knowledge_docs[], excluded[], skipped[], chunks, diagnostics, merged_findings, context_snippets, run_id, pr_key, iteration, requester, agent, usage}` with findings sorted most severe first; `merged_findings` counts same-span duplicates folded into one ([knowledge guide](../../guides/knowledge/#one-finding-per-problem)); `context_snippets` counts the repository-context snippets given |
 | `describe` | `{title, type, summary, changes[]}` |
 | `improve` | `{suggestions: [{file, start_line, end_line, category, summary, existing_code, improved_code}]}` |
 | `plan` | `{summary, affected_files[], phases[], verification[], risks[], references[]}` (no patch is read) |

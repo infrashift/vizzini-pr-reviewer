@@ -71,6 +71,14 @@ With `--repo`, each chunk also gets the definitions of what it calls and the
 callers of what it changes. They're found by language-family patterns in one
 deterministic scan, within a token budget. Findings still have to point at
 the diff. See [Repository Context](../../guides/repository-context/).
+
+## ADR-0015: Cost attribution through LiteLLM
+
+Vizzini doesn't keep a ledger. It attaches each request's who, what and why
+(run, PR, head commit, mode, requester, agent, attempt, repair) to LiteLLM's
+spend logs. It also adds a `usage` block to the review report and ships SQL
+views that roll costs up per run and per PR. See
+[Cost Attribution](../../guides/cost-attribution/).
 ## ADR-0010: Reports with an envelope; policy in garmr
 
 JSON output carries `apiVersion: vizzini.infrashift.io/v1` and a `kind`, and

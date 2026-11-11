@@ -8,7 +8,7 @@ tags:
   - "cost"
   - "observability"
   - "litellm"
-  - "open"
+  - "closed"
 created: "2026-11-11T11:24:31-06:00"
 timestamp: "2026-11-11T11:24:31-06:00"
 description: "Attribute LLM usage and dollar cost to who asked (human), what asked (agent/tool), why (mode, PR, iteration) and how (model, effort, retries/repairs), correlated per request, per review run and across a PR's lifecycle, building on LiteLLM's spend logs rather than duplicating them."
@@ -16,7 +16,7 @@ description: "Attribute LLM usage and dollar cost to who asked (human), what ask
 
 # ISSUE-025: Usage and cost attribution per request, review run and PR lifecycle
 
-**Status:** open (design agreed 2026-11-11) · **Raised:** 2026-11-11 · **Builds on:** [ADR-0004](/decisions/adr-0004-openai-compatible-transport-through-a-litellm-proxy--01a1c9b61537.md) (LiteLLM transport)
+**Status:** closed (design agreed 2026-11-11) · **Raised:** 2026-11-11 · **Builds on:** [ADR-0004](/decisions/adr-0004-openai-compatible-transport-through-a-litellm-proxy--01a1c9b61537.md) (LiteLLM transport)
 
 ## Goal
 Answer "what is AI review costing us, and for what?":
@@ -66,8 +66,23 @@ and roll up by repository, team, requester, agent and model.
   The open question remains where run facts live (a `vizzini_runs` table written by a collector, mrman or CI).
 
 ## Acceptance criteria
-- [ ] ADR on correlation IDs, metadata keys and where run facts live (decide the open question above)
-- [ ] Vizzini sends per-request metadata through LiteLLM, verified in LiteLLM's spend log rows in vizzini-uat (proxy with Postgres)
-- [ ] Report `usage` block, populated from responses
-- [ ] Prices configured for the 5.5 models in the UAT proxy; a run's cost is reported per run and per PR
-- [ ] A rollup query or view per PR lifecycle, documented
+- [x] ADR on correlation IDs, metadata keys and where run facts live (decide the open question above)
+- [x] Vizzini sends per-request metadata through LiteLLM, verified in LiteLLM's spend log rows in vizzini-uat (proxy with Postgres)
+- [x] Report `usage` block, populated from responses
+- [x] Prices configured for the 5.5 models in the UAT proxy; a run's cost is reported per run and per PR
+- [x] A rollup query or view per PR lifecycle, documented
+
+## Resolution (2026-11-11)
+Implemented as [ADR-0015](/decisions/adr-0015-cost-attribution-through-litellm-spend-logs-correlated-by-run-and-pull-request--01a1cbc7d120.md). Vizzini: `12beaae` (attribution, meter, usage, CLI) and `3843b53` (LiteLLM headers); views in `deploy/litellm/views.sql`; guide at Guides → Cost Attribution. vizzini-uat runs LiteLLM with Postgres 17 in a podman pod, with prices for the 5.5 models.
+
+**Found on the way:** LiteLLM v1.99.4 persists custom metadata only from the `x-litellm-spend-logs-metadata` header. The body `metadata` was silently dropped. A live probe caught it and the fix is tested.
+
+**Live run 20261111T175706Z** (both fixtures, both models, no forge, 72/72):
+- Every review's report `cost_usd` equals LiteLLM's recorded spend for that run (e.g. $0.05025, $0.07652, $0.038854, $0.057708).
+- Cost per finding was $0.0035–0.0070.
+- Per-PR lifecycle (C# fixture, 8 runs): $0.366, split review 35%, improve 31%, plan 22%, describe 12%.
+
+**Follow-ups:**
+- Describe, improve and plan reports carry no `usage` block (their costs are visible by `vizzini.mode`).
+- The UAT's cost summary now waits for the spend-log count to settle, because describe/improve/plan rows flush later (not yet re-run live).
+- mrman/CI integration should pass the real forge PR key and requester.
