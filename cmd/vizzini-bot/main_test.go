@@ -70,6 +70,10 @@ type fakeMrman struct {
 	submitErr  error
 	resolveOut string
 	resolveErr error
+	replyOut   string
+	replyErr   error
+	// inputs holds each --input @file's content, read when mrman is called.
+	inputs map[string]string
 }
 
 func (f *fakeMrman) install(t *testing.T) {
@@ -89,6 +93,18 @@ func (f *fakeMrman) install(t *testing.T) {
 			return []byte(f.submitOut), []byte("mrman: authorization: {}\n"), f.submitErr
 		case args[1] == "resolve":
 			return []byte(f.resolveOut), []byte("mrman: authorization: {}\n"), f.resolveErr
+		case args[1] == "reply":
+			for i, a := range args {
+				if a == "--input" && i+1 < len(args) {
+					file := strings.TrimPrefix(args[i+1], "@")
+					data, _ := os.ReadFile(file) //nolint:gosec // G304: the bot's own temp file
+					if f.inputs == nil {
+						f.inputs = map[string]string{}
+					}
+					f.inputs[file] = string(data)
+				}
+			}
+			return []byte(cmp.Or(f.replyOut, `{"thread":"77","comment_id":"99"}`)), nil, f.replyErr
 		}
 		return nil, nil, nil
 	}

@@ -55,12 +55,18 @@ func parseMarker(body string) (marker, bool) {
 
 // remoteThread is the part of mrman's `review threads` output the bot reads.
 type remoteThread struct {
-	ID         string `json:"id"`
-	Path       string `json:"path"`
-	IsResolved bool   `json:"is_resolved"`
-	Comments   []struct {
-		Body string `json:"body"`
-	} `json:"comments"`
+	ID         string          `json:"id"`
+	Path       string          `json:"path"`
+	Line       *int            `json:"line"`
+	StartLine  *int            `json:"start_line"`
+	IsResolved bool            `json:"is_resolved"`
+	Comments   []remoteComment `json:"comments"`
+}
+
+type remoteComment struct {
+	ID     string `json:"id"`
+	Author string `json:"author"`
+	Body   string `json:"body"`
 }
 
 // botThread is one of the bot's own earlier threads, its anchor mapped to

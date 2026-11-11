@@ -13,7 +13,8 @@
 //     (memory.go), `mrman review add` drafts one comment per new finding,
 //     `mrman review submit --grant-policy DIR` posts them, and
 //     `mrman review resolve` closes the bot's threads whose code changed
-//     and whose finding is gone.
+//     and whose finding is gone, and `mrman review reply` answers /vizzini
+//     commands people write in the PR's threads (commands.go).
 //   - garmr, run by mrman, decides whether the submit is allowed by the
 //     committed policy in DIR. The bot never authorizes itself: a deny (or
 //     an evaluation error) posts nothing.
@@ -75,8 +76,12 @@ type options struct {
 	out         string
 	dryRun      bool
 	full        bool
-	timeout     time.Duration
-	attr        reviewer.Attribution
+	// commandAuthors limits who may run /vizzini commands (empty: anyone
+	// who can comment); maxCommands bounds the commands answered per run.
+	commandAuthors []string
+	maxCommands    int
+	timeout        time.Duration
+	attr           reviewer.Attribution
 }
 
 func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*options, error) {
@@ -100,6 +105,11 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.StringVar(&o.out, "out", "", "also write the review report (JSON) here")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "review and print the comments it would post; touch no forge")
 	fs.BoolVar(&o.full, "full", false, "review the whole pull request, not only the files changed since the last reviewed head")
+	fs.Func("command-authors", "comma-separated forge users who may run /vizzini commands in the PR (default: anyone who can comment)", func(s string) error {
+		o.commandAuthors = append(o.commandAuthors, parseAuthors(s)...)
+		return nil
+	})
+	fs.IntVar(&o.maxCommands, "max-commands", 5, "most /vizzini commands answered per run (0 answers none)")
 	fs.DurationVar(&o.timeout, "timeout", 15*time.Minute, "overall time limit")
 	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "this run's id (default: a generated UUIDv7)")
 	fs.StringVar(&o.attr.PRKey, "pr", getenv("VIZZINI_PR"), `attribution: the pull request key, e.g. "ado:dev.azure.com/org/project/repo#42"`)
@@ -166,7 +176,8 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 	}
 	opts.attr.Iteration = strings.TrimSpace(string(head))
 	res := &botResult{RunID: opts.attr.RunID, Head: opts.attr.Iteration,
-		ReviewedFiles: []string{}, AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}, Carried: []string{}}
+		ReviewedFiles: []string{}, AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}, Carried: []string{},
+		Answered: []string{}, CommandFailures: []string{}}
 	err = botReview(ctx, opts, res, stdout, stderr, getenv)
 	if opts.dryRun {
 		return err
@@ -182,12 +193,39 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 func botReview(ctx context.Context, opts *options, res *botResult, stdout, stderr io.Writer, getenv func(string) string) error {
 	var slug string
 	var mine []botThread
+	var threads []remoteThread
 	if !opts.dryRun {
 		var err error
-		if slug, mine, err = recall(ctx, opts, stderr); err != nil {
+		if slug, threads, err = recall(ctx, opts, stderr); err != nil {
 			return err
 		}
+		mine = botThreads(ctx, threads, opts.attr.Iteration, gitLineMapper(opts.repo))
 	}
+	engine, err := newEngine(opts, getenv)
+	if err != nil {
+		return err
+	}
+	if rerr := reviewAndPost(ctx, opts, engine, slug, mine, res, stdout, stderr); rerr != nil || opts.dryRun {
+		return rerr
+	}
+	if opts.maxCommands <= 0 {
+		return nil
+	}
+	diff, gitErr, err := command(ctx, opts.repo, "git", "diff", "--no-color", "--no-ext-diff", opts.base+"..."+opts.attr.Iteration)
+	if err != nil {
+		return fmt.Errorf("git diff %s...%s: %w: %s", opts.base, opts.head, err, strings.TrimSpace(string(gitErr)))
+	}
+	policy, err := filepath.Abs(opts.grantPolicy)
+	if err != nil {
+		return err
+	}
+	return answerCommands(ctx, opts, slug, policy, diff, threads, engine, res, stderr)
+}
+
+// reviewAndPost reviews what changed since the last reviewed head (or
+// everything) and posts and resolves.
+func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, slug string, mine []botThread,
+	res *botResult, stdout, stderr io.Writer) error {
 	sc, err := reviewScope(ctx, opts, mine)
 	if err != nil {
 		return err
@@ -216,7 +254,7 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 		_, _ = fmt.Fprintf(stderr, "vizzini-bot: run %s reviewing %s...%.12s\n", opts.attr.RunID, opts.base, opts.attr.Iteration)
 	}
 
-	review, err := reviewDiff(ctx, opts, diff, getenv)
+	review, err := reviewDiff(ctx, opts, engine, diff)
 	if err != nil {
 		return err
 	}
@@ -260,21 +298,26 @@ type botResult struct {
 	Since string `json:"since,omitempty"`
 	// ReviewedFiles lists the files an incremental review covered.
 	ReviewedFiles []string `json:"reviewed_files"`
+	// Answered are the comment ids of /vizzini commands answered this run;
+	// CommandFailures those that could not be (the next run retries).
+	Answered        []string `json:"answered"`
+	CommandFailures []string `json:"command_failures"`
 	// Submit and Resolve are mrman's own JSON answers, when it was called.
 	Submit  json.RawMessage `json:"submit,omitempty"`
 	Resolve json.RawMessage `json:"resolve,omitempty"`
 }
 
-// reviewDiff runs the Vizzini review and, with --out, writes its report.
-func reviewDiff(ctx context.Context, opts *options, diff []byte, getenv func(string) string) (*reviewer.ReviewOutput, error) {
-	engine, err := reviewer.New(reviewer.Config{
+// newEngine builds the Vizzini engine every model call of the run uses.
+func newEngine(opts *options, getenv func(string) string) (*reviewer.Engine, error) {
+	return reviewer.New(reviewer.Config{
 		BaseURL: opts.litellmURL,
 		APIKey:  cmp.Or(getenv("VIZZINI_API_KEY"), getenv("LITELLM_API_KEY")),
 		Model:   opts.model,
 	})
-	if err != nil {
-		return nil, err
-	}
+}
+
+// reviewDiff runs the Vizzini review and, with --out, writes its report.
+func reviewDiff(ctx context.Context, opts *options, engine *reviewer.Engine, diff []byte) (*reviewer.ReviewOutput, error) {
 	ropts := reviewer.ReviewOptions{Repo: os.DirFS(opts.repo)}
 	if opts.knowledge != "" {
 		ropts.Knowledge = os.DirFS(opts.knowledge)
@@ -383,9 +426,8 @@ func mrman(ctx context.Context, opts *options, stderr io.Writer, args ...string)
 	}
 }
 
-// recall opens the PR in mrman and reads the bot's earlier threads back,
-// each mapped to the current head.
-func recall(ctx context.Context, opts *options, stderr io.Writer) (string, []botThread, error) {
+// recall opens the PR in mrman and reads its threads back.
+func recall(ctx context.Context, opts *options, stderr io.Writer) (string, []remoteThread, error) {
 	opened, errOut, err := mrman(ctx, opts, stderr, "pr", opts.prURL, "--json")
 	if err != nil {
 		return "", nil, fmt.Errorf("mrman pr: %w: %s", err, strings.TrimSpace(string(errOut)))
@@ -408,7 +450,7 @@ func recall(ctx context.Context, opts *options, stderr io.Writer) (string, []bot
 	if jerr := json.Unmarshal(listed, &remote); jerr != nil {
 		return "", nil, fmt.Errorf("mrman review threads: %w", jerr)
 	}
-	return session.Slug, botThreads(ctx, remote.Threads, opts.attr.Iteration, gitLineMapper(opts.repo)), nil
+	return session.Slug, remote.Threads, nil
 }
 
 // post drafts and submits only the new findings and resolves the threads
