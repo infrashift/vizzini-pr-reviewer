@@ -15,7 +15,8 @@
 #                               pinned SHA-256 sums (scripts/tiktoken-cache.sh)
 #
 # Then put TOOLS_DIR/bin on PATH and set TIKTOKEN_CACHE_DIR=TOOLS_DIR/tiktoken.
-# Needs go (the version in go.mod), curl, tar and sha256sum.
+# Needs go (any version from Vizzini's go.mod on; newer toolchains a module
+# requires are fetched), curl, tar and sha256sum.
 set -euo pipefail
 
 MRMAN_VERSION="${MRMAN_VERSION:-v0.1.4}"
@@ -28,6 +29,10 @@ mkdir -p "$1/bin"
 tools="$(cd "$1" && pwd)"
 bin="$tools/bin"
 export CGO_ENABLED=0
+# Each module may require a newer Go than the one installed (garmr needs
+# 1.26.11): let go fetch that toolchain, which it verifies against the Go
+# checksum database. CI setups often pin GOTOOLCHAIN=local, which would fail.
+export GOTOOLCHAIN=auto
 
 echo "install: vizzini-bot from $(git -C "$src" rev-parse --short HEAD 2>/dev/null || echo "$src")"
 (cd "$src" && go build -trimpath -o "$bin/vizzini-bot" ./cmd/vizzini-bot)
