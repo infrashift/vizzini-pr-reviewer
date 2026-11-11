@@ -79,7 +79,7 @@ TypeScript/JavaScript lint input is supported through ESLint SARIF. The proof, f
 | Review / describe / improve / plan | 18s / 7s / 21s / 18s | 24s / 8s / 31s / 17s |
 | ADO inline threads (PRs #6 and #7) | 11 | 15 |
 
-- **ESLint signal:** only 2 of the 10 defects were visible to ESLint (\`no-eval\`, \`no-floating-promises\`). The other 8 came from the models: command injection, prototype pollution, timing-unsafe MAC comparison, ReDoS, return-without-await, off-by-one, the check-then-act race, and the hardcoded token.
+- **ESLint signal:** only 2 of the 10 defects were visible to ESLint (`no-eval`, `no-floating-promises`). The other 8 came from the models: command injection, prototype pollution, timing-unsafe MAC comparison, ReDoS, return-without-await, off-by-one, the check-then-act race, and the hardcoded token.
 - **Unplanted catch:** both models also flagged the empty-string HMAC secret fallback. It isn't one of the planted defects, but the fixture's secrets ADR forbids it, so it is a correct finding.
 
 ### Follow-ups
