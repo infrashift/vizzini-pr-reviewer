@@ -1,0 +1,12 @@
+# decisions
+
+<!-- okfw:generated — maintained by okfw; edits here are overwritten -->
+
+## Concepts
+
+* [ADR-0001: Adopt an OKF wiki (okfw) for project knowledge](adr-0001-adopt-an-okf-wiki-okfw-for-project-knowledge--01a1c9b61524.md) - Project knowledge (architecture, specs, ADRs, issues, daily notes) lives in an okfw-managed OKF wiki at .okfw/.
+* [ADR-0002: Pure Go with CGO_ENABLED=0](adr-0002-pure-go-with-cgo-enabled0--01a1c9b6152a.md) - Vizzini is strictly pure Go and ships as a static CGO_ENABLED=0 binary for UBI9 containers and QEMU microVMs.
+* [ADR-0003: CUE as the strict LLM output boundary](adr-0003-cue-as-the-strict-llm-output-boundary--01a1c9b61530.md) - Every LLM response is unified with schema/review.cue via the CUE Go API before any data reaches callers.
+* [ADR-0004: OpenAI-compatible transport through a LiteLLM proxy](adr-0004-openai-compatible-transport-through-a-litellm-proxy--01a1c9b61537.md) - LLM calls go through go-openai with a custom BaseURL targeting an internal LiteLLM proxy (or mock endpoints in tests).
+* [ADR-0005: Stateless library-first API with minimal abstractions](adr-0005-stateless-library-first-api-with-minimal-abstractions--01a1c9b6153c.md) - pkg/reviewer is a stateless Go API embedded by mrman; the CLI is a thin wrapper; no unrequested interfaces or dependencies.
+
