@@ -11,7 +11,7 @@ tags:
   - "sarif"
   - "typescript"
   - "javascript"
-  - "open"
+  - "closed"
 created: "2026-11-11T08:56:52-06:00"
 timestamp: "2026-11-11T08:56:52-06:00"
 description: "Add TypeScript/JavaScript lint support by proving ESLint + typescript-eslint SARIF (via @microsoft/eslint-formatter-sarif) end to end, with a captured fixture, docs, and a seeded TypeScript fixture in the vizzini-uat live suite."
@@ -19,7 +19,7 @@ description: "Add TypeScript/JavaScript lint support by proving ESLint + typescr
 
 # ISSUE-018: Prove SARIF lint input with real ESLint (TypeScript/JavaScript) output
 
-**Status:** open · **Raised:** 2026-11-11 · **Follows:** [ISSUE-014](/issues/issue-014-prove-sarif-lint-input-with-real-ruff-python-and-roslyn-c-output--01a1ca11ff98.md) (ruff, Roslyn) · **Parent:** [ISSUE-012](/issues/issue-012-multi-language-lint-input-via-sarif--01a1c9ed12c7.md)
+**Status:** closed · **Raised:** 2026-11-11 · **Follows:** [ISSUE-014](/issues/issue-014-prove-sarif-lint-input-with-real-ruff-python-and-roslyn-c-output--01a1ca11ff98.md) (ruff, Roslyn) · **Parent:** [ISSUE-012](/issues/issue-012-multi-language-lint-input-via-sarif--01a1c9ed12c7.md)
 
 ## Why
 TypeScript and JavaScript are the last major languages Vizzini reviews without real linter grounding. We want one linter, the most widely used one that can write SARIF 2.1.0.
@@ -51,7 +51,7 @@ TypeScript and JavaScript are the last major languages Vizzini reviews without r
 - [x] Fixture `internal/analysis/testdata/sarif/eslint-10.13.0.sarif` with the root rewritten to `/work/repo`, plus `TestParseSARIF_RealESLint` (including that the wrong root drops everything). Parser changes only if real output needs them, test first
 - [x] stubllm counts ESLint security rule IDs as Major
 - [x] Lint guide: a JS/TS row with the verified version, the command and any quirks. `make-targets.md`: `e2e-lint-js`
-- [ ] vizzini-uat: a seeded TypeScript fixture with ground truth and a clean decoy, run through the live Sonnet/Opus + garmr + mrman + ADO suite ([ISSUE-016](/issues/issue-016-cross-tool-uat-on-c-with-live-claude-sonnet-5-5-and-opus-5-5--01a1caee2585.md))
+- [x] vizzini-uat: a seeded TypeScript fixture with ground truth and a clean decoy, run through the live Sonnet/Opus + garmr + mrman + ADO suite ([ISSUE-016](/issues/issue-016-cross-tool-uat-on-c-with-live-claude-sonnet-5-5-and-opus-5-5--01a1caee2585.md))
 
 ## Out of scope (known gaps, same as C#)
 - The risk score's complexity term is Go-only, so TypeScript files score `complexity_delta: 0`.
@@ -64,3 +64,24 @@ The real toolchain works without parser changes: ESLint 10.13.0 + typescript-esl
 - **ESLint 10:** the formatter's dependency on `eslint ^8.9.0` installs an old ESLint 8 copy, but that copy isn't used for output: the run's driver version reads 10.13.0.
 - **Shared assertions:** `assert_lint.py` now reads SARIF suppressions on its own terms (SARIF 3.35: no status or `accepted` means in effect). The Go, Python and C# proofs still pass.
 - **Stub, stub mode:** the 4 code-execution diagnostics become Major and the gate exits 2.
+
+## Resolution (2026-11-11)
+TypeScript/JavaScript lint input is supported through ESLint SARIF. The proof, fixture test and docs are listed under Progress. The live suite ran the seeded TypeScript fixture in vizzini-uat (run 20261111T150647Z, `results/2026-11-11-live-typescript-sonnet-opus-5-5.md`) and **passed 46/46 hard checks**.
+
+| | Sonnet 5.5 | Opus 5.5 |
+|---|---|---|
+| Seeded defects caught | 10/10 | 10/10 |
+| Category agreement | 100% | 100% |
+| Findings (Critical/Major/Minor/Trivial) | 11 (4/6/1/0) | 15 (4/9/2/0) |
+| Findings on the clean decoy | 0 | 0 |
+| Risk (final/diff/model) | 95/46/95 | 97/46/97 |
+| garmr | deny VZ-001, VZ-002, VZA-001 | same |
+| Review / describe / improve / plan | 18s / 7s / 21s / 18s | 24s / 8s / 31s / 17s |
+| ADO inline threads (PRs #6 and #7) | 11 | 15 |
+
+- **ESLint signal:** only 2 of the 10 defects were visible to ESLint (\`no-eval\`, \`no-floating-promises\`). The other 8 came from the models: command injection, prototype pollution, timing-unsafe MAC comparison, ReDoS, return-without-await, off-by-one, the check-then-act race, and the hardcoded token.
+- **Unplanted catch:** both models also flagged the empty-string HMAC secret fallback. It isn't one of the planted defects, but the fixture's secrets ADR forbids it, so it is a correct finding.
+
+### Follow-ups
+- **Duplicate findings.** Opus sometimes files one problem twice on the same lines, once as Security and once as Architecture citing the ADR (eval, token, execSync, secret handling: 4 pairs). Vizzini's deterministic merge (ADR-0007) only merges across chunks, not within one answer. A same-span, same-root-cause dedupe, or a prompt rule, would cut the noise on PRs.
+- The Go-only complexity and grounding gaps from ISSUE-016 apply to TypeScript too.
