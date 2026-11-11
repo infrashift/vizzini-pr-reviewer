@@ -28,7 +28,7 @@ vizzini-bot:
     GIT_DEPTH: "0" # full history, for incremental review
     # Pins: the Vizzini commit the bot is built from, the mrman release, the
     # garmr commit. Change them in a reviewed commit.
-    VIZZINI_REF: 0000000000000000000000000000000000000000
+    VIZZINI_REF: 5e4a0c2585aa0e8e606b81fa8adfce19023b20f9
     MRMAN_VERSION: v0.1.4
     GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
   script:
