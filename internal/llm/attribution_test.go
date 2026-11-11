@@ -2,7 +2,9 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"maps"
 	"regexp"
 	"testing"
 	"time"
@@ -71,6 +73,14 @@ func TestAttributionAndMeter(t *testing.T) {
 			t.Fatalf("request %d traceparent %q", i+1, hdrs[i].Get("traceparent"))
 		}
 		spans[sm[1]] = true
+		// LiteLLM keeps only x-litellm-spend-logs-metadata in its spend logs.
+		var hm map[string]string
+		if err := json.Unmarshal([]byte(hdrs[i].Get("x-litellm-spend-logs-metadata")), &hm); err != nil || !maps.Equal(hm, md) {
+			t.Errorf("request %d spend-logs header %q, want body metadata %v", i+1, hdrs[i].Get("x-litellm-spend-logs-metadata"), md)
+		}
+		if tags := hdrs[i].Get("x-litellm-tags"); tags != "vizzini,vizzini:review" {
+			t.Errorf("request %d tags %q", i+1, tags)
+		}
 	}
 	if len(spans) != 3 {
 		t.Error("each request needs its own span id")
@@ -97,6 +107,9 @@ func TestAttribution_Absent(t *testing.T) {
 	}
 	if h := srv.Headers()[0].Get("traceparent"); h != "" {
 		t.Errorf("invalid trace id must send no traceparent, got %q", h)
+	}
+	if h := srv.Headers()[0].Get("x-litellm-tags"); h != "vizzini" {
+		t.Errorf("without a mode the tags are just vizzini, got %q", h)
 	}
 	if r := srv.Requests()[0]; r.User != "" || r.Metadata["vizzini.attempt"] != "0" {
 		t.Errorf("request %+v", r.Metadata)

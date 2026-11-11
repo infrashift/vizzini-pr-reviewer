@@ -248,14 +248,14 @@ func (c *Client) chat(ctx context.Context, msgs []openai.ChatCompletionMessage, 
 	meter := meterFrom(ctx)
 	delay := c.backoff
 	for attempt := 0; ; attempt++ {
-		requestFields(ctx, &req, repair, attempt)
+		actx := attemptContext(ctx, &req, repair, attempt)
 		meter.record(func(u *Usage) {
 			u.Requests++
 			if attempt > 0 {
 				u.Retries++
 			}
 		})
-		resp, err := c.api.CreateChatCompletion(ctx, req)
+		resp, err := c.api.CreateChatCompletion(actx, req)
 		if err == nil {
 			meter.response(&resp)
 			if len(resp.Choices) == 0 {

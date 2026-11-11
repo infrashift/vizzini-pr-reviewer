@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"maps"
 	"net/http"
 	"strconv"
@@ -133,34 +134,48 @@ func (m *Meter) response(resp *openai.ChatCompletionResponse) {
 	})
 }
 
-// requestFields fills a request's attribution: the context's metadata plus
-// this attempt's numbers, and the user.
-func requestFields(ctx context.Context, req *openai.ChatCompletionRequest, repair, attempt int) {
-	m := maps.Clone(metaFrom(ctx))
-	if m == nil {
-		m = map[string]string{}
-	}
-	m["vizzini.repair"] = strconv.Itoa(repair)
-	m["vizzini.attempt"] = strconv.Itoa(attempt)
-	req.Metadata = m
+// attemptContext adds one attempt's numbers to ctx's metadata and fills the
+// request's body attribution (metadata and user) from it. The returned
+// context must be the one the request is sent with: the transport reads the
+// same metadata for LiteLLM's headers.
+func attemptContext(ctx context.Context, req *openai.ChatCompletionRequest, repair, attempt int) context.Context {
+	ctx = WithMeta(ctx, "vizzini.repair", strconv.Itoa(repair), "vizzini.attempt", strconv.Itoa(attempt))
+	req.Metadata = maps.Clone(metaFrom(ctx))
 	if u, _ := ctx.Value(userKey).(string); u != "" {
 		req.User = u
 	}
+	return ctx
 }
 
-// traceTransport adds a W3C traceparent header to requests whose context
-// carries a trace ID.
+// traceTransport adds attribution headers from the request's context: a W3C
+// traceparent when it carries a trace ID, and LiteLLM's
+// x-litellm-spend-logs-metadata (the metadata as JSON; LiteLLM keeps only
+// this in its spend logs, not the body "metadata") and x-litellm-tags
+// ("vizzini" and "vizzini:<mode>").
 type traceTransport struct{ next http.RoundTripper }
 
 func (t traceTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	id, _ := r.Context().Value(traceKey).(string)
-	if id == "" {
+	md := metaFrom(r.Context())
+	if id == "" && len(md) == 0 {
 		return t.next.RoundTrip(r)
 	}
-	span := make([]byte, 8)
-	_, _ = rand.Read(span)
 	r = r.Clone(r.Context())
-	r.Header.Set("traceparent", "00-"+id+"-"+hex.EncodeToString(span)+"-01")
+	if id != "" {
+		span := make([]byte, 8)
+		_, _ = rand.Read(span)
+		r.Header.Set("traceparent", "00-"+id+"-"+hex.EncodeToString(span)+"-01")
+	}
+	if len(md) > 0 {
+		if b, err := json.Marshal(md); err == nil {
+			r.Header.Set("x-litellm-spend-logs-metadata", string(b))
+		}
+		tags := "vizzini"
+		if mode := md["vizzini.mode"]; mode != "" {
+			tags += ",vizzini:" + mode
+		}
+		r.Header.Set("x-litellm-tags", tags)
+	}
 	return t.next.RoundTrip(r)
 }
 
