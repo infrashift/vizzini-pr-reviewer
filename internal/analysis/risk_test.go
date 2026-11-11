@@ -116,10 +116,16 @@ func TestScoreRisk_Rules(t *testing.T) {
 		}
 	})
 
-	t.Run("non-Go files have no complexity", func(t *testing.T) {
+	// ISSUE-020 replaced "non-Go files have no complexity": supported
+	// languages are estimated, everything else still counts 0.
+	t.Run("supported non-Go languages have complexity, others none", func(t *testing.T) {
 		r := ScoreRisk(parseDiff(t, addPatch("x.py", 1, func(int) string { return "if a and b or c:" })), p)
-		if r.Files[0].ComplexityDelta != 0 {
-			t.Errorf("python complexity %d", r.Files[0].ComplexityDelta)
+		if f := r.Files[0]; f.ComplexityDelta != 3 || f.Points != 16 {
+			t.Errorf("python %+v, want delta 3 and points 1 + 5x3 = 16", f)
+		}
+		r = ScoreRisk(parseDiff(t, addPatch("deploy.yaml", 1, func(int) string { return "if: a and b or c" })), p)
+		if f := r.Files[0]; f.ComplexityDelta != 0 {
+			t.Errorf("yaml complexity %d, want 0", f.ComplexityDelta)
 		}
 	})
 

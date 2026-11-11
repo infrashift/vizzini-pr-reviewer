@@ -2,11 +2,8 @@ package analysis
 
 import (
 	"cmp"
-	"go/scanner"
-	"go/token"
 	"math"
 	"slices"
-	"strings"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 
@@ -28,8 +25,10 @@ type FileRisk struct {
 	Weight float64 `json:"weight"`
 	// Changed counts added plus deleted lines.
 	Changed int `json:"changed"`
-	// ComplexityDelta is decision points added minus removed (Go files:
-	// if, for, case, &&, ||). Negative values do not lower the score.
+	// ComplexityDelta is decision points added minus removed: if, for, case,
+	// && and || in Go, and the equivalents in C-family languages, Python and
+	// Ruby (decisionPoints, ISSUE-020). Other files contribute 0. Negative
+	// values do not lower the score.
 	ComplexityDelta int `json:"complexity_delta"`
 	// Points is Weight × (Changed + 5 × max(0, ComplexityDelta)).
 	Points float64 `json:"points"`
@@ -147,28 +146,6 @@ func ValidateRiskPatterns(p *schema.RiskPolicy) error {
 		}
 	}
 	return nil
-}
-
-// decisionPoints counts McCabe decision points on one line of Go code.
-// Other languages contribute 0: their complexity is not estimated.
-func decisionPoints(path, line string) int {
-	if !strings.HasSuffix(path, ".go") {
-		return 0
-	}
-	var s scanner.Scanner
-	fset := token.NewFileSet()
-	file := fset.AddFile("", fset.Base(), len(line))
-	s.Init(file, []byte(line), nil, 0)
-	n := 0
-	for {
-		_, tok, _ := s.Scan()
-		switch tok { //nolint:exhaustive // only decision tokens matter
-		case token.EOF:
-			return n
-		case token.IF, token.FOR, token.CASE, token.LAND, token.LOR:
-			n++
-		}
-	}
 }
 
 func round2(f float64) float64 { return math.Round(f*100) / 100 }

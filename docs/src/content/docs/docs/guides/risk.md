@@ -21,7 +21,21 @@ Each changed file contributes:
 points = weight × (changed lines + 5 × max(0, decision points added − removed))
 ```
 
-Decision points are `if`, `for`, `case`, `&&` and `||` on changed Go lines.
+Decision points are counted on each changed line:
+
+| Language | Extensions | Decision points |
+|---|---|---|
+| Go | `.go` | `if` `for` `case` `&&` `\|\|` (exact, from Go's scanner) |
+| C-family | `.c` `.h` `.cc` `.cpp` `.cxx` `.hpp` `.cs` `.java` `.js` `.jsx` `.mjs` `.cjs` `.ts` `.tsx` `.mts` `.cts` `.kt` `.kts` `.swift` `.rs` `.php` `.scala` `.dart` `.groovy` | `if` `for` `foreach` `while` `case` `catch` `guard` `&&` `\|\|` |
+| Python | `.py` `.pyi` | `if` `elif` `for` `while` `except` `and` `or`, and `case` at the start of a line |
+| Ruby | `.rb` | `if` `elsif` `unless` `while` `until` `for` `when` `rescue` `and` `or` `&&` `\|\|` |
+
+Outside Go, the count is an estimate. It drops string literals and comments
+and counts whole words only, so `iffy` and `orders` don't count. It works
+line by line, though, so a keyword inside a docstring or comment that spans
+lines can count. The ternary `?:`, `??` and pattern-match arms aren't counted.
+Every other file type counts 0.
+
 New branching counts five times as much as straight-line code, and removing
 complexity never lowers the score. A changed binary file adds 10 points. The
 total becomes a score with:

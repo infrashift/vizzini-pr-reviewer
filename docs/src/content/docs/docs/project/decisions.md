@@ -83,3 +83,11 @@ Risk is `max(diff-derived score, model score)`, so the model can raise it but
 never lower it. Auto-approval also requires that no sensitive path (auth,
 security, crypto, schema, migrations) was touched, nothing was skipped, and
 something was actually reviewed. See [Risk & Auto-Approve](../../guides/risk/).
+
+## ADR-0013: Complexity beyond Go
+
+The risk score's decision points are now estimated per line for C-family
+languages (C#, Java, TypeScript/JavaScript, C/C++, Kotlin, Swift, Rust, PHP,
+…), Python and Ruby. A small lexer drops strings and comments, then counts
+whole-word keywords and `&&`/`||`. Go keeps its exact count, and other files
+count 0. See [Risk & Auto-Approve](../../guides/risk/).

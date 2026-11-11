@@ -144,3 +144,44 @@ func TestAPIVersionIsShared(t *testing.T) {
 		t.Errorf("reviewer %q, risk %q", APIVersion, risk.APIVersion)
 	}
 }
+
+// ISSUE-020: for non-Go code too, what an embedder computes with pkg/risk
+// is exactly what a review reports, and branching now counts.
+func TestReview_BaseRiskMatchesPkgRisk_CSharpAndTypeScript(t *testing.T) {
+	const patch = `diff --git a/src/Orders.cs b/src/Orders.cs
+--- a/src/Orders.cs
++++ b/src/Orders.cs
+@@ -1,2 +1,5 @@
+ public class Orders {
++    public int Count(Order? o) {
++        if (o != null && o.Lines.Count > 0) { return 1; }
++        return 0; }
+ }
+diff --git a/src/users.ts b/src/users.ts
+--- a/src/users.ts
++++ b/src/users.ts
+@@ -1,1 +1,3 @@
+ export const x = 1;
++// if this comment counted, the lexer would be wrong
++for (const u of users) { if (u.admin || u.owner) grant(u); }
+`
+	srv := llmtest.NewServer(t, answerByFileNoFindings)
+	out, err := newEngine(t, srv).Review(context.Background(), strings.NewReader(patch), ReviewOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := risk.AssessPatch(strings.NewReader(patch), risk.DefaultPolicy(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Score != out.BaseRiskScore || !reflect.DeepEqual(a.Files, out.RiskFiles) {
+		t.Errorf("pkg/risk %d %+v\nReview   %d %+v", a.Score, a.Files, out.BaseRiskScore, out.RiskFiles)
+	}
+	got := map[string]int{}
+	for _, f := range out.RiskFiles {
+		got[f.Path] = f.ComplexityDelta
+	}
+	if want := map[string]int{"src/Orders.cs": 2, "src/users.ts": 3}; !reflect.DeepEqual(got, want) {
+		t.Errorf("complexity %v, want %v", got, want)
+	}
+}
