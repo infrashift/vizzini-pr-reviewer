@@ -10,4 +10,5 @@
 * [ADR-0004: OpenAI-compatible transport through a LiteLLM proxy](adr-0004-openai-compatible-transport-through-a-litellm-proxy--01a1c9b61537.md) - LLM calls go through go-openai with a custom BaseURL targeting an internal LiteLLM proxy (or mock endpoints in tests).
 * [ADR-0005: Stateless library-first API with minimal abstractions](adr-0005-stateless-library-first-api-with-minimal-abstractions--01a1c9b6153c.md) - pkg/reviewer is a stateless Go API embedded by mrman; the CLI is a thin wrapper; no unrequested interfaces or dependencies.
 * [ADR-0006: Offline token counting via a pre-seeded TIKTOKEN_CACHE_DIR](adr-0006-offline-token-counting-via-a-pre-seeded-tiktoken-cache-dir--01a1c9be0019.md) - tiktoken encodings are checksum-pinned and pre-seeded into TIKTOKEN_CACHE_DIR so token counting never needs the network.
+* [ADR-0007: Anchor findings to the diff and merge chunk results deterministically](adr-0007-anchor-findings-to-the-diff-and-merge-chunk-results-deterministically--01a1c9d9c501.md) - Findings and suggestions must point at files and new-line ranges the model saw; chunk results merge into one sorted, deterministic output.
 

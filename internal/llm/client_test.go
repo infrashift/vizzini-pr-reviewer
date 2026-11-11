@@ -296,6 +296,50 @@ func TestRenderReview(t *testing.T) {
 	}
 }
 
+func TestRenderDescribe(t *testing.T) {
+	p, err := Render("describe", DescribeData{Files: []string{"### a.go (modified)", "### b.go (added)"}, Diff: "DIFF", Truncated: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pt := range schema.PRTypes {
+		if !strings.Contains(p.System, `"`+string(pt)+`"`) {
+			t.Errorf("system prompt lacks PR type %q", pt)
+		}
+	}
+	for _, want := range []string{"### a.go (modified)\n### b.go (added)", "Only part of the diff fits below", "<diff>\nDIFF\n</diff>"} {
+		if !strings.Contains(p.User, want) {
+			t.Errorf("user prompt lacks %q:\n%s", want, p.User)
+		}
+	}
+	full, err := Render("describe", DescribeData{Files: []string{"### a.go (modified)"}, Diff: "DIFF"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(full.User, "Only part") {
+		t.Error("untruncated prompt mentions truncation")
+	}
+}
+
+func TestRenderImprove(t *testing.T) {
+	p, err := Render("improve", ImproveData{Diff: "DIFF", Part: 1, Parts: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"suggestions", "existing_code", "improved_code", "category"} {
+		if !strings.Contains(p.System, `"`+field+`"`) {
+			t.Errorf("system prompt lacks %q", field)
+		}
+	}
+	for _, c := range schema.Categories {
+		if !strings.Contains(p.System, `"`+string(c)+`"`) {
+			t.Errorf("system prompt lacks category %q", c)
+		}
+	}
+	if !strings.Contains(p.User, "part 1 of 2") {
+		t.Errorf("user prompt:\n%s", p.User)
+	}
+}
+
 func TestRender_Errors(t *testing.T) {
 	if _, err := Render("nope", nil); err == nil {
 		t.Error("want error for unknown template")

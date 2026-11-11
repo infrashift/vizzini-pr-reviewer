@@ -25,6 +25,7 @@ var templates = template.Must(template.New("").
 	Funcs(template.FuncMap{
 		"severities": func() string { return quoteJoin(schema.Severities) },
 		"categories": func() string { return quoteJoin(schema.Categories) },
+		"prtypes":    func() string { return quoteJoin(schema.PRTypes) },
 	}).
 	Option("missingkey=error").
 	ParseFS(templateFS, "templates/*.tmpl"))
@@ -50,6 +51,20 @@ type ReviewData struct {
 	// Part and Parts number the chunk within the whole patch, starting at 1.
 	Part, Parts int
 }
+
+// DescribeData feeds the "describe" template.
+type DescribeData struct {
+	// Files holds one header line per changed file, including files whose
+	// content did not fit (see Truncated).
+	Files []string
+	// Diff is the rendered content that fit the token budget.
+	Diff string
+	// Truncated is true when some file content was left out of Diff.
+	Truncated bool
+}
+
+// ImproveData feeds the "improve" template.
+type ImproveData = ReviewData
 
 // Render executes the "<name>.system" and "<name>.user" templates.
 func Render(name string, data any) (Prompt, error) {

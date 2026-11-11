@@ -170,6 +170,63 @@ func TestEnumsMatchSchema(t *testing.T) {
 		cat = append(cat, string(c))
 	}
 	check("#Category", cat)
+
+	types := make([]string, 0, len(PRTypes))
+	for _, p := range PRTypes {
+		types = append(types, string(p))
+	}
+	check("#PRType", types)
+}
+
+func TestValidateDescription(t *testing.T) {
+	v := newValidator(t)
+	valid := `{"title":"Add retries","type":"Feature","summary":"s","changes":[{"file":"a.go","description":"d"}]}`
+	got, err := v.ValidateDescription([]byte(valid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &PRDescription{Title: "Add retries", Type: PRTypeFeature, Summary: "s", Changes: []FileChange{{File: "a.go", Description: "d"}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+
+	for name, bad := range map[string]string{
+		"unknown type":    strings.Replace(valid, `"Feature"`, `"Enhancement"`, 1),
+		"empty title":     strings.Replace(valid, `"Add retries"`, `""`, 1),
+		"empty change":    strings.Replace(valid, `"description":"d"`, `"description":""`, 1),
+		"extra field":     strings.Replace(valid, `"summary":"s"`, `"summary":"s","breaking":true`, 1),
+		"missing summary": strings.Replace(valid, `,"summary":"s"`, ``, 1),
+	} {
+		if _, err := v.ValidateDescription([]byte(bad)); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: err = %v, want ErrInvalid", name, err)
+		}
+	}
+}
+
+func TestValidateImprove(t *testing.T) {
+	v := newValidator(t)
+	valid := `{"suggestions":[{"file":"a.go","start_line":2,"end_line":4,"category":"Performance","summary":"s","existing_code":"x","improved_code":"y"}]}`
+	got, err := v.ValidateImprove([]byte(valid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Suggestions) != 1 || got.Suggestions[0].Category != CategoryPerformance || got.Suggestions[0].EndLine != 4 {
+		t.Errorf("decoded %+v", got)
+	}
+	if _, err := v.ValidateImprove([]byte(`{"suggestions":[]}`)); err != nil {
+		t.Errorf("empty suggestions rejected: %v", err)
+	}
+
+	for name, bad := range map[string]string{
+		"end before start":  strings.Replace(valid, `"end_line":4`, `"end_line":1`, 1),
+		"bad category":      strings.Replace(valid, `"Performance"`, `"Speed"`, 1),
+		"empty improvement": strings.Replace(valid, `"improved_code":"y"`, `"improved_code":""`, 1),
+		"missing existing":  strings.Replace(valid, `"existing_code":"x",`, ``, 1),
+	} {
+		if _, err := v.ValidateImprove([]byte(bad)); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: err = %v, want ErrInvalid", name, err)
+		}
+	}
 }
 
 func TestValidator_Concurrent(t *testing.T) {

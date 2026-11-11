@@ -69,6 +69,52 @@ type ReviewOutput struct {
 	Findings  []Finding `json:"findings"`
 }
 
+// PRType classifies a pull request. Values mirror #PRType.
+type PRType string
+
+// PR types.
+const (
+	PRTypeFeature  PRType = "Feature"
+	PRTypeBugfix   PRType = "Bugfix"
+	PRTypeRefactor PRType = "Refactor"
+	PRTypeDocs     PRType = "Docs"
+	PRTypeTests    PRType = "Tests"
+	PRTypeChore    PRType = "Chore"
+)
+
+// PRTypes lists every PR type.
+var PRTypes = []PRType{PRTypeFeature, PRTypeBugfix, PRTypeRefactor, PRTypeDocs, PRTypeTests, PRTypeChore}
+
+// FileChange mirrors #FileChange.
+type FileChange struct {
+	File        string `json:"file"`
+	Description string `json:"description"`
+}
+
+// PRDescription mirrors #PRDescription.
+type PRDescription struct {
+	Title   string       `json:"title"`
+	Type    PRType       `json:"type"`
+	Summary string       `json:"summary"`
+	Changes []FileChange `json:"changes"`
+}
+
+// CodeSuggestion mirrors #CodeSuggestion.
+type CodeSuggestion struct {
+	File         string   `json:"file"`
+	StartLine    int      `json:"start_line"`
+	EndLine      int      `json:"end_line"`
+	Category     Category `json:"category"`
+	Summary      string   `json:"summary"`
+	ExistingCode string   `json:"existing_code"`
+	ImprovedCode string   `json:"improved_code"`
+}
+
+// ImproveOutput mirrors #ImproveOutput.
+type ImproveOutput struct {
+	Suggestions []CodeSuggestion `json:"suggestions"`
+}
+
 // Validator holds the compiled schema. It is safe for concurrent use: CUE's
 // runtime is mutated during unification, so calls are serialized (ADR-0003).
 type Validator struct {
@@ -91,6 +137,24 @@ func New() (*Validator, error) {
 func (v *Validator) ValidateReview(data []byte) (*ReviewOutput, error) {
 	var out ReviewOutput
 	if err := v.Validate("#ReviewOutput", data, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ValidateDescription validates raw JSON against #PRDescription and decodes it.
+func (v *Validator) ValidateDescription(data []byte) (*PRDescription, error) {
+	var out PRDescription
+	if err := v.Validate("#PRDescription", data, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ValidateImprove validates raw JSON against #ImproveOutput and decodes it.
+func (v *Validator) ValidateImprove(data []byte) (*ImproveOutput, error) {
+	var out ImproveOutput
+	if err := v.Validate("#ImproveOutput", data, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

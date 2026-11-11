@@ -124,19 +124,19 @@ package review
 
 ### Implementation Tasks
 
-* [ ] Implement `pkg/reviewer/engine.go` with methods:
+* [x] Implement `pkg/reviewer/engine.go` with methods:
 * `Describe(ctx context.Context, patch io.Reader) (*PRDescription, error)`
 * `Review(ctx context.Context, patch io.Reader, opts ReviewOptions) (*ReviewOutput, error)`
 * `Improve(ctx context.Context, patch io.Reader) ([]CodeSuggestion, error)`
 
 
-* [ ] Add Markdown formatting helpers in `pkg/reviewer` tailored for `bubbletea` and `lipgloss` viewport rendering.
-* [ ] Implement `cmd/pr-review/main.go` accepting `--patch-file`, `--mode` (`describe|review|improve`), `--litellm-url`, and `--format` (`json|markdown`).
+* [x] Add Markdown formatting helpers in `pkg/reviewer` tailored for `bubbletea` and `lipgloss` viewport rendering.
+* [x] Implement `cmd/pr-review/main.go` accepting `--patch-file`, `--mode` (`describe|review|improve`), `--litellm-url`, and `--format` (`json|markdown`).
 
 ### Definition of Done (Verification)
 
-* [ ] `make build` produces a static binary (`CGO_ENABLED=0`) verified via `file bin/pr-review`.
-* [ ] End-to-end integration test runs `Engine.Review` against an `httptest.Server` mocking the LiteLLM proxy.
+* [x] `make build` produces a static binary (`CGO_ENABLED=0`) verified via `file bin/pr-review`.
+* [x] End-to-end integration test runs `Engine.Review` against an `httptest.Server` mocking the LiteLLM proxy.
 
 ---
 
