@@ -83,5 +83,5 @@ TypeScript/JavaScript lint input is supported through ESLint SARIF. The proof, f
 - **Unplanted catch:** both models also flagged the empty-string HMAC secret fallback. It isn't one of the planted defects, but the fixture's secrets ADR forbids it, so it is a correct finding.
 
 ### Follow-ups
-- **Duplicate findings.** Opus sometimes files one problem twice on the same lines, once as Security and once as Architecture citing the ADR (eval, token, execSync, secret handling: 4 pairs). Vizzini's deterministic merge (ADR-0007) only merges across chunks, not within one answer. A same-span, same-root-cause dedupe, or a prompt rule, would cut the noise on PRs.
+- **Duplicate findings** (now [ISSUE-019](/issues/issue-019-deduplicate-same-span-findings-security-architecture-pairs--01a1cb341ed5.md)). Opus sometimes files one problem twice on the same lines, once as Security and once as Architecture citing the ADR (eval, token, execSync, secret handling: 4 pairs). Vizzini's deterministic merge (ADR-0007) only merges across chunks, not within one answer. A same-span, same-root-cause dedupe, or a prompt rule, would cut the noise on PRs.
 - The Go-only complexity and grounding gaps from ISSUE-016 apply to TypeScript too.
