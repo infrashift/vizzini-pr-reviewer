@@ -53,13 +53,16 @@ vizzini-bot \
 5. **Resolve.** Threads whose finding is gone, and whose code changed since
    they were posted, are resolved with a short reply through
    `mrman review resolve`, under the same policy (event `resolve`).
+6. **Answer.** `/vizzini` commands people wrote in the PR's threads are
+   answered in those threads through `mrman review reply` (event `reply`).
+   See [commands in threads](#commands-in-threads).
 
 stdout is one JSON object for the run:
 
 ```json
 {"run_id":"…","head":"…","mode":"incremental","since":"…","reviewed_files":["src/a.cs"],
  "findings":2,"posted":1,"already_posted":["v1:…"],"resolved":["197"],"kept_open":[],
- "carried":["195"],"submit":{…},"resolve":{…}}
+ "carried":["195"],"answered":["4021"],"command_failures":[],"submit":{…},"resolve":{…}}
 ```
 
 `mode` is `full`, `incremental` or `unchanged` (no review was needed).
@@ -93,10 +96,42 @@ The bot does not re-review the whole pull request on every push.
   (the first run, a rebased or force-pushed branch, a shallow clone), the
   whole pull request is reviewed.
 
-A run that posts nothing leaves no marker, so the next run reviews from the
-last head that did post: more than needed, never less. On the UAT's C#
+Every comment the bot posts (a finding, a resolution, an answer) records the
+head its run reviewed. A run that posts nothing at all leaves no trace, so
+the next run reviews from the last head that did post: more than needed,
+never less. On the UAT's C#
 fixture, an incremental review of a one-file push cost about 1/7 of a full
 review.
+
+## Commands in threads
+
+Anyone who can comment on the pull request can ask the bot something. To do
+that, write a command on a line of its own in any file-anchored thread,
+including the bot's own:
+
+```text
+/vizzini explain [FILE:START-END] [question]
+/vizzini refactor [FILE:START-END] [what to change]
+/vizzini docstrings [FILE] [note]
+```
+
+How the bot handles a command:
+- **Target:** without one, the command is about the thread's own lines (or
+  its file, for `/docstrings`).
+- **Context:** the thread's earlier comments travel with the command as
+  the conversation.
+- **When it's answered:** the next bot run answers it in the thread, even
+  if no review is needed. Each command is answered once: the reply carries
+  a hidden `reply-to` marker.
+- **Problems:**
+  - A command the bot cannot understand, or one whose target is outside
+    the PR's diff, gets one reply explaining how to write it.
+  - A failure to reach the model gets no reply, so the next run tries
+    again.
+- **Limits:** `--max-commands` (default 5) bounds the commands answered per
+  run. `--command-authors alice,bob` limits who may run them; by default,
+  anyone who can comment on the PR can. Command requests are attributed
+  like the review, so their cost is in the same spend logs.
 
 ## Thread memory
 
@@ -133,7 +168,7 @@ mrman's pack (`policies/garmr/mrman`) into your repository and set its
 values:
 
 ```cue
-_allowedEvents:     ["comment", "resolve"]  // never approve / request-changes unattended by default
+_allowedEvents:     ["comment", "resolve", "reply"]  // never approve / request-changes unattended by default
 _allowedIdentities: ["vizzini-bot"]         // the bot account's login (Azure DevOps: its display name)
 _maxComments:       50                      // a runaway review fails instead of flooding the PR
 ```
@@ -165,5 +200,9 @@ review, and with `--full` it must duplicate nothing. Then it pushes a fix,
 which must be reviewed incrementally (that file only). The fixed defect's
 thread must be resolved, and every thread on other files carried.
 
-Design: ADR-0016, ADR-0017 and ADR-0018. Next slices (ISSUE-024): in-thread
-`/vizzini` commands, and suppression rules from dismissed findings.
+It then writes a `/vizzini explain …` and a malformed command in one of the
+bot's threads. The explain must get a real answer, the malformed one usage,
+and a further run must answer neither again.
+
+Design: ADR-0016 to ADR-0019. Next (ISSUE-024): suppression rules from
+dismissed findings.

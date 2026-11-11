@@ -56,6 +56,21 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
   - The pack listing the forge-verified identity allowed it: 9/9 findings posted as marked threads.
   - Cost $0.217 for two live runs, attributed per PR.
 
+**Slice 4, in-thread commands (done 2026-11-11):** [ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md)
+- **mrman** `feature/thread-reply` (f13ff54):
+  - `review reply --thread ID [--parent CID] BODY|--input`, gated like submit: a human grant naming `reply`, or `--grant-policy` with event `reply`.
+  - `forge.ThreadReplier` and `AsThreadReplier`; Azure DevOps implements it.
+  - The default pack allows `reply`.
+- **Vizzini:**
+  - `vizzini-bot` answers `/vizzini explain|refactor|docstrings` written in a PR thread (50bfeae). The target defaults to the thread's lines, the thread is the conversation, and a `reply-to` marker makes each command answered once.
+  - Usage replies for malformed commands; `--command-authors`, `--max-commands`.
+  - Two fixes the UAT forced: every bot comment records the head it reviewed (ef1cbe5), and command requests are attributed (a820a35).
+  - stubllm answers `/explain` (18ca3ba).
+- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #26, 37/37:
+  - A real `/explain` got an on-point answer ($0.0139).
+  - A malformed command got usage.
+  - Nothing was answered twice, and the command request was attributed.
+
 **Slice 3, incremental review (done 2026-11-11):** [ADR-0018](/decisions/adr-0018-incremental-review-by-file-since-the-last-reviewed-head-learned-from-thread-markers--01a1cc54bd32.md)
 - **Vizzini** `vizzini-bot` (1eda2f4):
   - Threads are read before the review. The last reviewed head is the newest marker head that is an ancestor of the current head.
