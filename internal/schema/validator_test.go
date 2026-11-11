@@ -97,6 +97,25 @@ func TestValidateReview_Decodes(t *testing.T) {
 	}
 }
 
+// The error text goes back to the model verbatim, so it must name the field
+// and the allowed values without noise.
+func TestValidateReview_ErrorIsRepairFriendly(t *testing.T) {
+	bad := `{"summary":"s","risk_score":1,"findings":[` + strings.Replace(validFinding, `"Major"`, `"High"`, 1) + `]}`
+	_, err := newValidator(t).ValidateReview([]byte(bad))
+	if err == nil {
+		t.Fatal("want error")
+	}
+	msg := err.Error()
+	for _, want := range []string{`findings.0.severity: conflicting values "Critical" and "High"`, `conflicting values "Trivial" and "High"`} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("error %q lacks %q", msg, want)
+		}
+	}
+	if strings.Contains(msg, "empty disjunction") {
+		t.Errorf("error %q keeps the disjunction summary line", msg)
+	}
+}
+
 // CUE treats the open list [...#Finding] as concrete, defaulting to [], so an
 // omitted "findings" means "no findings" rather than an error.
 func TestValidateReview_MissingFindingsIsEmpty(t *testing.T) {

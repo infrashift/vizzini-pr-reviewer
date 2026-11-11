@@ -132,6 +132,11 @@ func details(err error) string {
 	msgs := make([]string, 0, len(errs))
 	for _, e := range errs {
 		msg := e.Error()
+		// "N errors in empty disjunction:" only announces the per-branch
+		// conflicts that follow it, which are the useful part for a repair.
+		if strings.HasSuffix(msg, "errors in empty disjunction:") {
+			continue
+		}
 		if p := e.Path(); len(p) > 0 && !strings.HasPrefix(msg, strings.Join(p, ".")) {
 			msg = strings.Join(p, ".") + ": " + msg
 		}
