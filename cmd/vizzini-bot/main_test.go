@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 
@@ -150,6 +151,37 @@ func TestBot_PolicyDenialPostsNothingAndExits3(t *testing.T) {
 	code, stdout, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
 	if code != exitDenied || !strings.Contains(stderr, "denied posting") || !strings.Contains(stdout, "policy_denied") {
 		t.Errorf("exit %d\nstdout %s\nstderr %s", code, stdout, stderr)
+	}
+}
+
+// A transient forge error is retried; a persistent one fails the run.
+func TestBot_RetriesForgeNetworkErrors(t *testing.T) {
+	repo := gitRepo(t)
+	retryDelay = func(int) time.Duration { return 0 }
+	t.Cleanup(func() { retryDelay = func(n int) time.Duration { return time.Duration(n) * 5 * time.Second } })
+	for _, tc := range []struct {
+		failures, wantCode, wantPr int
+	}{
+		{1, exitOK, 2},    // fails once, then opens
+		{5, exitError, 3}, // gives up after three attempts
+	} {
+		f := &fakeMrman{submitOut: `{}`}
+		f.install(t)
+		inner, prCalls := command, 0
+		command = func(ctx context.Context, dir, name string, args ...string) ([]byte, []byte, error) {
+			if name == "mrman" && args[0] == "pr" {
+				prCalls++
+				if prCalls <= tc.failures {
+					return nil, []byte("error: azure_devops: get_pull_request: network error on dev.azure.com: TLS handshake timeout"), errors.New("exit status 1")
+				}
+			}
+			return inner(ctx, dir, name, args...)
+		}
+		code, _, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+		if code != tc.wantCode || prCalls != tc.wantPr || !strings.Contains(stderr, "retrying") {
+			t.Errorf("%d failures: exit %d after %d opens, want %d after %d: %s", tc.failures, code, prCalls, tc.wantCode, tc.wantPr, stderr)
+		}
+		command = inner
 	}
 }
 

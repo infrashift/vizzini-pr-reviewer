@@ -277,10 +277,34 @@ func fingerprint(f *reviewer.Finding) string {
 	return "v1:" + hex.EncodeToString(sum[:8])
 }
 
+// retryDelay is the wait before the n-th retry of a forge call. Tests set it
+// to zero.
+var retryDelay = func(n int) time.Duration { return time.Duration(n) * 5 * time.Second }
+
+// mrman runs an mrman command that talks to the forge, retrying (up to three
+// attempts) when mrman reports a network error. That is safe for both forge
+// calls the bot makes: opening a PR only reads, and a submit that failed on
+// the network keeps its unposted comments in the session for the next
+// attempt (mrman posts each at most once).
+func mrman(ctx context.Context, opts *options, stderr io.Writer, args ...string) (stdout, errOut []byte, err error) {
+	for attempt := 1; ; attempt++ {
+		stdout, errOut, err = command(ctx, opts.repo, opts.mrman, args...)
+		if err == nil || attempt == 3 || !bytes.Contains(errOut, []byte("network error")) {
+			return stdout, errOut, err
+		}
+		_, _ = fmt.Fprintf(stderr, "vizzini-bot: mrman %s hit a network error (attempt %d); retrying\n", args[0], attempt)
+		select {
+		case <-ctx.Done():
+			return stdout, errOut, err
+		case <-time.After(retryDelay(attempt)):
+		}
+	}
+}
+
 // post opens the PR in mrman, drafts every comment, and submits a comment
 // review that mrman posts only if the grant policy allows it.
 func post(ctx context.Context, opts *options, comments []comment, stdout, stderr io.Writer) error {
-	opened, errOut, err := command(ctx, opts.repo, opts.mrman, "pr", opts.prURL, "--json")
+	opened, errOut, err := mrman(ctx, opts, stderr, "pr", opts.prURL, "--json")
 	if err != nil {
 		return fmt.Errorf("mrman pr: %w: %s", err, strings.TrimSpace(string(errOut)))
 	}
@@ -315,7 +339,7 @@ func post(ctx context.Context, opts *options, comments []comment, stdout, stderr
 	if err != nil {
 		return err
 	}
-	res, errOut, err := command(ctx, opts.repo, opts.mrman, "review", "submit", "--session", session.Slug,
+	res, errOut, err := mrman(ctx, opts, stderr, "review", "submit", "--session", session.Slug,
 		"--event", "comment", "--grant-policy", policy, "--garmr", opts.garmr,
 		"--run-id", opts.attr.RunID, "--agent", agentName)
 	// mrman prints the authorization on stderr; keep it in the CI log.
