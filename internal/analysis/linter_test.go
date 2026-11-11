@@ -64,6 +64,21 @@ func TestParseGolangciJSON_EdgeCases(t *testing.T) {
 	}
 }
 
+// golangci-lint v2 prints its per-linter stats ("2 issues:\n* errcheck: 2")
+// to stdout after the JSON unless --show-stats=false is passed. Only the
+// first JSON value is read, so that trailing text is harmless.
+func TestParseGolangciJSON_TrailingStats(t *testing.T) {
+	in := `{"Issues":[{"FromLinter":"errcheck","Text":"x","Pos":{"Filename":"a.go","Line":3,"Column":2}}],"Report":{}}` +
+		"\n2 issues:\n* errcheck: 2\n"
+	diags, err := ParseGolangciJSON(strings.NewReader(in))
+	if err != nil {
+		t.Fatalf("trailing stats text rejected: %v", err)
+	}
+	if len(diags) != 1 || diags[0].File != "a.go" {
+		t.Errorf("got %+v", diags)
+	}
+}
+
 // Only diagnostics on "+" lines of the diff survive: not context lines, not
 // lines outside the hunks, not files the diff does not touch.
 func TestOnChangedLines(t *testing.T) {

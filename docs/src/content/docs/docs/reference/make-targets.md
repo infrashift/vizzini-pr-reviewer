@@ -13,6 +13,7 @@ committed.
 | `make lint` | `golangci-lint run`, `go mod tidy -diff` | Strict v2 config in `.golangci.yml` |
 | `make build` | `go build -o bin/pr-review ./cmd/pr-review` | `CGO_ENABLED=0` static binary |
 | `make tiktoken-cache` | `scripts/tiktoken-cache.sh` | Downloads and checksum-verifies the BPE encodings |
+| `make e2e-lint` | `scripts/e2e-golint.sh` | Real golangci-lint + git + `pr-review` end-to-end proof; stand-in model unless `VIZZINI_LITELLM_URL` is set |
 | `make wiki` | `okfw validate --all && okfw validate --okf` | Checks the project's OKF knowledge base in `.okfw/` |
 | `make docs-dev` | `bun run dev` in `docs/` | This site, with live reload |
 | `make docs-build` | `bun run build` in `docs/` | Builds the site into `docs/dist/` |

@@ -1,4 +1,4 @@
-.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build clean
+.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint clean
 
 GOBIN    := $(shell go env GOPATH)/bin
 GOLANGCI ?= $(GOBIN)/golangci-lint
@@ -41,6 +41,11 @@ tiktoken-cache:
 wiki:
 	okfw validate --all
 	okfw validate --okf
+
+## e2e-lint: real golangci-lint + git + pr-review end-to-end proof (stub model
+## unless VIZZINI_LITELLM_URL/VIZZINI_MODEL point at a real proxy)
+e2e-lint: build tiktoken-cache
+	scripts/e2e-golint.sh
 
 ## docs-dev: run the Astro Starlight site locally (bun)
 docs-dev:

@@ -43,6 +43,12 @@ It keeps no state, no globals and no hidden config, so mrman can embed it
 directly. The CLI is a thin wrapper. New interfaces or dependencies need a
 new ADR.
 
+## ADR-0006: Offline token counting
+
+Tokenizer encodings are pinned by checksum and pre-seeded into
+`TIKTOKEN_CACHE_DIR`, instead of adding an embedded-loader dependency. See
+[Running Offline](../../guides/offline/).
+
 ## ADR-0007: Findings anchored to the diff
 
 After schema validation, every finding must name a file in its chunk and
@@ -56,9 +62,3 @@ Risk is `max(diff-derived score, model score)`, so the model can raise it but
 never lower it. Auto-approval also requires that no sensitive path (auth,
 security, crypto, schema, migrations) was touched, nothing was skipped, and
 something was actually reviewed. See [Risk & Auto-Approve](../../guides/risk/).
-
-## ADR-0006: Offline token counting
-
-Tokenizer encodings are pinned by checksum and pre-seeded into
-`TIKTOKEN_CACHE_DIR`, instead of adding an embedded-loader dependency. See
-[Running Offline](../../guides/offline/).

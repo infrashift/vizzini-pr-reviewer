@@ -13,12 +13,14 @@ without inventing rules of its own.
 Run golangci-lint **from the repository root**, so its paths match the diff:
 
 ```sh
-golangci-lint run --output.json.path=stdout --output.text.path=/dev/null ./... > lint.json
+golangci-lint run --output.json.path=stdout --output.text.path=/dev/null --show-stats=false ./... > lint.json
 git diff origin/main...HEAD | pr-review --mode review --lint-json lint.json
 ```
 
 golangci-lint v1's `--out-format=json` works as well, because both versions
-write the same `Issues[]` shape.
+write the same `Issues[]` shape. Without `--show-stats=false`, v2 appends a
+plain-text summary after the JSON. Vizzini ignores it, but other JSON tools
+may not.
 
 ## What reaches the model
 
@@ -52,3 +54,16 @@ out, err := engine.Review(ctx, patch, reviewer.ReviewOptions{LintReport: lint})
 ```
 
 A malformed report fails the review before any request is made.
+
+## See it work
+
+```sh
+make e2e-lint
+```
+
+This builds a throwaway Go repo with a pre-existing lint issue, makes a change
+that adds new ones, runs the real golangci-lint and `pr-review`, and checks
+four things: only the new issues reach the prompt, every finding is anchored
+to its line, the gate exits 2, and auto-approve stays off. Without
+`VIZZINI_LITELLM_URL`, a stand-in model answers from the `<lint>` block alone.
+Point it at your proxy to see a real model explain the issues.
