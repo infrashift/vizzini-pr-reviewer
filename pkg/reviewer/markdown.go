@@ -30,12 +30,18 @@ func FormatReview(r *ReviewOutput) string {
 		fmt.Fprintf(&b, "`%s` · %s\n\n", location(f.File, f.StartLine, f.EndLine), f.Category)
 		b.WriteString(f.Body)
 		b.WriteString("\n")
+		if len(f.Citations) > 0 {
+			fmt.Fprintf(&b, "\nCites: %s\n", codeList(f.Citations))
+		}
 		if f.Suggestion != "" {
 			b.WriteString("\n**Suggestion**\n\n")
 			b.WriteString(codeBlock(f.File, f.Suggestion))
 		}
 	}
 
+	if len(r.KnowledgeDocs) > 0 {
+		fmt.Fprintf(&b, "\n_Knowledge base consulted: %s_\n", codeList(r.KnowledgeDocs))
+	}
 	if len(r.Excluded) > 0 {
 		fmt.Fprintf(&b, "\n_Not reviewed (generated or vendored): %s_\n", codeList(r.Excluded))
 	}

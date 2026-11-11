@@ -2,6 +2,7 @@ package reviewer
 
 import (
 	"io"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -29,6 +30,7 @@ const (
 	CategoryPerformance     = schema.CategoryPerformance
 	CategoryLogic           = schema.CategoryLogic
 	CategoryMaintainability = schema.CategoryMaintainability
+	CategoryArchitecture    = schema.CategoryArchitecture
 )
 
 // PRType classifies a pull request.
@@ -96,6 +98,9 @@ type ReviewOutput struct {
 	// Diagnostics counts the linter diagnostics on changed lines that were
 	// added to the prompts (see ReviewOptions.LintReport).
 	Diagnostics int `json:"diagnostics,omitempty"`
+	// KnowledgeDocs lists the IDs of the knowledge-base documents given to
+	// the model (see ReviewOptions.Knowledge), sorted.
+	KnowledgeDocs []string `json:"knowledge_docs,omitempty"`
 }
 
 // ReviewOptions tunes a single Review call.
@@ -104,6 +109,11 @@ type ReviewOptions struct {
 	// of sending it in a chunk of its own. Skipped files are reported in
 	// ReviewOutput.Skipped.
 	SkipOversized bool
+	// Knowledge, if set, is an OKF bundle (e.g. os.DirFS(".okfw")). The
+	// documents whose paths, domain or tags match a chunk's files are given to
+	// the model, within Config.MaxKnowledgeTokens per chunk, so it can cite
+	// design decisions; Architecture findings must cite one of them.
+	Knowledge fs.FS
 	// LintReport, if set, is golangci-lint JSON output (v1 --out-format=json
 	// or v2 --output.json.path=stdout) produced from the repository root.
 	// Diagnostics on lines the diff adds are given to the model so it can
@@ -139,6 +149,9 @@ type Config struct {
 	Exclude []string
 	// Concurrency bounds parallel LLM requests. Default 4.
 	Concurrency int
+	// MaxKnowledgeTokens bounds the knowledge-base text added to each chunk's
+	// prompt. Default 2000.
+	MaxKnowledgeTokens int
 	// RiskPolicy is a JSON document validated against #RiskPolicy in
 	// schema/review.cue (path weights, scale, auto_approve_threshold).
 	// Omitted fields, or a nil RiskPolicy, take the schema defaults.

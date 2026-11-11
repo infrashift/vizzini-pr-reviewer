@@ -200,9 +200,9 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **User Story Context:** Cross-reference the internal Open Knowledge Format (OKF) Markdown directory to flag architectural violations and cite specific design decisions.
 * **Technical Spec (`internal/okf/grounder.go`):**
-* [ ] Parse progressive-disclosure root `index.md` files and YAML frontmatter (`tags`, `domain`, `paths`) across the target OKF directory.
-* [ ] Match modified diff file paths and package names against OKF frontmatter rules to load only relevant Markdown sections into the prompt context.
-* [ ] Require `#Finding` citations to include the matched OKF document ID when an architectural constraint is violated.
+* [x] Parse progressive-disclosure root `index.md` files and YAML frontmatter (`tags`, `domain`, `paths`) across the target OKF directory.
+* [x] Match modified diff file paths and package names against OKF frontmatter rules to load only relevant Markdown sections into the prompt context.
+* [x] Require `#Finding` citations to include the matched OKF document ID when an architectural constraint is violated.
 
 
 * **Verification:** Test fixture with a mock OKF directory (`index.md` + 2 domain docs) verifying selective context loading based on diff paths.

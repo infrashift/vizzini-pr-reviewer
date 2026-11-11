@@ -11,7 +11,7 @@ is unified with it before any caller sees data.
 package review
 
 #Severity: "Critical" | "Major" | "Minor" | "Trivial"
-#Category: "Security" | "Performance" | "Logic" | "Maintainability"
+#Category: "Security" | "Performance" | "Logic" | "Maintainability" | "Architecture"
 
 #Finding: {
 	file:        string & !=""
@@ -22,6 +22,10 @@ package review
 	title:       string & !=""
 	body:        string & !=""
 	suggestion?: string
+	citations?: [...string & !=""]
+	if category == "Architecture" {
+		citations: [_, ...]
+	}
 }
 
 #ReviewOutput: {
@@ -38,7 +42,8 @@ package review
 | `file` | Path exactly as shown in the diff's `###` header |
 | `start_line`, `end_line` | **New-file** line numbers. `end_line` may not precede `start_line` |
 | `severity` | `Critical`: exploitable or loses data. `Major`: wrong behavior users will hit. `Minor`: an edge-case bug or meaningful debt. `Trivial`: a small cleanup |
-| `category` | `Security`, `Performance`, `Logic` or `Maintainability` |
+| `category` | `Security`, `Performance`, `Logic`, `Maintainability`, or `Architecture` (a violated design document, which must be cited) |
+| `citations` | IDs of [knowledge-base documents](../../guides/knowledge/) the finding relies on. Required for `Architecture`, and each must be a document provided to that chunk |
 | `title` | A short imperative headline |
 | `body` | What is wrong, why it matters, how it fails |
 | `suggestion` | Optional replacement code or a concrete fix |
@@ -66,5 +71,5 @@ The same package defines the describe and improve outputs (`#PRDescription`,
 ```
 
 `#RiskPolicy` holds the path weights and auto-approve rules
-([Risk & Auto-Approve](../../guides/risk/)). OKF citations and implementation plans will be added here
+([Risk & Auto-Approve](../../guides/risk/)). Implementation plans will be added here
 as their milestones land. See the [roadmap](../../project/roadmap/).

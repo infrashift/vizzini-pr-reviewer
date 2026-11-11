@@ -71,6 +71,7 @@ type options struct {
 	failOn     []reviewer.Severity
 	lintJSON   string
 	riskPolicy string
+	knowledge  string
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -184,6 +185,16 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 		return map[string]any{"suggestions": s}, reviewer.FormatSuggestions(s), nil
 	default: // "review"; parseFlags rejects anything else
 		ropts := reviewer.ReviewOptions{SkipOversized: opts.skipOversized}
+		if opts.knowledge != "" {
+			st, serr := os.Stat(opts.knowledge) //nolint:gosec // G703: inspecting the user-named knowledge directory is the point
+			if serr != nil {
+				return nil, "", fmt.Errorf("--knowledge: %w", serr)
+			}
+			if !st.IsDir() {
+				return nil, "", fmt.Errorf("--knowledge: %s is not a directory", opts.knowledge)
+			}
+			ropts.Knowledge = os.DirFS(opts.knowledge)
+		}
 		if opts.lintJSON != "" {
 			lint, closeLint, lerr := openPatch(opts.lintJSON, nil)
 			if lerr != nil {
@@ -218,6 +229,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "overall deadline")
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
 	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
+	fs.StringVar(&o.knowledge, "knowledge", "", "review mode: OKF knowledge-base directory (e.g. .okfw) whose relevant documents the model may cite")
 	fs.StringVar(&o.lintJSON, "lint-json", "", "review mode: golangci-lint JSON report (run from the repo root) to explain on changed lines")
 	fs.Func("fail-on", "review mode: comma-separated severities that exit 2, or none (default Critical,Major)", func(s string) error {
 		o.failOn = []reviewer.Severity{}
@@ -248,6 +260,9 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	}
 	if o.lintJSON != "" && o.mode != "review" {
 		return nil, errors.New("--lint-json applies only to --mode review")
+	}
+	if o.knowledge != "" && o.mode != "review" {
+		return nil, errors.New("--knowledge applies only to --mode review")
 	}
 	if o.lintJSON == "-" {
 		return nil, errors.New("--lint-json must be a file; stdin is reserved for the patch")

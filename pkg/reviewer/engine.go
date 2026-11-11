@@ -19,6 +19,7 @@ import (
 	"github.com/infrashift/vizzini-pr-reviewer/internal/chunker"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/diff"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/llm"
+	"github.com/infrashift/vizzini-pr-reviewer/internal/okf"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/schema"
 )
 
@@ -36,6 +37,15 @@ type Engine struct {
 	risk        *schema.RiskPolicy
 	exclude     []string
 	concurrency int
+	maxKnowTok  int
+}
+
+const defaultMaxKnowledgeTokens = 2000
+
+// chunkContext is the extra, non-diff material sent with one chunk.
+type chunkContext struct {
+	lint      []string
+	knowledge []llm.KnowledgeDoc
 }
 
 // New validates cfg, loads the tokenizer and compiles the schema.
@@ -71,7 +81,11 @@ func New(cfg Config) (*Engine, error) { //nolint:gocritic // hugeParam: one-shot
 	if conc <= 0 {
 		conc = defaultConcurrency
 	}
-	return &Engine{llm: client, validator: v, chunker: ch, risk: risk, exclude: cfg.Exclude, concurrency: conc}, nil
+	know := cfg.MaxKnowledgeTokens
+	if know <= 0 {
+		know = defaultMaxKnowledgeTokens
+	}
+	return &Engine{llm: client, validator: v, chunker: ch, risk: risk, exclude: cfg.Exclude, concurrency: conc, maxKnowTok: know}, nil
 }
 
 // Policy returns a severity gate validated by the #PolicyGate schema. A nil
@@ -116,15 +130,30 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 		return out, nil
 	}
 
-	lint := make([][]string, len(chunks))
-	for i := range chunks {
-		lint[i] = chunkLint(diags, &chunks[i])
-		out.Diagnostics += len(lint[i])
+	var bundle *okf.Bundle
+	if opts.Knowledge != nil {
+		if bundle, err = okf.Load(opts.Knowledge); err != nil {
+			return nil, err
+		}
 	}
+	cctx := make([]chunkContext, len(chunks))
+	used := map[string]bool{}
+	for i := range chunks {
+		cctx[i].lint = chunkLint(diags, &chunks[i])
+		out.Diagnostics += len(cctx[i].lint)
+		cctx[i].knowledge = e.chunkKnowledge(bundle, &chunks[i])
+		for _, k := range cctx[i].knowledge {
+			used[k.ID] = true
+		}
+	}
+	for id := range used {
+		out.KnowledgeDocs = append(out.KnowledgeDocs, id)
+	}
+	slices.Sort(out.KnowledgeDocs)
 
 	results := make([]*schema.ReviewOutput, len(chunks))
 	if err := e.forEach(ctx, len(chunks), func(ctx context.Context, i int) error {
-		r, err := e.reviewChunk(ctx, &chunks[i], i+1, len(chunks), lint[i])
+		r, err := e.reviewChunk(ctx, &chunks[i], i+1, len(chunks), &cctx[i])
 		results[i] = r
 		return err
 	}); err != nil {
@@ -245,12 +274,16 @@ func (e *Engine) Improve(ctx context.Context, patch io.Reader) ([]CodeSuggestion
 
 // reviewChunk sends one chunk for review and returns the first answer that
 // passes the schema and whose findings are anchored to this chunk.
-func (e *Engine) reviewChunk(ctx context.Context, c *chunker.Chunk, part, parts int, lint []string) (*schema.ReviewOutput, error) {
-	p, err := llm.Render("review", llm.ReviewData{Diff: c.Render(), Part: part, Parts: parts, Lint: lint})
+func (e *Engine) reviewChunk(ctx context.Context, c *chunker.Chunk, part, parts int, cc *chunkContext) (*schema.ReviewOutput, error) {
+	p, err := llm.Render("review", llm.ReviewData{Diff: c.Render(), Part: part, Parts: parts, Lint: cc.lint, Knowledge: cc.knowledge})
 	if err != nil {
 		return nil, err
 	}
 	a := newAnchors(c.Parts)
+	cited := make(map[string]bool, len(cc.knowledge))
+	for _, k := range cc.knowledge {
+		cited[k.ID] = true
+	}
 	var out *schema.ReviewOutput
 	_, err = e.llm.CompleteJSON(ctx, p, func(b []byte) error {
 		r, verr := e.validator.ValidateReview(b)
@@ -262,11 +295,78 @@ func (e *Engine) reviewChunk(ctx context.Context, c *chunker.Chunk, part, parts 
 			if aerr := a.check("findings", j, f.File, f.StartLine, f.EndLine); aerr != nil {
 				return aerr
 			}
+			if cerr := checkCitations(j, f.Citations, cited); cerr != nil {
+				return cerr
+			}
 		}
 		out = r
 		return nil
 	})
 	return out, err
+}
+
+// checkCitations requires every cited id to be a document this chunk was
+// given, the knowledge-base counterpart of line anchoring (ADR-0007).
+func checkCitations(idx int, citations []string, allowed map[string]bool) error {
+	for _, c := range citations {
+		if allowed[c] {
+			continue
+		}
+		if len(allowed) == 0 {
+			return fmt.Errorf("%w: findings.%d: cites %q, but no knowledge documents were provided; remove citations and do not use category Architecture", schema.ErrInvalid, idx, c)
+		}
+		ids := make([]string, 0, len(allowed))
+		for id := range allowed {
+			ids = append(ids, id)
+		}
+		slices.Sort(ids)
+		return fmt.Errorf("%w: findings.%d: cites %q, which is not a provided document; cite one of: %s", schema.ErrInvalid, idx, c, strings.Join(ids, ", "))
+	}
+	return nil
+}
+
+// chunkKnowledge selects the bundle documents relevant to this chunk's
+// files, strongest match first, within the knowledge token budget. A first
+// document larger than the whole budget is truncated rather than dropped.
+func (e *Engine) chunkKnowledge(b *okf.Bundle, c *chunker.Chunk) []llm.KnowledgeDoc {
+	if b == nil {
+		return nil
+	}
+	files := make([]*diff.File, 0, len(c.Parts))
+	for _, p := range c.Parts {
+		files = append(files, &diff.File{Path: p.File.Path, Source: p.File.Source, Hunks: p.Hunks})
+	}
+	var out []llm.KnowledgeDoc
+	budget := e.maxKnowTok
+	for _, m := range b.Match(okf.TargetsFor(files)) {
+		k := llm.KnowledgeDoc{ID: m.Doc.ID, Title: m.Doc.Title, Body: m.Doc.Body}
+		cost := e.chunker.CountTokens(k.Title + "\n" + k.Body)
+		if cost > budget {
+			if len(out) > 0 {
+				break
+			}
+			k.Body = e.truncateTokens(k.Body, budget-e.chunker.CountTokens(k.Title)-8) + "\n[…truncated]"
+			cost = budget
+		}
+		out = append(out, k)
+		budget -= cost
+	}
+	return out
+}
+
+// truncateTokens keeps whole lines of s while they fit in n tokens.
+func (e *Engine) truncateTokens(s string, n int) string {
+	var b strings.Builder
+	used := 0
+	for _, line := range strings.SplitAfter(s, "\n") {
+		t := e.chunker.CountTokens(line)
+		if used+t > n {
+			break
+		}
+		b.WriteString(line)
+		used += t
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 // chunkLint returns the diagnostics on lines this chunk adds, formatted for

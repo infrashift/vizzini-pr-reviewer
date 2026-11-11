@@ -253,3 +253,33 @@ func TestValidator_Concurrent(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// An Architecture finding must cite a knowledge-base document (Milestone 4.5).
+func TestValidateReview_ArchitectureRequiresCitation(t *testing.T) {
+	v := newValidator(t)
+	arch := strings.Replace(validFinding, `"Logic"`, `"Architecture"`, 1)
+	if _, err := v.ValidateReview([]byte(`{"summary":"s","risk_score":1,"findings":[` + arch + `]}`)); !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), "citations") {
+		t.Errorf("uncited Architecture finding: err = %v, want ErrInvalid naming citations", err)
+	}
+	for name, f := range map[string]string{
+		"empty citation list": strings.Replace(arch, `"body":"b"`, `"body":"b","citations":[]`, 1),
+		"empty citation id":   strings.Replace(arch, `"body":"b"`, `"body":"b","citations":[""]`, 1),
+	} {
+		if _, err := v.ValidateReview([]byte(`{"summary":"s","risk_score":1,"findings":[` + f + `]}`)); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: err = %v, want ErrInvalid", name, err)
+		}
+	}
+	cited := strings.Replace(arch, `"body":"b"`, `"body":"b","citations":["adr-0001"]`, 1)
+	out, err := v.ValidateReview([]byte(`{"summary":"s","risk_score":1,"findings":[` + cited + `]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out.Findings[0].Citations, []string{"adr-0001"}) {
+		t.Errorf("citations %v", out.Findings[0].Citations)
+	}
+	// Other categories may cite, but need not.
+	logicCited := strings.Replace(validFinding, `"body":"b"`, `"body":"b","citations":["adr-0001"]`, 1)
+	if _, err := v.ValidateReview([]byte(`{"summary":"s","risk_score":1,"findings":[` + logicCited + `]}`)); err != nil {
+		t.Errorf("cited Logic finding rejected: %v", err)
+	}
+}

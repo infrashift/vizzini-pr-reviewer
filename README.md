@@ -48,8 +48,11 @@ offline QEMU microVMs.
 ## Status
 
 **Not released yet.** The engine, the Go API and the `pr-review` CLI build
-and pass their tests today. The policy gate, lint-aware reviews, risk scoring
-and OKF knowledge grounding are on the
+and pass their tests today. That includes the severity policy gate
+(`--fail-on`), lint-aware reviews (`--lint-json`), risk scoring with
+auto-approve, dependency-ordered walkthroughs, and design-decision citations
+from an OKF knowledge base (`--knowledge`). Slash commands and pre-code
+planning are next on the
 [roadmap](https://infrashift.github.io/vizzini-pr-reviewer/docs/project/roadmap/).
 Expect sharp edges.
 

@@ -24,6 +24,7 @@ pr-review --patch-file change.patch --mode describe --format json
 | `--concurrency` | `4` | Parallel LLM requests |
 | `--timeout` | `10m` | Overall deadline |
 | `--skip-oversized` | `false` | Review mode: skip hunks larger than the token budget |
+| `--knowledge` | | Review mode: OKF bundle directory (e.g. `.okfw`) whose relevant documents the model may cite. See [Knowledge-Grounded Reviews](../../guides/knowledge/) |
 | `--risk-policy` | | JSON risk policy (`#RiskPolicy`): path weights, threshold, sensitivity. See [Risk & Auto-Approve](../../guides/risk/) |
 | `--lint-json` | | Review mode: golangci-lint JSON report whose diagnostics on changed lines the model should explain. See [Lint-Aware Reviews](../../guides/lint/) |
 | `--fail-on` | `Critical,Major` | Review mode: comma-separated severities that make `pr-review` exit `2`, or `none` |
@@ -40,7 +41,7 @@ pr-review --patch-file change.patch --mode describe --format json
 
 | Mode | JSON output |
 |---|---|
-| `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], excluded[], skipped[], chunks, diagnostics}` with findings sorted most severe first |
+| `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], knowledge_docs[], excluded[], skipped[], chunks, diagnostics}` with findings sorted most severe first |
 | `describe` | `{title, type, summary, changes[]}` |
 | `improve` | `{suggestions: [{file, start_line, end_line, category, summary, existing_code, improved_code}]}` |
 

@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	openai "github.com/sashabaranov/go-openai"
@@ -545,4 +547,110 @@ func TestNew_RejectsBadRiskPolicy(t *testing.T) {
 			t.Errorf("%s: err = %v", name, err)
 		}
 	}
+}
+
+func knowledgeFS() fs.FS { return os.DirFS("../../internal/okf/testdata/okf") }
+
+const archFinding = `{"summary":"s","risk_score":40,"findings":[{"file":"internal/store/users.go","start_line":44,"end_line":45,"severity":"Major","category":"Architecture","title":"SQL built by concatenation","body":"Violates the store ADR."%s}]}`
+
+func TestReview_KnowledgeGrounding(t *testing.T) {
+	t.Run("relevant documents reach the prompt and citations are accepted", func(t *testing.T) {
+		srv := llmtest.NewServer(t, func(int, *openai.ChatCompletionRequest) llmtest.Reply {
+			return llmtest.Reply{Content: fmt.Sprintf(archFinding, `,"citations":["adr-0001-store"]`)}
+		})
+		out, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{Knowledge: knowledgeFS()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"adr-0001-store", "adr-0002-api", "note-store-perf"}; !reflect.DeepEqual(out.KnowledgeDocs, want) {
+			t.Errorf("KnowledgeDocs %v, want %v", out.KnowledgeDocs, want)
+		}
+		if f := out.Findings[0]; f.Category != CategoryArchitecture || !reflect.DeepEqual(f.Citations, []string{"adr-0001-store"}) {
+			t.Errorf("finding %+v", f)
+		}
+		p := llmtest.UserPrompt(&srv.Requests()[0])
+		for _, want := range []string{`<doc id="adr-0001-store"`, "string concatenation is forbidden", `<doc id="adr-0002-api"`, `<doc id="note-store-perf"`} {
+			if !strings.Contains(p, want) {
+				t.Errorf("prompt lacks %q", want)
+			}
+		}
+		for _, absent := range []string{"conv-0001", "orphan", "Progressive disclosure must never"} {
+			if strings.Contains(p, absent) {
+				t.Errorf("prompt contains irrelevant or unlisted %q", absent)
+			}
+		}
+	})
+
+	t.Run("each chunk gets only its own documents", func(t *testing.T) {
+		srv := llmtest.NewServer(t, answerByFile)
+		if _, err := newEngine(t, srv, func(c *Config) { c.MaxChunkTokens = 150 }).
+			Review(context.Background(), fixture(t), ReviewOptions{Knowledge: knowledgeFS()}); err != nil {
+			t.Fatal(err)
+		}
+		for _, req := range srv.Requests() {
+			p := llmtest.UserPrompt(&req)
+			store := strings.Contains(p, "### internal/store/users.go")
+			if strings.Contains(p, `id="adr-0001-store"`) != store || strings.Contains(p, `id="adr-0002-api"`) == store {
+				t.Errorf("store chunk=%v got the wrong documents", store)
+			}
+		}
+	})
+
+	repairs := []struct {
+		name      string
+		first     string
+		knowledge fs.FS
+		wantInMsg string
+	}{
+		{"uncited Architecture finding", fmt.Sprintf(archFinding, ""), knowledgeFS(), "citations"},
+		{"unknown citation", fmt.Sprintf(archFinding, `,"citations":["adr-9999"]`), knowledgeFS(), `cites "adr-9999", which is not a provided document; cite one of: adr-0001-store, adr-0002-api, note-store-perf`},
+		{"citation without knowledge", strings.Replace(fmt.Sprintf(archFinding, `,"citations":["adr-0001-store"]`), "Architecture", "Logic", 1), nil, "no knowledge documents were provided"},
+	}
+	for _, tt := range repairs {
+		t.Run("repair: "+tt.name, func(t *testing.T) {
+			srv := llmtest.NewServer(t, func(n int, _ *openai.ChatCompletionRequest) llmtest.Reply {
+				if n == 1 {
+					return llmtest.Reply{Content: tt.first}
+				}
+				return llmtest.Reply{Content: sqliReview}
+			})
+			if _, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{Knowledge: tt.knowledge}); err != nil {
+				t.Fatal(err)
+			}
+			reqs := srv.Requests()
+			if len(reqs) != 2 {
+				t.Fatalf("%d requests, want answer + repair", len(reqs))
+			}
+			if msg := reqs[1].Messages[len(reqs[1].Messages)-1].Content; !strings.Contains(msg, tt.wantInMsg) {
+				t.Errorf("repair prompt lacks %q:\n%s", tt.wantInMsg, msg)
+			}
+		})
+	}
+
+	t.Run("budget truncates the first document and drops the rest", func(t *testing.T) {
+		srv := llmtest.NewServer(t, answerByFile)
+		patch, _, _ := strings.Cut(mustRead(t), "diff --git a/go.sum")
+		out, err := newEngine(t, srv, func(c *Config) { c.MaxKnowledgeTokens = 30 }).
+			Review(context.Background(), strings.NewReader(patch), ReviewOptions{Knowledge: knowledgeFS()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(out.KnowledgeDocs, []string{"adr-0001-store"}) {
+			t.Errorf("KnowledgeDocs %v, want only the strongest match", out.KnowledgeDocs)
+		}
+		if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "[…truncated]") {
+			t.Error("oversized document not marked truncated")
+		}
+	})
+
+	t.Run("malformed bundle fails before any request", func(t *testing.T) {
+		srv := llmtest.NewServer(t, answerByFile)
+		bad := fstest.MapFS{"x.md": {Data: []byte("---\nid: [oops\n---\n")}}
+		if _, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{Knowledge: bad}); err == nil {
+			t.Error("want error")
+		}
+		if len(srv.Requests()) != 0 {
+			t.Error("LLM called despite a malformed knowledge bundle")
+		}
+	})
 }

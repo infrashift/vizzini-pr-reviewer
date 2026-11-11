@@ -361,3 +361,23 @@ func TestRender_Errors(t *testing.T) {
 		t.Error("want error for missing template data (missingkey=error)")
 	}
 }
+
+func TestRenderReview_Knowledge(t *testing.T) {
+	p, err := Render("review", ReviewData{Diff: "D", Part: 1, Parts: 1, Knowledge: []KnowledgeDoc{{ID: "adr-1", Title: "ADR 1", Body: "No SQL concat."}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(p.User, "<knowledge>\n<doc id=\"adr-1\" title=\"ADR 1\">\nNo SQL concat.\n</doc>\n</knowledge>") {
+		t.Errorf("knowledge block:\n%s", p.User)
+	}
+	if !strings.Contains(p.System, `"citations"`) || !strings.Contains(p.System, "MUST list that document's id") {
+		t.Error("system prompt lacks the citation rule")
+	}
+	plain, err := Render("review", ReviewData{Diff: "D", Part: 1, Parts: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(plain.User, "<knowledge>") {
+		t.Error("knowledge block rendered without documents")
+	}
+}

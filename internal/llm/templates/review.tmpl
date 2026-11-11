@@ -19,7 +19,8 @@ It must have exactly these fields:
       "category": <one of {{categories}}>,
       "title": "<short imperative headline>",
       "body": "<what is wrong, why it matters, and how it fails>",
-      "suggestion": "<optional replacement code or concrete fix>"
+      "suggestion": "<optional replacement code or concrete fix>",
+      "citations": ["<optional: ids of <knowledge> documents this finding relies on>"]
     }
   ]
 }
@@ -32,6 +33,10 @@ Rules:
 - Severity: Critical = exploitable or data-losing; Major = wrong behavior that
   will hit users; Minor = edge-case bug or meaningful debt; Trivial = small
   cleanup worth doing.
+- "Architecture" is only for a change that violates a document in the
+  <knowledge> block, and such a finding MUST list that document's id in
+  "citations". Cite only ids shown in <knowledge>. With no <knowledge>
+  block, never use "Architecture" and omit "citations".
 - If there is nothing worth reporting, return an empty "findings" array.
 {{end}}
 
@@ -50,6 +55,17 @@ terms and proposes a fix. Do not invent lint findings beyond this list.
 <lint>
 {{range .Lint}}{{.}}
 {{end}}</lint>
+{{end}}
+{{- if .Knowledge}}
+These are the project's own design documents for the code being changed. If
+the change violates one, report a finding with category "Architecture" that
+cites the document's id.
+
+<knowledge>
+{{range .Knowledge}}<doc id="{{.ID}}" title="{{.Title}}">
+{{.Body}}
+</doc>
+{{end}}</knowledge>
 {{end}}
 <diff>
 {{.Diff}}

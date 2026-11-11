@@ -56,6 +56,12 @@ overlap a changed hunk's new lines. Misplaced findings go back to the model
 through the same repair loop. Chunk results merge deterministically: findings
 by severity, `risk_score` as the maximum.
 
+## ADR-0009: Architecture findings cite provided documents
+
+A fifth category, `Architecture`, must carry `citations` (a CUE conditional),
+and every citation must name a knowledge-base document actually given to that
+chunk. See [Knowledge-Grounded Reviews](../../guides/knowledge/).
+
 ## ADR-0008: Deterministic risk, conservative auto-approve
 
 Risk is `max(diff-derived score, model score)`, so the model can raise it but

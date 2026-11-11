@@ -127,6 +127,9 @@ func TestRun_Errors(t *testing.T) {
 		{"lint-json outside review", base, []string{"--mode", "describe", "--lint-json", "x.json"}, "--lint-json applies only to --mode review"},
 		{"lint-json from stdin", base, []string{"--lint-json", "-"}, "--lint-json must be a file"},
 		{"lint-json missing", base, []string{"--lint-json", "/does/not/exist.json"}, "--lint-json: open /does/not/exist.json"},
+		{"knowledge outside review", base, []string{"--mode", "improve", "--knowledge", "."}, "--knowledge applies only to --mode review"},
+		{"knowledge missing", base, []string{"--knowledge", "/does/not/exist"}, "--knowledge: stat /does/not/exist"},
+		{"knowledge not a dir", base, []string{"--knowledge", "main.go"}, "--knowledge: main.go is not a directory"},
 		{"risk-policy missing", base, []string{"--risk-policy", "/does/not/exist.json"}, "--risk-policy: open /does/not/exist.json"},
 	}
 	for _, tt := range tests {
@@ -267,5 +270,20 @@ func TestRun_RiskPolicyAndAutoApprove(t *testing.T) {
 	r = runCLI(t, env, patch, "--risk-policy", bad)
 	if r.code != exitError || !strings.Contains(r.stderr, "risk policy: schema validation failed") {
 		t.Errorf("invalid policy: exit %d, stderr %q", r.code, r.stderr)
+	}
+}
+
+func TestRun_Knowledge(t *testing.T) {
+	srv := reviewWith(t, "")
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	r := runCLI(t, env, patch, "--knowledge", "../../internal/okf/testdata/okf", "--format", "json")
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	if !strings.Contains(r.stdout, `"knowledge_docs": [`) || !strings.Contains(r.stdout, `"adr-0001-store"`) {
+		t.Errorf("knowledge_docs missing:\n%s", r.stdout)
+	}
+	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "<knowledge>") {
+		t.Error("prompt lacks the knowledge block")
 	}
 }

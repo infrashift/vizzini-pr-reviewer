@@ -45,6 +45,19 @@ func TestFormatReview_NoFindings(t *testing.T) {
 	}
 }
 
+func TestFormatReview_Citations(t *testing.T) {
+	got := FormatReview(&ReviewOutput{
+		Findings: []Finding{{File: "a.go", StartLine: 1, EndLine: 1, Severity: SeverityMajor, Category: CategoryArchitecture,
+			Title: "Builds SQL by hand", Body: "Violates the store ADR.", Citations: []string{"adr-0001-store"}}},
+		KnowledgeDocs: []string{"adr-0001-store", "note-store-perf"},
+	})
+	for _, want := range []string{"Violates the store ADR.\n\nCites: `adr-0001-store`\n", "_Knowledge base consulted: `adr-0001-store`, `note-store-perf`_"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+}
+
 func TestFormatReview_AutoApprove(t *testing.T) {
 	got := FormatReview(&ReviewOutput{Summary: "Docs only.", RiskScore: 4, BaseRiskScore: 4, ModelRiskScore: 2, Findings: []Finding{}, AutoApprove: true})
 	if !strings.Contains(got, "**Risk:** 4/100 (diff 4, model 2)") || !strings.Contains(got, "**Auto-approve:** yes") {

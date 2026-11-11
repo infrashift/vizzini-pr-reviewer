@@ -53,6 +53,13 @@ type ReviewData struct {
 	// Lint holds linter diagnostics on this chunk's changed lines, one
 	// "file:line:col linter: text" entry each (Milestone 4.2).
 	Lint []string
+	// Knowledge holds the OKF documents relevant to this chunk (Milestone 4.5).
+	Knowledge []KnowledgeDoc
+}
+
+// KnowledgeDoc is one knowledge-base document given to the model.
+type KnowledgeDoc struct {
+	ID, Title, Body string
 }
 
 // DescribeData feeds the "describe" template.

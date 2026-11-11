@@ -45,10 +45,13 @@ const (
 	CategoryPerformance     Category = "Performance"
 	CategoryLogic           Category = "Logic"
 	CategoryMaintainability Category = "Maintainability"
+	// CategoryArchitecture marks a violated design decision; such findings
+	// must cite the knowledge-base document they rely on.
+	CategoryArchitecture Category = "Architecture"
 )
 
 // Categories lists every category.
-var Categories = []Category{CategorySecurity, CategoryPerformance, CategoryLogic, CategoryMaintainability}
+var Categories = []Category{CategorySecurity, CategoryPerformance, CategoryLogic, CategoryMaintainability, CategoryArchitecture}
 
 // Finding mirrors #Finding.
 type Finding struct {
@@ -60,6 +63,7 @@ type Finding struct {
 	Title      string   `json:"title"`
 	Body       string   `json:"body"`
 	Suggestion string   `json:"suggestion,omitempty"`
+	Citations  []string `json:"citations,omitempty"`
 }
 
 // ReviewOutput mirrors #ReviewOutput.

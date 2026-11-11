@@ -3,7 +3,7 @@
 package review
 
 #Severity: "Critical" | "Major" | "Minor" | "Trivial"
-#Category: "Security" | "Performance" | "Logic" | "Maintainability"
+#Category: "Security" | "Performance" | "Logic" | "Maintainability" | "Architecture"
 
 #Finding: {
 	file:        string & !=""
@@ -14,6 +14,13 @@ package review
 	title:       string & !=""
 	body:        string & !=""
 	suggestion?: string
+	// citations holds IDs of OKF knowledge-base documents the finding relies
+	// on (Milestone 4.5). An Architecture finding must cite at least one: a
+	// violated design decision has to be named, not asserted.
+	citations?: [...string & !=""]
+	if category == "Architecture" {
+		citations: [_, ...]
+	}
 }
 
 #ReviewOutput: {
