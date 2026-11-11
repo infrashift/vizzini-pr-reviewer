@@ -1,12 +1,10 @@
 ---
 title: Getting Started
-description: Build Vizzini from source and run its offline test suite.
+description: Build Vizzini from source and review your first diff.
 ---
 
-Vizzini is in early development. The engine core (diff parsing, chunking, the
-CUE validator and the LiteLLM client) is done and tested. The `pr-review` CLI
-and the `pkg/reviewer` Go API are the next milestone, and this page will cover
-them once they land.
+Vizzini has no tagged release yet, so build it from source. The engine, the
+`pkg/reviewer` Go API and the `pr-review` CLI are complete and tested.
 
 ## Requirements
 
@@ -17,6 +15,7 @@ them once they land.
 | `golangci-lint` | v2 | `make lint` |
 | `curl`, `sha256sum` | any | Seeding the tokenizer cache once |
 | A C compiler | any | Only for `make test`, because Go's race detector needs cgo |
+| An OpenAI-compatible endpoint | | A LiteLLM proxy in front of the model you review with |
 
 ## Build and test
 
@@ -26,6 +25,7 @@ cd vizzini-pr-reviewer
 make test      # seeds .cache/tiktoken on first run, then runs go test -race
 make vet-cue   # cue vet ./schema/...
 make lint      # golangci-lint + go mod tidy check
+make build     # static bin/pr-review
 ```
 
 The first `make test` downloads the two tokenizer encodings (about 5.3 MB)
@@ -33,16 +33,21 @@ and checks them against pinned SHA-256 hashes. After that, everything runs
 offline. The tests actively block network access. See
 [Running Offline](../guides/offline/).
 
-## What you can use today
+## Your first review
 
-The engine lives in internal packages that the upcoming `pkg/reviewer` API
-wraps:
+```sh
+export VIZZINI_LITELLM_URL=http://litellm:4000/v1
+export VIZZINI_MODEL=<model name in your LiteLLM config>
+export VIZZINI_API_KEY=<proxy key>
+export TIKTOKEN_CACHE_DIR=$PWD/.cache/tiktoken
 
-| Package | What it does |
-|---|---|
-| `internal/diff` | Parses a unified diff, drops generated paths, labels each line with old/new line numbers |
-| `internal/chunker` | Packs files into chunks within a token budget, splitting oversized files only between hunks |
-| `internal/schema` | Validates raw LLM JSON against `schema/review.cue` and decodes it into Go structs |
-| `internal/llm` | Renders prompt templates and calls a LiteLLM / OpenAI-compatible endpoint with retries and schema repair |
+git diff main...HEAD | ./bin/pr-review --mode review
+```
 
-Next: [How a Review Works](../guides/how-it-works/).
+You get Markdown: a summary, a risk score, and findings sorted most severe
+first, each pinned to `file:line`. Add `--format json` for machines, or try
+`--mode describe` for a PR description and `--mode improve` for concrete code
+suggestions.
+
+Next: the [CLI Reference](../reference/cli/), [Embedding in Go](../guides/embedding/),
+or [How a Review Works](../guides/how-it-works/).

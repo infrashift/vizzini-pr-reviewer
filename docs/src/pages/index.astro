@@ -93,9 +93,9 @@ const jsonHtml = esc(reviewOutput.trimEnd()).replace(
 </section>
 
 <section class="install">
-	<code>git clone {repo} &amp;&amp; cd vizzini-pr-reviewer &amp;&amp; make test</code>
+	<code>git clone {repo} &amp;&amp; cd vizzini-pr-reviewer &amp;&amp; make build</code>
 	<span class="note">
-		Needs Go 1.25+. Early development: the engine is ready, and the <code>pr-review</code> CLI and <code>pkg/reviewer</code> API are next. <a href={`${base}docs/project/roadmap/`}>See the roadmap.</a>
+		Needs Go 1.25+. Not released yet: the <code>pr-review</code> CLI and <code>pkg/reviewer</code> API work today, and a first tag is coming soon. <a href={`${base}docs/getting-started/`}>Try it from source.</a>
 	</span>
 </section>
 
@@ -166,10 +166,10 @@ const jsonHtml = esc(reviewOutput.trimEnd()).replace(
 			<strong>Engine core</strong><span>Diff parsing, chunking, CUE schema, LiteLLM client</span><br /><span class="status done">Done</span>
 		</a>
 		<a class="roadmap-card" href={`${base}docs/project/roadmap/`}>
-			<strong>CLI &amp; Go API</strong><span>describe · review · improve</span><br /><span class="status">Next</span>
+			<strong>CLI &amp; Go API</strong><span>describe · review · improve</span><br /><span class="status done">Done</span>
 		</a>
 		<a class="roadmap-card" href={`${base}docs/project/roadmap/`}>
-			<strong>Policy gate</strong><span>Exit 2 on Critical/Major</span><br /><span class="status">Planned</span>
+			<strong>Policy gate</strong><span>Exit 2 on Critical/Major</span><br /><span class="status">Next</span>
 		</a>
 		<a class="roadmap-card" href={`${base}docs/project/roadmap/`}>
 			<strong>Lint + AI</strong><span>golangci-lint findings in the prompt</span><br /><span class="status">Planned</span>

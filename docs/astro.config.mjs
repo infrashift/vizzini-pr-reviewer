@@ -36,12 +36,14 @@ export default defineConfig({
 					label: 'Guides',
 					items: [
 						{ label: 'How a Review Works', slug: 'docs/guides/how-it-works' },
+						{ label: 'Embedding in Go', slug: 'docs/guides/embedding' },
 						{ label: 'Running Offline', slug: 'docs/guides/offline' },
 					],
 				},
 				{
 					label: 'Reference',
 					items: [
+						{ label: 'CLI Reference', slug: 'docs/reference/cli' },
 						{ label: 'Review Schema', slug: 'docs/reference/review-schema' },
 						{ label: 'Annotated Diff Format', slug: 'docs/reference/diff-format' },
 						{ label: 'Make Targets', slug: 'docs/reference/make-targets' },

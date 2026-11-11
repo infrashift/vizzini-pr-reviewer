@@ -20,15 +20,15 @@ Vizzini is built as a library first. Its primary consumer is the
 ships as a static `pr-review` binary for CI, UBI9 containers and offline QEMU
 microVMs.
 
-<Aside type="caution" title="Early development">
-The engine core is done: diff parsing, chunking, the CUE validator and the
-LiteLLM client. The public `pkg/reviewer` API and the `pr-review` CLI are the
-next milestone. See the [roadmap](./project/roadmap/).
+<Aside type="caution" title="Not released yet">
+The engine, the `pkg/reviewer` Go API and the `pr-review` CLI build and pass
+their tests, but there is no tagged release yet. The policy gate, lint-aware
+reviews and risk scoring are next. See the [roadmap](./project/roadmap/).
 </Aside>
 
 <LinkCard
   title="Getting Started"
-  description="Build Vizzini from source and run the test suite offline."
+  description="Build Vizzini from source and review your first diff."
   href="./getting-started/"
 />
 
@@ -59,6 +59,8 @@ next milestone. See the [roadmap](./project/roadmap/).
 
 <CardGrid>
 	<LinkCard title="How a Review Works" href="./guides/how-it-works/" description="From patch to validated findings, stage by stage." />
+	<LinkCard title="CLI Reference" href="./reference/cli/" description="Flags, environment, output formats and exit codes." />
+	<LinkCard title="Embedding in Go" href="./guides/embedding/" description="Use pkg/reviewer from mrman or your own tool." />
 	<LinkCard title="Review Schema" href="./reference/review-schema/" description="The CUE contract every answer must satisfy." />
 	<LinkCard title="Running Offline" href="./guides/offline/" description="Seeding the tokenizer cache for containers and microVMs." />
 	<LinkCard title="Design Decisions" href="./project/decisions/" description="Why pure Go, why CUE, why LiteLLM." />

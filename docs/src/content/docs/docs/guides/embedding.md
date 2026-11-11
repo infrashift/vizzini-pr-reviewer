@@ -1,0 +1,68 @@
+---
+title: Embedding in Go
+description: Use pkg/reviewer from a Go program such as the mrman TUI.
+---
+
+`pkg/reviewer` is the API the CLI wraps. An `Engine` holds no state between
+calls and is safe for concurrent use, so a TUI can create one at startup and
+share it.
+
+```go
+import "github.com/infrashift/vizzini-pr-reviewer/pkg/reviewer"
+
+engine, err := reviewer.New(reviewer.Config{
+	BaseURL: "http://litellm:4000/v1",
+	APIKey:  os.Getenv("VIZZINI_API_KEY"),
+	Model:   "review-model",
+})
+if err != nil {
+	return err
+}
+
+out, err := engine.Review(ctx, patch, reviewer.ReviewOptions{})
+if err != nil {
+	return err
+}
+viewport.SetContent(reviewer.FormatReview(out)) // or render with glamour
+```
+
+## Methods
+
+| Method | Returns |
+|---|---|
+| `Review(ctx, patch, opts)` | `*ReviewOutput`: summary, max risk score, sorted findings, excluded and skipped paths |
+| `Describe(ctx, patch)` | `*PRDescription`, or `ErrNoChanges` if every file was excluded |
+| `Improve(ctx, patch)` | `[]CodeSuggestion` sorted by file and line |
+
+`patch` is any `io.Reader` holding a unified diff (`git diff`, `git
+format-patch`, or a forge's `.diff` URL body).
+
+## Configuration
+
+Zero values select the defaults:
+
+| Field | Default |
+|---|---|
+| `MaxChunkTokens` | 6000 |
+| `Encoding` | `cl100k_base` |
+| `Exclude` | `*.pb.go`, `*_gen.go`, `go.sum`, `vendor/**`, `*.lock` (an empty slice excludes nothing) |
+| `Concurrency` | 4 parallel requests |
+| `MaxRetries` / `MaxRepairs` | 3 / 2 (negative disables) |
+| `Backoff` | 500ms, doubling |
+
+## Rendering
+
+`FormatReview`, `FormatDescription` and `FormatSuggestions` produce Markdown
+built for terminal viewports. It uses headings, lists and fenced code only:
+no tables (they overflow narrow panes), no HTML, and no emoji (their cell
+width varies between terminals and breaks lipgloss layouts). Code fences grow
+longer than any backticks inside model-written code, so a suggestion can't
+break out of its block.
+
+## Errors
+
+- Errors wrapping `schema.ErrInvalid` mean the model could not produce a
+  valid, anchored answer within `MaxRepairs`.
+- Proxy failures carry the underlying go-openai error.
+- In a multi-chunk run, the error names the chunk (`chunk 2 of 3: …`) and
+  cancels the others.
