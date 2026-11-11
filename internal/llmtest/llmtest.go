@@ -22,6 +22,10 @@ import (
 type Reply struct {
 	Status  int
 	Content string
+	// Usage is reported in the response body, as LiteLLM does.
+	Usage openai.Usage
+	// Cost, if set, is sent as LiteLLM's x-litellm-response-cost header.
+	Cost string
 }
 
 // Handler decides the reply for a request. n is the 1-based request count.
@@ -36,6 +40,7 @@ type Server struct {
 
 	mu       sync.Mutex
 	requests []openai.ChatCompletionRequest
+	headers  []http.Header
 
 	inFlight    atomic.Int32
 	maxInFlight atomic.Int32
@@ -66,6 +71,17 @@ func (s *Server) Requests() []openai.ChatCompletionRequest {
 	return append([]openai.ChatCompletionRequest(nil), s.requests...)
 }
 
+// Headers returns a copy of each request's HTTP headers, in arrival order.
+func (s *Server) Headers() []http.Header {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]http.Header, len(s.headers))
+	for i, h := range s.headers {
+		out[i] = h.Clone()
+	}
+	return out
+}
+
 // MaxInFlight is the highest number of concurrent requests observed.
 func (s *Server) MaxInFlight() int { return int(s.maxInFlight.Load()) }
 
@@ -91,6 +107,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Lock()
 	s.requests = append(s.requests, req)
+	s.headers = append(s.headers, r.Header.Clone())
 	n := len(s.requests)
 	s.mu.Unlock()
 
@@ -99,6 +116,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	reply := s.handler(n, &req)
 	w.Header().Set("Content-Type", "application/json")
+	if reply.Cost != "" {
+		w.Header().Set("x-litellm-response-cost", reply.Cost)
+	}
 	if reply.Status != 0 && reply.Status != http.StatusOK {
 		w.WriteHeader(reply.Status)
 		_, _ = fmt.Fprintf(w, `{"error":{"message":"llmtest scripted %d","type":"test"}}`, reply.Status)
@@ -110,6 +130,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			Message:      openai.ChatCompletionMessage{Role: openai.ChatMessageRoleAssistant, Content: reply.Content},
 			FinishReason: openai.FinishReasonStop,
 		}},
+		Usage: reply.Usage,
 	})
 }
 

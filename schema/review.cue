@@ -193,4 +193,24 @@ package review
 	merged_findings?: int & >=1
 	// Repository-context snippets given to the model (ISSUE-023, ADR-0014).
 	context_snippets?: int & >=1
+	// Attribution and usage (ISSUE-025, ADR-0015): run_id joins the
+	// proxy's spend logs, pr_key and iteration place the run in its pull
+	// request's lifecycle.
+	run_id?:    string & !=""
+	pr_key?:    string & !=""
+	iteration?: string & !=""
+	requester?: string & !=""
+	agent?:     string & !=""
+	usage?:     #Usage
+}
+
+// What a run's model requests consumed (ISSUE-025).
+#Usage: {
+	requests:            int & >=0
+	retries:             int & >=0
+	repairs:             int & >=0
+	input_tokens:        int & >=0
+	output_tokens:       int & >=0
+	cached_input_tokens: int & >=0
+	cost_usd?:           number & >=0
 }

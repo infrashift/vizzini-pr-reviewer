@@ -98,6 +98,11 @@ type ReviewOutput struct {
 	// Diagnostics counts the linter diagnostics on changed lines that were
 	// added to the prompts (see ReviewOptions.LintReports).
 	Diagnostics int `json:"diagnostics,omitempty"`
+	// Attribution identifies the run (RunID is always set) and whom it was
+	// for, so the report joins the proxy's spend logs (ISSUE-025).
+	Attribution
+	// Usage is what this review's model requests consumed (ISSUE-025).
+	Usage *Usage `json:"usage,omitempty"`
 	// ContextSnippets counts the repository-context snippets (definitions
 	// and callers outside the diff) given to the model (ISSUE-023).
 	ContextSnippets int `json:"context_snippets,omitempty"`

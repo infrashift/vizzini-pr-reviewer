@@ -109,6 +109,7 @@ func (e *Engine) parse(patch io.Reader) (*diff.Diff, error) {
 // the answers. A patch with nothing reviewable returns an empty review
 // without calling the model.
 func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions) (*ReviewOutput, error) { //nolint:gocritic // hugeParam: public API; options by value keep embedders' call sites simple and safe
+	ctx, attr, meter := begin(ctx, "review")
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err
@@ -122,7 +123,12 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 		diags = append(diags, ds...)
 	}
 	risk := analysis.ScoreRisk(d.Files, e.risk)
-	out := &ReviewOutput{Findings: []Finding{}, Excluded: d.Excluded, BaseRiskScore: risk.Score, RiskScore: risk.Score, RiskFiles: risk.Files}
+	out := &ReviewOutput{Findings: []Finding{}, Excluded: d.Excluded, BaseRiskScore: risk.Score, RiskScore: risk.Score, RiskFiles: risk.Files,
+		Attribution: attr}
+	defer func() {
+		u := meter.Usage()
+		out.Usage = &u
+	}()
 
 	var chunks []chunker.Chunk
 	for _, c := range e.chunker.Chunk(d.Files) {
@@ -171,7 +177,7 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 
 	results := make([]*schema.ReviewOutput, len(chunks))
 	if err := e.forEach(ctx, len(chunks), func(ctx context.Context, i int) error {
-		r, err := e.reviewChunk(ctx, &chunks[i], i+1, len(chunks), &cctx[i])
+		r, err := e.reviewChunk(llm.WithMeta(ctx, "vizzini.chunk", fmt.Sprintf("%d/%d", i+1, len(chunks))), &chunks[i], i+1, len(chunks), &cctx[i])
 		results[i] = r
 		return err
 	}); err != nil {
@@ -226,6 +232,7 @@ func (e *Engine) autoApprove(out *ReviewOutput) bool {
 // Describe writes a pull request description. The model sees every changed
 // file's header and as much content as fits in one chunk.
 func (e *Engine) Describe(ctx context.Context, patch io.Reader) (*PRDescription, error) {
+	ctx, _, _ = begin(ctx, "describe")
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err
@@ -267,6 +274,7 @@ func (e *Engine) Describe(ctx context.Context, patch io.Reader) (*PRDescription,
 // Improve asks the model for concrete code suggestions on every chunk, sorted
 // by file and line. Oversized hunks are always included.
 func (e *Engine) Improve(ctx context.Context, patch io.Reader) ([]CodeSuggestion, error) {
+	ctx, _, _ = begin(ctx, "improve")
 	d, err := e.parse(patch)
 	if err != nil {
 		return nil, err

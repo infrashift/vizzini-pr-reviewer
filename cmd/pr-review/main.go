@@ -6,6 +6,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -55,6 +56,8 @@ Environment:
   VIZZINI_LITELLM_URL   default for --litellm-url
   VIZZINI_MODEL         default for --model
   VIZZINI_API_KEY       bearer token for the proxy (falls back to LITELLM_API_KEY)
+  VIZZINI_RUN_ID, VIZZINI_PR, VIZZINI_ITERATION, VIZZINI_REQUESTER, VIZZINI_AGENT
+                        defaults for the attribution flags (--run-id, --pr, ...)
   TIKTOKEN_CACHE_DIR    pre-seeded tokenizer cache for offline use
 
 Flags:
@@ -76,6 +79,7 @@ type options struct {
 	riskPolicy string
 	knowledge  string
 	repo       string
+	attr       reviewer.Attribution
 	command    string
 	thread     string
 	issue      string
@@ -160,6 +164,7 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		patch = p
 	}
 
+	ctx = reviewer.WithAttribution(ctx, opts.attr)
 	ctx, cancel := context.WithTimeout(ctx, opts.timeout)
 	defer cancel()
 
@@ -341,6 +346,11 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
 	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
 	fs.StringVar(&o.knowledge, "knowledge", "", "review mode: OKF knowledge-base directory (e.g. .okfw) whose relevant documents the model may cite")
+	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "attribution: this run's id (default: a generated UUIDv7); sent with every request")
+	fs.StringVar(&o.attr.PRKey, "pr", getenv("VIZZINI_PR"), `attribution: the pull request, e.g. "ado:dev.azure.com/org/project/repo#42"`)
+	fs.StringVar(&o.attr.Iteration, "iteration", getenv("VIZZINI_ITERATION"), "attribution: the head commit reviewed")
+	fs.StringVar(&o.attr.Requester, "requester", getenv("VIZZINI_REQUESTER"), "attribution: the human the run is for (the proxy's end user)")
+	fs.StringVar(&o.attr.Agent, "agent", cmp.Or(getenv("VIZZINI_AGENT"), "pr-review"), "attribution: the tool asking")
 	fs.StringVar(&o.repo, "repo", "", "review mode: repository checkout at the change's head (e.g. .); definitions and callers outside the diff are given to the model as context")
 	fs.Func("lint-json", "review mode: linter report to explain on changed lines, golangci-lint JSON or SARIF (repeatable; run linters from the repo root)", func(s string) error {
 		o.lintJSON = append(o.lintJSON, s)

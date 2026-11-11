@@ -177,9 +177,9 @@ func New(cfg Config) (*Client, error) { //nolint:gocritic // hugeParam: one-shot
 	oc := openai.DefaultConfig(cfg.APIKey)
 	oc.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
 	if cfg.HTTPClient != nil {
-		oc.HTTPClient = cfg.HTTPClient
+		oc.HTTPClient = withTrace(cfg.HTTPClient)
 	} else {
-		oc.HTTPClient = &http.Client{Timeout: defaultTimeout}
+		oc.HTTPClient = withTrace(&http.Client{Timeout: defaultTimeout})
 	}
 	return &Client{
 		api:        openai.NewClientWithConfig(oc),
@@ -211,7 +211,10 @@ func (c *Client) CompleteJSON(ctx context.Context, p Prompt, validate func([]byt
 		{Role: openai.ChatMessageRoleUser, Content: p.User},
 	}
 	for repair := 0; ; repair++ {
-		content, err := c.chat(ctx, msgs)
+		if repair > 0 {
+			meterFrom(ctx).record(func(u *Usage) { u.Repairs++ })
+		}
+		content, err := c.chat(ctx, msgs, repair)
 		if err != nil {
 			return nil, err
 		}
@@ -236,16 +239,25 @@ func repairPrompt(err error) string {
 }
 
 // chat performs one completion, retrying transient failures with backoff.
-func (c *Client) chat(ctx context.Context, msgs []openai.ChatCompletionMessage) (string, error) {
+func (c *Client) chat(ctx context.Context, msgs []openai.ChatCompletionMessage, repair int) (string, error) {
 	req := openai.ChatCompletionRequest{
 		Model:          c.model,
 		Messages:       msgs,
 		ResponseFormat: &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject},
 	}
+	meter := meterFrom(ctx)
 	delay := c.backoff
 	for attempt := 0; ; attempt++ {
+		requestFields(ctx, &req, repair, attempt)
+		meter.record(func(u *Usage) {
+			u.Requests++
+			if attempt > 0 {
+				u.Retries++
+			}
+		})
 		resp, err := c.api.CreateChatCompletion(ctx, req)
 		if err == nil {
+			meter.response(&resp)
 			if len(resp.Choices) == 0 {
 				return "", errors.New("llm: response has no choices")
 			}

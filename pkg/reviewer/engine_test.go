@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -826,5 +827,75 @@ func TestReview_RepositoryContextBudgetAndAbsence(t *testing.T) {
 		if strings.Contains(llmtest.UserPrompt(&r), "<context>") {
 			t.Error("prompt has a <context> block without snippets")
 		}
+	}
+}
+
+// ISSUE-025: attribution on every request of a run, usage in the report.
+func TestReview_AttributionAndUsage(t *testing.T) {
+	srv := llmtest.NewServer(t, func(n int, req *openai.ChatCompletionRequest) llmtest.Reply {
+		r := answerByFile(n, req)
+		r.Usage = openai.Usage{PromptTokens: 500, CompletionTokens: 50}
+		r.Cost = "0.0015"
+		return r
+	})
+	ctx := WithAttribution(context.Background(), Attribution{
+		PRKey: "ado:dev.azure.com/o/p/r#7", Iteration: "abc123", Requester: "alice", Agent: "mrman/v0.1.1",
+	})
+	out, err := newEngine(t, srv, func(c *Config) { c.MaxChunkTokens = 150 }).Review(ctx, fixture(t), ReviewOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`).MatchString(out.RunID) {
+		t.Errorf("run id %q is not a UUIDv7", out.RunID)
+	}
+	reqs := srv.Requests()
+	if out.Chunks < 2 || len(reqs) != out.Chunks {
+		t.Fatalf("want one request per chunk across several chunks: %d chunks, %d requests", out.Chunks, len(reqs))
+	}
+	chunks := map[string]bool{}
+	trace := strings.ReplaceAll(out.RunID, "-", "")
+	for i, r := range reqs {
+		md := r.Metadata
+		if md["vizzini.run_id"] != out.RunID || md["vizzini.pr_key"] != "ado:dev.azure.com/o/p/r#7" || md["vizzini.iteration"] != "abc123" ||
+			md["vizzini.agent"] != "mrman/v0.1.1" || md["vizzini.requester"] != "alice" || md["vizzini.mode"] != "review" || r.User != "alice" {
+			t.Errorf("request %d: user %q metadata %v", i, r.User, md)
+		}
+		chunks[md["vizzini.chunk"]] = true
+		if h := srv.Headers()[i].Get("traceparent"); !strings.HasPrefix(h, "00-"+trace+"-") {
+			t.Errorf("request %d traceparent %q, want trace id %s", i, h, trace)
+		}
+	}
+	if len(chunks) != out.Chunks || !chunks[fmt.Sprintf("1/%d", out.Chunks)] {
+		t.Errorf("chunk tags %v for %d chunks", chunks, out.Chunks)
+	}
+	u := out.Usage
+	if u == nil || u.Requests != out.Chunks || u.InputTokens != 500*out.Chunks || u.OutputTokens != 50*out.Chunks ||
+		u.CostUSD == nil || *u.CostUSD < 0.0015*float64(out.Chunks)-1e-9 || *u.CostUSD > 0.0015*float64(out.Chunks)+1e-9 {
+		t.Errorf("usage %+v", u)
+	}
+	b, err := MarshalReport(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"run_id": "` + out.RunID + `"`, `"pr_key": "ado:dev.azure.com/o/p/r#7"`, `"requester": "alice"`, `"usage": {`, `"cost_usd": `} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("report lacks %s", want)
+		}
+	}
+}
+
+func TestDescribe_TaggedWithItsMode(t *testing.T) {
+	srv := llmtest.NewServer(t, func(int, *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"title":"t","type":"Feature","summary":"s","changes":[{"file":"internal/store/users.go","description":"d"}]}`}
+	})
+	if _, err := newEngine(t, srv).Describe(WithAttribution(context.Background(), Attribution{RunID: "run-1"}), fixture(t)); err != nil {
+		t.Fatal(err)
+	}
+	md := srv.Requests()[0].Metadata
+	if md["vizzini.mode"] != "describe" || md["vizzini.run_id"] != "run-1" {
+		t.Errorf("metadata %v", md)
+	}
+	if h := srv.Headers()[0].Get("traceparent"); h != "" {
+		t.Errorf("a run id that is not a UUID gives no trace id, got %q", h)
 	}
 }

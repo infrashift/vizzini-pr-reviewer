@@ -55,6 +55,7 @@ var mdLink = regexp.MustCompile(`\]\(([^)\s]+)\)`)
 // not, step files must be affected files) and references against the OKF
 // index, with violations sent back to the model for repair.
 func (e *Engine) Plan(ctx context.Context, req *PlanRequest) (*ImplementationPlan, error) {
+	ctx, _, _ = begin(ctx, "plan")
 	if strings.TrimSpace(req.Issue.Title) == "" && strings.TrimSpace(req.Issue.Body) == "" {
 		return nil, ErrEmptyIssue
 	}

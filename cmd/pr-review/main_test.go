@@ -453,3 +453,23 @@ func TestRun_Repo(t *testing.T) {
 		t.Errorf("prompt lacks the definition snippet:\n%s", p)
 	}
 }
+
+func TestRun_Attribution(t *testing.T) {
+	srv := reviewWith(t, "")
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m", "VIZZINI_REQUESTER": "ci-bot"}
+	r := runCLI(t, env, patch, "--format", "json", "--fail-on", "none",
+		"--pr", "ado:dev.azure.com/o/p/r#9", "--iteration", "deadbeef", "--run-id", "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b")
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	for _, want := range []string{`"run_id": "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `"pr_key": "ado:dev.azure.com/o/p/r#9"`,
+		`"iteration": "deadbeef"`, `"requester": "ci-bot"`, `"agent": "pr-review"`, `"usage": {`} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("report lacks %s", want)
+		}
+	}
+	md := srv.Requests()[0].Metadata
+	if md["vizzini.pr_key"] != "ado:dev.azure.com/o/p/r#9" || md["vizzini.agent"] != "pr-review" || srv.Requests()[0].User != "ci-bot" {
+		t.Errorf("request metadata %v user %q", md, srv.Requests()[0].User)
+	}
+}
