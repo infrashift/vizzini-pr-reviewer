@@ -4,7 +4,9 @@
 // per line of the prompt's <lint> block, and nothing else. Its answers come
 // only from the diagnostics it was sent, so a finding in the output proves
 // that diagnostic travelled lint JSON -> changed-line filter -> prompt ->
-// schema validation -> anchoring. Every user prompt is appended to -log.
+// schema validation -> anchoring. An /explain command gets a canned answer
+// naming the selection it was given, so command plumbing can be exercised
+// without a model. Every user prompt is appended to -log.
 package main
 
 import (
@@ -61,11 +63,13 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		user := ""
+		user, system := "", ""
 		for _, m := range req.Messages {
-			if m.Role == "user" {
+			switch {
+			case m.Role == "system" && system == "":
+				system = m.Content
+			case m.Role == "user" && user == "":
 				user = m.Content
-				break
 			}
 		}
 		if *logPath != "" {
@@ -77,6 +81,14 @@ func main() {
 			mu.Unlock()
 		}
 
+		if strings.Contains(system, "answering a reviewer's /explain command") {
+			target, _, _ := strings.Cut(strings.TrimSpace(user), "\n")
+			reply(w, req.Model, map[string]any{"answer": "stubllm explains the selection it was given (" +
+				truncate(target, 120) + "). A real model would walk through what these lines do, why they changed, " +
+				"and what a reviewer should weigh; this canned answer only proves the command reached the model " +
+				"with its selection and came back through schema validation."})
+			return
+		}
 		findings := []finding{}
 		if _, block, ok := strings.Cut(user, "<lint>\n"); ok {
 			block, _, _ = strings.Cut(block, "</lint>")
@@ -101,22 +113,27 @@ func main() {
 				})
 			}
 		}
-		answer, _ := json.Marshal(map[string]any{
+		reply(w, req.Model, map[string]any{
 			"summary":    fmt.Sprintf("stubllm: %d linter diagnostic(s) on changed lines.", len(findings)),
 			"risk_score": 10,
 			"findings":   findings,
-		})
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id": "stub", "object": "chat.completion", "model": req.Model,
-			"choices": []map[string]any{{"index": 0, "finish_reason": "stop",
-				"message": map[string]string{"role": "assistant", "content": string(answer)}}},
 		})
 	})
 
 	srv := &http.Server{Addr: *addr, ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("stubllm listening on http://%s/v1", *addr)
 	log.Fatal(srv.ListenAndServe())
+}
+
+// reply writes content as the assistant's JSON answer.
+func reply(w http.ResponseWriter, model string, content any) {
+	answer, _ := json.Marshal(content)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"id": "stub", "object": "chat.completion", "model": model,
+		"choices": []map[string]any{{"index": 0, "finish_reason": "stop",
+			"message": map[string]string{"role": "assistant", "content": string(answer)}}},
+	})
 }
 
 func truncate(s string, n int) string {
