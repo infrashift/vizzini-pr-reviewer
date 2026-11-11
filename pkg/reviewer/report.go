@@ -7,12 +7,13 @@ import (
 	"sync"
 
 	"github.com/infrashift/vizzini-pr-reviewer/internal/schema"
+	"github.com/infrashift/vizzini-pr-reviewer/pkg/risk"
 )
 
 // APIVersion identifies Vizzini's JSON reports (ADR-0010). Policy engines
 // such as garmr target reports by its group, "vizzini.infrashift.io", and
 // by kind.
-const APIVersion = "vizzini.infrashift.io/v1"
+const APIVersion = risk.APIVersion
 
 // Report kinds, one per result type.
 const (
@@ -21,6 +22,9 @@ const (
 	KindSuggestions        = "Suggestions"
 	KindCommandResult      = "CommandResult"
 	KindImplementationPlan = "ImplementationPlan"
+	// KindRiskAssessment is the deterministic score alone, from
+	// pr-review --mode risk (ISSUE-015).
+	KindRiskAssessment = "RiskAssessment"
 )
 
 var reportValidator = sync.OnceValues(schema.New)
@@ -29,7 +33,9 @@ var reportValidator = sync.OnceValues(schema.New)
 // own fields preceded by "apiVersion" and "kind". Review reports are
 // validated against the closed #ReviewReport schema and every other kind
 // against the #Report envelope, so consumers can rely on the shape.
-// Improve suggestions are wrapped as {"suggestions": [...]}.
+// Improve suggestions are wrapped as {"suggestions": [...]}. A
+// *risk.Assessment becomes a RiskAssessment report, checked against the
+// closed #RiskAssessmentReport.
 func MarshalReport(v any) ([]byte, error) {
 	var (
 		kind string
@@ -52,6 +58,13 @@ func MarshalReport(v any) ([]byte, error) {
 		kind = KindCommandResult
 	case *ImplementationPlan:
 		kind = KindImplementationPlan
+	case *risk.Assessment:
+		kind = KindRiskAssessment
+		if x.Files == nil {
+			a := *x
+			a.Files = []risk.FileRisk{}
+			body = &a
+		}
 	default:
 		return nil, fmt.Errorf("reviewer: no report kind for %T", v)
 	}
@@ -75,8 +88,11 @@ func MarshalReport(v any) ([]byte, error) {
 		return nil, err
 	}
 	def := "#Report"
-	if kind == KindReview {
+	switch kind {
+	case KindReview:
 		def = "#ReviewReport"
+	case KindRiskAssessment:
+		def = "#RiskAssessmentReport"
 	}
 	var discard map[string]any
 	if err := val.Validate(def, raw.Bytes(), &discard); err != nil {

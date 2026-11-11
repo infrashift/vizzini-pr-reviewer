@@ -116,7 +116,7 @@ func TestRun_Errors(t *testing.T) {
 	}{
 		{"missing url", map[string]string{"VIZZINI_MODEL": "m"}, nil, "--litellm-url (or VIZZINI_LITELLM_URL) is required"},
 		{"missing model", map[string]string{"VIZZINI_LITELLM_URL": "http://x/v1"}, nil, "--model (or VIZZINI_MODEL) is required"},
-		{"bad mode", base, []string{"--mode", "explain"}, "--mode must be describe, review, improve, command or plan"},
+		{"bad mode", base, []string{"--mode", "explain"}, "--mode must be describe, review, improve, command, plan or risk"},
 		{"bad format", base, []string{"--format", "yaml"}, "--format must be json or markdown"},
 		{"stray argument", base, []string{"extra"}, "unexpected arguments"},
 		{"unknown flag", base, []string{"--nope"}, "flag provided but not defined"},
@@ -370,6 +370,52 @@ func TestRun_LintJSONRepeatableWithSARIF(t *testing.T) {
 	for _, want := range []string{"internal/store/users.go:42:9 gosec: G202", "internal/store/users.go:42 semgrep: sql-concat: string-built SQL"} {
 		if !strings.Contains(p, want) {
 			t.Errorf("prompt lacks %q", want)
+		}
+	}
+}
+
+// Risk mode never touches a model, so it runs with no proxy configured at all.
+func TestRun_RiskModeNeedsNoModel(t *testing.T) {
+	noEnv := map[string]string{}
+
+	r := runCLI(t, noEnv, patch, "--mode", "risk")
+	if r.code != exitOK || !strings.Contains(r.stdout, "**Risk:** 1/100 (low) · computed from the diff alone, no model") ||
+		!strings.Contains(r.stdout, "- `internal/store/users.go`: 2 points (weight 1, 2 changed, complexity +0)") {
+		t.Fatalf("markdown: exit %d\n%s\nstderr: %s", r.code, r.stdout, r.stderr)
+	}
+
+	r = runCLI(t, noEnv, patch, "--mode", "risk", "--format", "json")
+	var report map[string]any
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != exitOK {
+		t.Fatalf("json: exit %d err %v\n%s\nstderr: %s", r.code, err, r.stdout, r.stderr)
+	}
+	if report["kind"] != "RiskAssessment" || report["score"] != 1.0 || report["band"] != "low" {
+		t.Errorf("report %v", report)
+	}
+
+	dir := t.TempDir()
+	policy := filepath.Join(dir, "risk.json")
+	if err := os.WriteFile(policy, []byte(`{"scale": 1, "weights": [{"pattern": "**/store/**", "weight": 3}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r = runCLI(t, noEnv, patch, "--mode", "risk", "--risk-policy", policy, "--format", "json")
+	if r.code != exitOK || !strings.Contains(r.stdout, `"band": "high"`) || !strings.Contains(r.stdout, `"weight": 3`) {
+		t.Errorf("custom policy: exit %d\n%s\nstderr: %s", r.code, r.stdout, r.stderr)
+	}
+
+	bad := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(bad, []byte(`{"auto_approve_threshold": 70}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for name, args := range map[string][]string{
+		"invalid policy":        {"--mode", "risk", "--risk-policy", bad},
+		"missing policy":        {"--mode", "risk", "--risk-policy", filepath.Join(dir, "absent.json")},
+		"missing patch":         {"--mode", "risk", "--patch-file", filepath.Join(dir, "absent.patch")},
+		"skip-oversized":        {"--mode", "risk", "--skip-oversized"},
+		"review flag elsewhere": {"--mode", "risk", "--fail-on", "none"},
+	} {
+		if r := runCLI(t, noEnv, patch, args...); r.code != exitError || r.stderr == "" {
+			t.Errorf("%s: exit %d stderr %q", name, r.code, r.stderr)
 		}
 	}
 }

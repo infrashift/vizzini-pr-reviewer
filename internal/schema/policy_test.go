@@ -101,3 +101,25 @@ func indexOf(s Severity) int {
 	}
 	return -1
 }
+
+func TestRiskPolicy_BandAndSensitivity(t *testing.T) {
+	v, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := v.RiskPolicy([]byte(`{"auto_approve_threshold": 10, "high_threshold": 50, "sensitive_weight": 2}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for score, want := range map[int]RiskBand{0: RiskBandLow, 10: RiskBandLow, 11: RiskBandMedium, 49: RiskBandMedium, 50: RiskBandHigh, 100: RiskBandHigh} {
+		if got := p.Band(score); got != want {
+			t.Errorf("Band(%d) = %s, want %s", score, got, want)
+		}
+	}
+	if !p.IsSensitive(2) || p.IsSensitive(1.99) {
+		t.Error("IsSensitive must be weight >= sensitive_weight")
+	}
+	if _, err := v.RiskPolicy([]byte(`{"auto_approve_threshold": 50, "high_threshold": 40}`)); err == nil {
+		t.Error("high_threshold below auto_approve_threshold accepted")
+	}
+}

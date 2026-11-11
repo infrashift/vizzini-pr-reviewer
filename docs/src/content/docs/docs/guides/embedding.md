@@ -43,6 +43,34 @@ The package-level `OrderFilesByDependency(files)` orders a parsed diff for a
 `patch` is any `io.Reader` holding a unified diff (`git diff`, `git
 format-patch`, or a forge's `.diff` URL body).
 
+## Risk without a model
+
+`pkg/risk` computes the deterministic [risk score](../risk/) on its own. It
+links neither the LLM client nor the tokenizer (a test enforces this), so a
+program can embed it to score every change in a list, cheaply:
+
+```go
+import "github.com/infrashift/vizzini-pr-reviewer/pkg/risk"
+
+policy, err := risk.LoadPolicy(data) // nil → schema defaults; data from .vizzini/risk.json
+if err != nil {
+	return err
+}
+a, err := risk.AssessPatch(patch, policy, nil) // nil → default excludes, as in a review
+// a.Score == base_risk_score, a.Band is low/medium/high, a.Files == risk_files
+```
+
+| Function | Use |
+|---|---|
+| `LoadPolicy(data)` / `DefaultPolicy()` | A schema-validated `*Policy`; `policy.Band(score)` and `policy.IsSensitive(weight)` |
+| `AssessPatch(r, policy, exclude)` | Score a unified diff exactly as a review would |
+| `Score(changes, policy)` | The same from `[]FileChange` (path, added and deleted line text, binary), for callers with their own diff model |
+| `ScoreFile(&change, policy)` / `Combine(files, policy)` | Per-file results in your own order, then the total. Useful when one path appears twice, as in a patch series |
+| `ParseReport(data)` | The risk fields of a review someone else ran (`pr-review --format json`, or a marshaled `ReviewOutput`); `Divergence()` is how far the model's score sits above the base |
+
+`auto_approve` from a parsed report is a suggestion. A human still decides
+whether to approve.
+
 ## Configuration
 
 Zero values select the defaults:
@@ -58,7 +86,7 @@ Zero values select the defaults:
 
 ## Rendering
 
-`FormatReview`, `FormatDescription` and `FormatSuggestions` produce Markdown
+`FormatReview`, `FormatDescription`, `FormatSuggestions` and `FormatRiskAssessment` produce Markdown
 built for terminal viewports. It uses headings, lists and fenced code only:
 no tables (they overflow narrow panes), no HTML, and no emoji (their cell
 width varies between terminals and breaks lipgloss layouts). Code fences grow

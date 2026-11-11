@@ -9,6 +9,7 @@ proxy, and prints the validated result.
 ```sh
 git diff main...HEAD | pr-review --mode review
 pr-review --patch-file change.patch --mode describe --format json
+git diff main...HEAD | pr-review --mode risk   # no model or proxy needed
 ```
 
 ## Flags
@@ -16,7 +17,7 @@ pr-review --patch-file change.patch --mode describe --format json
 | Flag | Default | Meaning |
 |---|---|---|
 | `--patch-file` | `-` | Unified diff to read. `-` reads stdin |
-| `--mode` | `review` | `describe`, `review`, `improve`, `command` or `plan` |
+| `--mode` | `review` | `describe`, `review`, `improve`, `command`, `plan` or `risk` (the deterministic score alone; needs no proxy or model) |
 | `--issue` | | Plan mode: JSON issue file `{title, body, labels}`. See [Pre-Code Planning](../../guides/planning/) |
 | `--tree` | | Plan mode: repository paths, one per line (`git ls-files > tree.txt`) |
 | `--okf-index` | | Plan mode: the knowledge base's root `index.md` |
@@ -51,6 +52,7 @@ pr-review --patch-file change.patch --mode describe --format json
 | `improve` | `{suggestions: [{file, start_line, end_line, category, summary, existing_code, improved_code}]}` |
 | `plan` | `{summary, affected_files[], phases[], verification[], risks[], references[]}` (no patch is read) |
 | `command` | `{command, answer}` for `/explain`; `{command, suggestions[]}` for `/refactor` and `/docstrings` |
+| `risk` | `{score, band, files[]}`: the [deterministic risk score](../../guides/risk/#without-a-model), with no model call |
 
 Every model answer is validated against [the schema](../review-schema/) and
 anchored to the diff before it is printed. JSON output is a report: it starts

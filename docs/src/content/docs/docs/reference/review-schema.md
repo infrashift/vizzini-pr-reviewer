@@ -70,6 +70,8 @@ The same package defines the describe and improve outputs (`#PRDescription`,
 }
 ```
 
-`#RiskPolicy` holds the path weights and auto-approve rules
-([Risk & Auto-Approve](../../guides/risk/)). Implementation plans will be added here
+`#RiskPolicy` holds the path weights, the auto-approve rules and the
+`high_threshold` that bounds the bands (`#RiskBand`: `low`, `medium`,
+`high`); see [Risk & Auto-Approve](../../guides/risk/). `#RiskAssessmentReport`
+is the closed report `pr-review --mode risk` prints. Implementation plans will be added here
 as their milestones land. See the [roadmap](../../project/roadmap/).

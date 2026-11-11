@@ -3,7 +3,10 @@ package reviewer
 import (
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
+
+	"github.com/infrashift/vizzini-pr-reviewer/pkg/risk"
 )
 
 // The Markdown helpers render results for a bubbletea viewport (typically
@@ -49,6 +52,27 @@ func FormatReview(r *ReviewOutput) string {
 		fmt.Fprintf(&b, "\n_Skipped (hunk larger than the token budget): %s_\n", codeList(r.Skipped))
 	}
 	return b.String()
+}
+
+// FormatRiskAssessment renders a deterministic risk assessment as Markdown:
+// the score and band, then each file's contribution, highest first.
+func FormatRiskAssessment(a *risk.Assessment) string {
+	var b strings.Builder
+	b.WriteString("## Risk\n\n")
+	fmt.Fprintf(&b, "**Risk:** %d/100 (%s) · computed from the diff alone, no model\n", a.Score, a.Band)
+	if len(a.Files) > 0 {
+		b.WriteString("\n")
+	}
+	for _, f := range a.Files {
+		fmt.Fprintf(&b, "- `%s`: %s points (weight %s, %d changed, complexity %+d)\n",
+			f.Path, trimFloat(f.Points), trimFloat(f.Weight), f.Changed, f.ComplexityDelta)
+	}
+	return b.String()
+}
+
+// trimFloat prints a float without trailing zeros: 36, 0.4, 2.5.
+func trimFloat(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }
 
 // FormatDescription renders a PR description as Markdown.

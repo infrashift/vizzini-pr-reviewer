@@ -48,7 +48,7 @@ An **LLM-free API** such as `reviewer.AssessRisk(patch io.Reader, policy) (*Risk
 
 ## Acceptance Criteria
 - [x] A short decision (ADR or issue comment) on which uses to pursue, agreed with the mrman side
-- [ ] If use 1 or 2 is chosen: an LLM-free `AssessRisk` API with tests and docs in Vizzini (tracked in [ISSUE-015](/issues/issue-015-public-llm-free-risk-api-pkg-risk-for-mrman--01a1ca2a2474.md))
+- [x] If use 1 or 2 is chosen: an LLM-free `AssessRisk` API with tests and docs in Vizzini (tracked in [ISSUE-015](/issues/issue-015-public-llm-free-risk-api-pkg-risk-for-mrman--01a1ca2a2474.md))
 - [ ] A follow-up issue in mrman for the UI work
 
 ## Decision (2026-11-11, mrman side)

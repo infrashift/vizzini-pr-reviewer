@@ -46,6 +46,38 @@ type RiskPolicy struct {
 	Scale                float64      `json:"scale"`
 	AutoApproveThreshold int          `json:"auto_approve_threshold"`
 	SensitiveWeight      float64      `json:"sensitive_weight"`
+	// HighThreshold is the lowest score in the high band; the schema keeps it
+	// above AutoApproveThreshold.
+	HighThreshold int `json:"high_threshold"`
+}
+
+// RiskBand mirrors #RiskBand: a coarse reading of a risk score.
+type RiskBand string
+
+// Risk bands, lowest first.
+const (
+	RiskBandLow    RiskBand = "low"
+	RiskBandMedium RiskBand = "medium"
+	RiskBandHigh   RiskBand = "high"
+)
+
+// IsSensitive reports whether a file of this path weight always needs a
+// human: touching one rules out auto-approval however small the change.
+func (p *RiskPolicy) IsSensitive(weight float64) bool {
+	return weight >= p.SensitiveWeight
+}
+
+// Band places a score in a band: low up to AutoApproveThreshold, high from
+// HighThreshold, medium between.
+func (p *RiskPolicy) Band(score int) RiskBand {
+	switch {
+	case score <= p.AutoApproveThreshold:
+		return RiskBandLow
+	case score >= p.HighThreshold:
+		return RiskBandHigh
+	default:
+		return RiskBandMedium
+	}
 }
 
 // RiskPolicy validates a JSON risk policy against #RiskPolicy. Fields left

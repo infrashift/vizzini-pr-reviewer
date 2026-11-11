@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/infrashift/vizzini-pr-reviewer/pkg/reviewer"
+	"github.com/infrashift/vizzini-pr-reviewer/pkg/risk"
 )
 
 const (
@@ -43,6 +44,7 @@ validated against Vizzini's CUE schema before it is printed.
 Examples:
   git diff main...HEAD | pr-review --mode review
   pr-review --patch-file change.patch --mode describe --format json
+  git diff main...HEAD | pr-review --mode risk   # no model, no proxy
 
 Exit codes:
   0  success
@@ -112,10 +114,6 @@ func joinSeverities(s []reviewer.Severity) string {
 // execute runs the mode and writes its output. In review mode it returns the
 // findings that fail the policy gate, and the gate itself.
 func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writer, getenv func(string) string) ([]reviewer.Finding, *reviewer.PolicyGate, error) {
-	apiKey := getenv("VIZZINI_API_KEY")
-	if apiKey == "" {
-		apiKey = getenv("LITELLM_API_KEY")
-	}
 	var riskPolicy []byte
 	if opts.riskPolicy != "" {
 		data, rerr := os.ReadFile(opts.riskPolicy) //nolint:gosec // G703: reading the user-named policy file is the point
@@ -123,6 +121,13 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 			return nil, nil, fmt.Errorf("--risk-policy: %w", rerr)
 		}
 		riskPolicy = data
+	}
+	if opts.mode == "risk" {
+		return nil, nil, assess(opts, riskPolicy, stdin, stdout)
+	}
+	apiKey := getenv("VIZZINI_API_KEY")
+	if apiKey == "" {
+		apiKey = getenv("LITELLM_API_KEY")
 	}
 	engine, err := reviewer.New(reviewer.Config{
 		RiskPolicy:     riskPolicy,
@@ -180,6 +185,36 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		return blocking, gate, nil
 	}
 	return nil, nil, nil
+}
+
+// assess runs risk mode: the deterministic score alone, with no engine, so it
+// needs neither a proxy nor a tokenizer.
+func assess(opts *options, policyData []byte, stdin io.Reader, stdout io.Writer) error {
+	policy, err := risk.LoadPolicy(policyData)
+	if err != nil {
+		return fmt.Errorf("--risk-policy: %w", err)
+	}
+	patch, closePatch, err := openPatch(opts.patchFile, stdin)
+	if err != nil {
+		return err
+	}
+	defer closePatch()
+	a, err := risk.AssessPatch(patch, policy, nil)
+	if err != nil {
+		return err
+	}
+	var out []byte
+	if opts.format == "json" {
+		if out, err = reviewer.MarshalReport(&a); err != nil {
+			return err
+		}
+	} else {
+		out = []byte(reviewer.FormatRiskAssessment(&a))
+	}
+	if _, err := stdout.Write(out); err != nil {
+		return fmt.Errorf("write output: %w", err)
+	}
+	return nil
 }
 
 // dispatch runs the selected mode and returns its JSON value and Markdown.
@@ -280,7 +315,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		fs.PrintDefaults()
 	}
 	fs.StringVar(&o.patchFile, "patch-file", "-", "unified diff to review; - reads stdin")
-	fs.StringVar(&o.mode, "mode", "review", "describe | review | improve | command | plan")
+	fs.StringVar(&o.mode, "mode", "review", "describe | review | improve | command | plan | risk (deterministic score, no model)")
 	fs.StringVar(&o.issue, "issue", "", `plan mode: JSON issue file, {"title": ..., "body": ..., "labels": [...]}`)
 	fs.StringVar(&o.tree, "tree", "", "plan mode: file listing repository paths, one per line (e.g. git ls-files > tree.txt)")
 	fs.StringVar(&o.okfIndex, "okf-index", "", "plan mode: the knowledge base's root index.md (e.g. .okfw/index.md)")
@@ -319,9 +354,9 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		return nil, fmt.Errorf("unexpected arguments: %v", fs.Args())
 	}
 	switch o.mode {
-	case "describe", "review", "improve", "command", "plan":
+	case "describe", "review", "improve", "command", "plan", "risk":
 	default:
-		return nil, fmt.Errorf("--mode must be describe, review, improve, command or plan, got %q", o.mode)
+		return nil, fmt.Errorf("--mode must be describe, review, improve, command, plan or risk, got %q", o.mode)
 	}
 	if (o.mode == "plan") != (o.issue != "") {
 		return nil, errors.New("--issue and --mode plan go together")
@@ -351,6 +386,12 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	case "json", "markdown":
 	default:
 		return nil, fmt.Errorf("--format must be json or markdown, got %q", o.format)
+	}
+	if o.mode == "risk" {
+		if o.skipOversized {
+			return nil, errors.New("--skip-oversized does not apply to --mode risk")
+		}
+		return o, nil // no model: the proxy, model and timeout are unused
 	}
 	if o.litellmURL == "" {
 		return nil, errors.New("--litellm-url (or VIZZINI_LITELLM_URL) is required")

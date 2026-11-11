@@ -194,7 +194,7 @@ func (e *Engine) autoApprove(out *ReviewOutput) bool {
 		return false
 	}
 	for i := range out.RiskFiles {
-		if out.RiskFiles[i].Weight >= e.risk.SensitiveWeight {
+		if e.risk.IsSensitive(out.RiskFiles[i].Weight) {
 			return false
 		}
 	}

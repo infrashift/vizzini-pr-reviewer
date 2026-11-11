@@ -95,7 +95,15 @@ package review
 	// auto-approval however small the change: a one-line auth fix still
 	// needs a human.
 	sensitive_weight: number & >0 | *2.5
+	// Bands for display (ISSUE-015): a score at or below
+	// auto_approve_threshold is low, one at or above high_threshold is high,
+	// anything between is medium. It must stay above auto_approve_threshold,
+	// so raising that threshold past 59 means setting this one too.
+	high_threshold: (int | *60) & >=0 & <=100 & >auto_approve_threshold
 }
+
+// The band a risk score falls in under a #RiskPolicy.
+#RiskBand: "low" | "medium" | "high"
 
 // Slash commands (Milestone 4.6). /explain answers with #Explanation;
 // /refactor and /docstrings answer with #ImproveOutput.
@@ -140,7 +148,7 @@ package review
 // closed, so policies can rely on its shape; the other kinds carry the
 // envelope over their own definitions above.
 #APIVersion: "vizzini.infrashift.io/v1"
-#ReportKind: "Review" | "PRDescription" | "Suggestions" | "CommandResult" | "ImplementationPlan"
+#ReportKind: "Review" | "PRDescription" | "Suggestions" | "CommandResult" | "ImplementationPlan" | "RiskAssessment"
 
 #Report: {
 	apiVersion: #APIVersion
@@ -154,6 +162,16 @@ package review
 	changed:          int & >=0
 	complexity_delta: int
 	points:           number & >=0
+}
+
+// What pr-review --mode risk prints: the deterministic score alone, computed
+// without a model (ISSUE-015). Closed like #ReviewReport.
+#RiskAssessmentReport: {
+	apiVersion: #APIVersion
+	kind:       "RiskAssessment"
+	score:      int & >=0 & <=100
+	band:       #RiskBand
+	files: [...#FileRisk]
 }
 
 #ReviewReport: {

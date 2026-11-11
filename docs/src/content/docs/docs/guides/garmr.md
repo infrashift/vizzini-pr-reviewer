@@ -30,7 +30,8 @@ Every `--format json` output is a report that starts with an envelope:
 `#ReviewReport` in `schema/review.cue` defines every field and is closed.
 Vizzini validates each report against it before printing, so a policy can rely
 on the paths it reads. Other modes emit `kind` `PRDescription`, `Suggestions`,
-`CommandResult` or `ImplementationPlan`.
+`CommandResult`, `ImplementationPlan` or, for `--mode risk`,
+`RiskAssessment` (closed, `#RiskAssessmentReport`).
 
 ## The policy pack
 
