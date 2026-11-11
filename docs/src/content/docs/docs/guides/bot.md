@@ -210,18 +210,59 @@ nothing is resolved, and every run is a full review.
 
 Interactively, mrman grants submit only to a person at a terminal
 (`mrman pr URL --auto`), so an agent cannot authorize itself. The unattended
-counterpart is a policy file that a person reviewed and committed. Copy
-mrman's pack (`policies/garmr/mrman`) into your repository and set its
-values:
+counterpart is a policy file that a person reviewed and committed. Start
+from `deploy/ci/grant-policy/agent-submit.cue` (mrman's pack), commit it as
+`.vizzini/grant-policy/agent-submit.cue`, and set its values:
 
 ```cue
 _allowedEvents:     ["comment", "resolve", "reply"]  // never approve / request-changes unattended by default
-_allowedIdentities: ["vizzini-bot"]         // the bot account's login (Azure DevOps: its display name)
-_maxComments:       50                      // a runaway review fails instead of flooding the PR
+_allowedIdentities: ["github-actions[bot]"]          // the identity your CI posts as
+_maxComments:       50                                // a runaway review fails instead of flooding the PR
 ```
 
-Changes to that file go through code review like any other change.
+**The policy comes from the base branch.** A relative `--grant-policy` is
+read from the base revision, not from the pull request's checkout, so a pull
+request cannot loosen the policy it is judged by (say, to let itself
+approve). A policy change takes effect once it is reviewed and merged. An
+absolute path is the CI operator's own, for example baked into an image, and
+is used as it is.
+
 Allowing `approve` is a deliberate, recorded decision.
+
+## Running in CI
+
+`deploy/ci/` holds ready-made templates:
+
+| Platform | Template | Posts as |
+|---|---|---|
+| GitHub Actions | `deploy/ci/github/vizzini-bot.yml` | `github-actions[bot]` |
+| Azure Pipelines | `deploy/ci/azure-pipelines/vizzini-bot.yml` (build validation) | `<Project> Build Service (<org>)` |
+| GitLab CI | `deploy/ci/gitlab/vizzini-bot.gitlab-ci.yml` | a project access token's bot user |
+
+Each template:
+- **Checks out** the pull request with full history.
+- **Installs pinned tools** with `deploy/ci/install.sh`, verifying each:
+  - `vizzini-bot`, built from a pinned Vizzini commit;
+  - garmr at a pinned commit;
+  - the mrman release, checked against its `SHA256SUMS`;
+  - the tokenizer encodings, checked against pinned SHA-256 sums.
+- **Runs the bot.**
+
+Resolving threads and answering `/vizzini` commands need mrman driver
+support that only Azure DevOps has so far. On GitHub and GitLab the bot
+reviews, posts and deduplicates, and reports the rest as unsupported.
+
+**The first run is denied, by design.** The starter policy lists no
+identities. The first pull request's job therefore fails with exit 3, and
+its log shows the identity your CI posts as:
+
+```text
+mrman: authorization: {"decision":"deny", ... "identity":"github-actions[bot]", ...}
+```
+
+Add that identity to the policy on your default branch in a reviewed change.
+From then on, the bot posts. `deploy/ci/README.md` has the per-platform
+setup, options and security notes.
 
 ## Try it without a forge
 
@@ -255,4 +296,12 @@ Finally, a person dismisses one of the bot's threads. The bot must suggest a
 rule; merged into the base branch as suggested, that rule must suppress the
 finding on the next full review.
 
-Design: ADR-0016 to ADR-0020 (ISSUE-024).
+The GitHub Actions template runs for real in the same harness
+(`make uat-ci-github`): a throwaway pull request in a private repository,
+with stubllm in the job as the model.
+- The first run is denied and names the identity.
+- With the identity allowed on the base branch, the re-run posts its review
+  comments.
+- A second push is reviewed incrementally, with no duplicates.
+
+Design: ADR-0016 to ADR-0021 (ISSUE-024).

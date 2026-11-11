@@ -44,7 +44,7 @@ All five slices shipped in a single day. Each was verified live on an Azure DevO
 - **Slice 5:** suppression rules from the base branch, and suggested rules on dismissal ([ADR-0020](/decisions/adr-0020-suppression-rules-are-reviewed-repository-files-read-from-the-base-branch-and-applied-deterministically--01a1cca0ea51.md)).
 
 **Still out of scope:**
-- **Triggers:** the CI step is the entry point. A webhook receiver and published CI templates (GitHub Actions, Azure Pipelines) were not built.
+- **Triggers:** the CI step is the entry point, and a webhook receiver was not built. Published CI templates followed the same day: GitHub Actions, Azure Pipelines and GitLab CI in `deploy/ci/`, with the GitHub template verified live ([ADR-0021](/decisions/adr-0021-ci-templates-install-pinned-verified-tools-the-grant-policy-is-read-from-the-base-branch--01a1ccc9f271.md)).
 - **Other forges:** thread resolution and replies are implemented for Azure DevOps only. Other forges report them as unsupported until their drivers gain them.
 - **Silent runs:** a run that posts nothing leaves no reviewed-head marker (ADR-0018).
 

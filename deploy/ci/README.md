@@ -44,6 +44,11 @@ On GitHub and GitLab, the bot reports resolving and replying as unsupported and 
 - **Linter reports:** add `--lint-json FILE` (SARIF or golangci-lint JSON) so the bot explains your linters' diagnostics on changed lines.
 - **Command limits:** `--command-authors` limits who may run `/vizzini` commands, and `--max-commands` caps how many are answered per run.
 
+## Verification
+
+- **GitHub Actions template:** runs live in vizzini-uat (`make uat-ci-github`). It plays out the setup above on a throwaway pull request: the denied first run, the identity allowed, comments posted, then an incremental second push with no duplicates. stubllm in the job stands in for the model.
+- **Azure Pipelines and GitLab CI templates:** not yet run on their platforms. Their scripts pass shellcheck and their YAML parses (`make ci-check`). They share `install.sh`, which is verified on GitHub's runner and in `golang:1.25.4`.
+
 ## Security notes
 
 - **Forks:** the GitHub workflow runs only for pull requests from branches of the repository itself. Pull requests from forks get no secrets on `pull_request`. Never switch the workflow to `pull_request_target`, which would run with secrets on the fork's code.
