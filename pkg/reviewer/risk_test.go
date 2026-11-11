@@ -56,8 +56,40 @@ func TestMarshalReport_ReviewParsesAsRiskReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	if r.RiskScore != out.RiskScore || r.BaseRiskScore != out.BaseRiskScore || r.ModelRiskScore != out.ModelRiskScore ||
-		r.AutoApprove != out.AutoApprove || !reflect.DeepEqual(r.RiskFiles, out.RiskFiles) {
+		r.AutoApprove != out.AutoApprove || !reflect.DeepEqual(r.RiskFiles, out.RiskFiles) || r.Summary != out.Summary {
 		t.Errorf("round trip lost fields:\nreport %+v\nreview %+v", r, out)
+	}
+	if len(out.Findings) == 0 {
+		t.Fatal("the fixture review should have findings")
+	}
+	if len(r.Findings) != len(out.Findings) {
+		t.Fatalf("%d findings read back, want %d", len(r.Findings), len(out.Findings))
+	}
+	for i, f := range out.Findings {
+		want := risk.Finding{
+			File: f.File, StartLine: f.StartLine, EndLine: f.EndLine, Severity: string(f.Severity), Category: string(f.Category),
+			Title: f.Title, Body: f.Body, Suggestion: f.Suggestion, Citations: f.Citations,
+		}
+		if !reflect.DeepEqual(r.Findings[i], want) {
+			t.Errorf("finding %d:\nrisk     %+v\nreviewer %+v", i, r.Findings[i], f)
+		}
+	}
+}
+
+// ISSUE-017: risk.Finding is a CUE-free copy of reviewer.Finding for
+// embedders. The two must keep the same fields, types and JSON names, or a
+// field added to one silently drops out of the other.
+func TestRiskFindingMirrorsFinding(t *testing.T) {
+	shape := func(typ reflect.Type) []string {
+		out := make([]string, 0, typ.NumField())
+		for i := range typ.NumField() {
+			f := typ.Field(i)
+			out = append(out, f.Name+" "+f.Type.Kind().String()+" "+f.Tag.Get("json"))
+		}
+		return out
+	}
+	if a, b := shape(reflect.TypeFor[Finding]()), shape(reflect.TypeFor[risk.Finding]()); !reflect.DeepEqual(a, b) {
+		t.Errorf("shapes differ:\nreviewer.Finding %q\nrisk.Finding     %q", a, b)
 	}
 }
 

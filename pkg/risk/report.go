@@ -31,6 +31,31 @@ type Report struct {
 	// AutoApprove is the review's verdict. Treat it as a suggestion: it
 	// never replaces a human's decision to approve.
 	AutoApprove bool `json:"auto_approve"`
+	// Summary is the model's summary of the change.
+	Summary string `json:"summary"`
+	// Findings are the review's findings in report order, never nil. Their
+	// text is model output: render it as untrusted.
+	Findings []Finding `json:"findings"`
+	// KnowledgeDocs lists the knowledge-base document IDs the model was
+	// given; findings cite from these.
+	KnowledgeDocs []string `json:"knowledge_docs,omitempty"`
+}
+
+// Finding is one review finding, in the JSON shape pkg/reviewer.Finding
+// writes. Severity and Category stay strings so this package needs neither
+// the CUE schema nor a model; pkg/reviewer's tests keep the shapes in step.
+type Finding struct {
+	File      string `json:"file"`
+	StartLine int    `json:"start_line"`
+	EndLine   int    `json:"end_line"`
+	// Severity is Critical, Major, Minor or Trivial.
+	Severity string `json:"severity"`
+	// Category is Security, Performance, Logic, Maintainability or Architecture.
+	Category   string   `json:"category"`
+	Title      string   `json:"title"`
+	Body       string   `json:"body"`
+	Suggestion string   `json:"suggestion,omitempty"`
+	Citations  []string `json:"citations,omitempty"`
 }
 
 // reviewFields is a review as it arrives, with pointers to tell absent
@@ -43,7 +68,9 @@ type reviewFields struct {
 	ModelRiskScore *int            `json:"model_risk_score"`
 	RiskFiles      []FileRisk      `json:"risk_files"`
 	AutoApprove    *bool           `json:"auto_approve"`
+	Summary        string          `json:"summary"`
 	Findings       json.RawMessage `json:"findings"`
+	KnowledgeDocs  []string        `json:"knowledge_docs"`
 }
 
 // ParseReport reads the risk fields of a review. It accepts both shapes a
@@ -87,6 +114,19 @@ func ParseReport(data []byte) (*Report, error) {
 		ModelRiskScore: *f.ModelRiskScore,
 		RiskFiles:      f.RiskFiles,
 		AutoApprove:    *f.AutoApprove,
+		Summary:        f.Summary,
+		KnowledgeDocs:  f.KnowledgeDocs,
+	}
+	if err := json.Unmarshal(f.Findings, &r.Findings); err != nil {
+		return nil, fmt.Errorf("%w: findings: %w", ErrNotReviewReport, err)
+	}
+	if r.Findings == nil {
+		r.Findings = []Finding{}
+	}
+	for i := range r.Findings {
+		if err := r.Findings[i].check(); err != nil {
+			return nil, fmt.Errorf("%w: findings[%d]: %w", ErrNotReviewReport, i, err)
+		}
 	}
 	for name, v := range map[string]int{"risk_score": r.RiskScore, "base_risk_score": r.BaseRiskScore, "model_risk_score": r.ModelRiskScore} {
 		if v < 0 || v > 100 {
@@ -102,6 +142,25 @@ func ParseReport(data []byte) (*Report, error) {
 		}
 	}
 	return r, nil
+}
+
+// check enforces what an embedder relies on to anchor and show a finding.
+// Vizzini validated the full schema before writing the report; this guards
+// against hand-edited or truncated files.
+func (f *Finding) check() error {
+	switch {
+	case f.File == "":
+		return errors.New("no file")
+	case f.StartLine < 1:
+		return fmt.Errorf("start_line %d < 1", f.StartLine)
+	case f.EndLine < f.StartLine:
+		return fmt.Errorf("end_line %d before start_line %d", f.EndLine, f.StartLine)
+	case f.Severity == "":
+		return errors.New("no severity")
+	case f.Title == "":
+		return errors.New("no title")
+	}
+	return nil
 }
 
 // Divergence is how far the model's score sits above the deterministic one:
