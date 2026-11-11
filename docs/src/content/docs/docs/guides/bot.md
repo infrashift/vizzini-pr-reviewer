@@ -62,7 +62,8 @@ stdout is one JSON object for the run:
 ```json
 {"run_id":"…","head":"…","mode":"incremental","since":"…","reviewed_files":["src/a.cs"],
  "findings":2,"posted":1,"already_posted":["v1:…"],"resolved":["197"],"kept_open":[],
- "carried":["195"],"answered":["4021"],"command_failures":[],"submit":{…},"resolve":{…}}
+ "carried":["195"],"suppressed":["legacy-frozen src/Legacy/ReportFormatter.cs:7"],"suggested":[],
+ "answered":["4021"],"command_failures":[],"submit":{…},"resolve":{…}}
 ```
 
 `mode` is `full`, `incremental` or `unchanged` (no review was needed).
@@ -71,7 +72,7 @@ stdout is one JSON object for the run:
 |---|---|
 | 0 | done: posted, resolved, or there was nothing to do |
 | 1 | an error (git, review, mrman) |
-| 3 | the grant policy denied posting or resolving |
+| 3 | the grant policy denied posting, resolving or replying |
 
 mrman calls that fail with a network error are retried, up to three
 attempts. A submit that failed that way keeps its unposted comments for the
@@ -132,6 +133,52 @@ How the bot handles a command:
   run. `--command-authors alice,bob` limits who may run them; by default,
   anyone who can comment on the PR can. Command requests are attributed
   like the review, so their cost is in the same spend logs.
+
+## Suppressing findings
+
+When a team decides it does not want to hear about a kind of finding again,
+it records that in `.vizzini/suppressions.yaml`:
+
+```yaml
+suppressions:
+  - id: legacy-frozen
+    reason: The legacy formatter is frozen until its rewrite (ADO #1234).
+    paths: ["src/Legacy/**"]
+    categories: [Maintainability]
+  - id: admin-tool-sql
+    reason: Only the internal admin tool calls this; reviewed in ADR-0007.
+    paths: ["src/Admin/**"]
+    title: sql injection
+    expires: "2027-06-30"
+```
+
+**Writing a rule.** A rule needs an `id` and a `reason`, plus at least one
+of:
+- `fingerprint`: one exact finding;
+- `paths`: globs;
+- `title`: a case-insensitive substring.
+
+`categories` and `expires` narrow a rule further. The file is validated
+against `#Suppressions`, and an invalid file fails the run instead of being
+ignored.
+
+**What a rule does.** A matching finding is reported under `suppressed`
+with the rule's id. It is not posted, and it does not fail the policy gate.
+It **still counts against auto-approval**: a rule decides what the bot says,
+never that a human may be skipped.
+
+**Where rules are read from.** The bot reads the file from the **base
+branch** (`git show <base>:.vizzini/suppressions.yaml`), so a rule takes
+effect once it is merged. A rule added in a pull request does nothing for
+that pull request, so an author cannot silence findings on their own change.
+
+**From a dismissal to a rule.** When someone resolves one of the bot's
+threads as *won't fix* or *by design*, the bot replies once with a rule
+ready to commit. It covers that file and category, with the finding's
+title offered as a narrower, commented-out option. Committing it is a
+person's decision.
+
+`pr-review --suppressions FILE` applies the same rules outside the bot.
 
 ## Thread memory
 
@@ -204,5 +251,8 @@ It then writes a `/vizzini explain …` and a malformed command in one of the
 bot's threads. The explain must get a real answer, the malformed one usage,
 and a further run must answer neither again.
 
-Design: ADR-0016 to ADR-0019. Next (ISSUE-024): suppression rules from
-dismissed findings.
+Finally, a person dismisses one of the bot's threads. The bot must suggest a
+rule; merged into the base branch as suggested, that rule must suppress the
+finding on the next full review.
+
+Design: ADR-0016 to ADR-0020 (ISSUE-024).

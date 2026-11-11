@@ -54,10 +54,14 @@ embeddable `pkg/risk`), dependency-ordered walkthroughs, and design-decision cit
 from an OKF knowledge base (`--knowledge`), `/explain` `/refactor`
 `/docstrings` slash commands, issue-to-plan handoff for coding agents
 (`--mode plan`), and JSON reports ready for the
-[garmr](https://github.com/infrashift/garmr) policy agent (`policies/garmr`). Every milestone on the
+[garmr](https://github.com/infrashift/garmr) policy agent (`policies/garmr`). There is
+also `vizzini-bot`, which reviews every pull request from CI with no person
+involved. It posts through mrman only when a committed policy allows it, remembers
+what it said, re-reviews only what changed, answers `/vizzini` commands in PR
+threads, and honors your suppression rules. Every milestone on the
 [roadmap](https://infrashift.github.io/vizzini-pr-reviewer/docs/project/roadmap/)
-is implemented. What's left before a tag is a run against a real model and a
-release pipeline. Expect sharp edges.
+is implemented and has been run against live Claude models on Azure DevOps.
+What's left before a tag is a release pipeline. Expect sharp edges.
 
 ## Try it from source
 

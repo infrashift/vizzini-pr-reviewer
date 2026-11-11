@@ -75,3 +75,24 @@ The same package defines the describe and improve outputs (`#PRDescription`,
 `high`); see [Risk & Auto-Approve](../../guides/risk/). `#RiskAssessmentReport`
 is the closed report `pr-review --mode risk` prints. Implementation plans will be added here
 as their milestones land. See the [roadmap](../../project/roadmap/).
+
+`#Suppressions` validates a repository's suppression rules (see
+[Unattended PR Review](../../guides/bot/#suppressing-findings)):
+
+```cue
+#Suppression: {
+	id:           string & =~"^[A-Za-z0-9][A-Za-z0-9._-]*$"
+	reason:       string & !=""
+	fingerprint?: string & =~"^v1:[0-9a-f]{16}$"
+	paths?:       [string & !="", ...string & !=""]
+	categories?:  [#Category, ...#Category]
+	title?:       string & !=""
+	expires?:     string & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+}
+```
+
+Every rule must name at least one of `fingerprint`, `paths` or `title`, so
+no rule silences everything. Findings a rule matched appear in the review
+report's `suppressed` list (`#SuppressedFinding`: rule, reason, finding).
+That list is part of the closed `#ReviewReport`, never of the model's
+`#ReviewOutput`, so a model cannot put anything there.

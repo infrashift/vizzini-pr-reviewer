@@ -8,7 +8,7 @@ tags:
   - "automation"
   - "forge"
   - "mrman"
-  - "open"
+  - "closed"
 created: "2026-11-11T11:24:31-06:00"
 timestamp: "2026-11-11T11:24:31-06:00"
 description: "Review PRs automatically on open and push (CI action or webhook), re-review only new changes, track Vizzini's own threads (skip duplicates, resolve fixed ones), and learn from dismissed findings — keeping mrman's human grant for anything beyond comments."
@@ -16,7 +16,7 @@ description: "Review PRs automatically on open and push (CI action or webhook), 
 
 # ISSUE-024: Automation mode: review every PR, incrementally, with thread memory
 
-**Status:** open · **Raised:** 2026-11-11 · **Touches:** [ISSUE-009](/issues/issue-009-interactive-pr-slash-commands--01a1c9b61586.md) (slash commands), mrman's agent-submit grant
+**Status:** closed (2026-11-11) · **Raised:** 2026-11-11 · **Touches:** [ISSUE-009](/issues/issue-009-interactive-pr-slash-commands--01a1c9b61586.md) (slash commands), mrman's agent-submit grant
 
 ## Problem
 Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated, slash commands work only from the CLI (not in PR threads), and nothing remembers what was already said. Open-source alternatives install as a bot.
@@ -33,7 +33,20 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
 - [x] Design ADR: where state lives (forge thread markers vs a store), forge abstraction (reuse mrman's drivers?), and the posting policy
 - [x] CI entry point posts a review on a test PR (ADO first, since vizzini-uat already has it): slice 1, 2026-11-11
 - [x] Incremental re-review on push, with no duplicate threads, verified in vizzini-uat: slices 2-3, 2026-11-11
-- [ ] Thread resolution when fixed, and suppression from dismissal
+- [x] Thread resolution when fixed, and suppression from dismissal: slices 2 and 5, 2026-11-11
+
+## Resolution (2026-11-11)
+All five slices shipped in a single day. Each was verified live on an Azure DevOps PR by vizzini-uat's `make uat-bot`, which now runs nine legs on one PR (47/47 with Claude Sonnet 5.5).
+- **Slice 1:** policy-authorized posting. mrman v0.1.2: `review submit --grant-policy` ([ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)).
+- **Slice 2:** thread memory and resolution. mrman v0.1.3: `review threads` / `review resolve` ([ADR-0017](/decisions/adr-0017-thread-memory-matches-by-fingerprint-or-mapped-anchor-and-resolves-only-when-the-code-changed--01a1cc2bd91a.md)).
+- **Slice 3:** incremental review ([ADR-0018](/decisions/adr-0018-incremental-review-by-file-since-the-last-reviewed-head-learned-from-thread-markers--01a1cc54bd32.md)).
+- **Slice 4:** in-thread `/vizzini` commands. mrman v0.1.4: `review reply` ([ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md)).
+- **Slice 5:** suppression rules from the base branch, and suggested rules on dismissal ([ADR-0020](/decisions/adr-0020-suppression-rules-are-reviewed-repository-files-read-from-the-base-branch-and-applied-deterministically--01a1cca0ea51.md)).
+
+**Still out of scope:**
+- **Triggers:** the CI step is the entry point. A webhook receiver and published CI templates (GitHub Actions, Azure Pipelines) were not built.
+- **Other forges:** thread resolution and replies are implemented for Azure DevOps only. Other forges report them as unsupported until their drivers gain them.
+- **Silent runs:** a run that posts nothing leaves no reviewed-head marker (ADR-0018).
 
 ## Design decided (2026-11-11): [ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)
 - **Composition** (user's choice): `vizzini-bot` (Vizzini) reviews; mrman's CLI does all forge work.
@@ -55,6 +68,18 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
   - The committed default denied the PAT's identity (MRM-002), exit 3, nothing posted.
   - The pack listing the forge-verified identity allowed it: 9/9 findings posted as marked threads.
   - Cost $0.217 for two live runs, attributed per PR.
+
+**Slice 5, suppression (done 2026-11-11):** [ADR-0020](/decisions/adr-0020-suppression-rules-are-reviewed-repository-files-read-from-the-base-branch-and-applied-deterministically--01a1cca0ea51.md)
+- **Vizzini library** (753e529):
+  - `#Suppressions` in the schema (YAML or JSON).
+  - `ReviewOptions.Suppressions` moves matching findings into `ReviewOutput.Suppressed`. They are not gated, but still count against auto-approval.
+  - `pr-review --suppressions`.
+  - `reviewer.Fingerprint` moves into the library.
+- **vizzini-bot** (d004c27):
+  - Rules are read from the base revision.
+  - A suppressed finding is not posted, and its thread is left alone.
+  - A won't-fix or by-design dismissal gets one suggested rule.
+- **vizzini-uat** (PR #30, 47/47): a dismissed thread got a suggested rule. Merged into the base branch as suggested, the rule suppressed the finding on the next full review.
 
 **Slice 4, in-thread commands (done 2026-11-11):** [ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md)
 - **mrman** `feature/thread-reply` (f13ff54):
