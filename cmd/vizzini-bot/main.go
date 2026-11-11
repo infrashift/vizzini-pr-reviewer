@@ -60,6 +60,7 @@ type options struct {
 	base, head  string
 	repo        string
 	knowledge   string
+	lintJSON    []string
 	litellmURL  string
 	model       string
 	grantPolicy string
@@ -80,6 +81,10 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.StringVar(&o.head, "head", cmp.Or(getenv("VIZZINI_HEAD"), "HEAD"), "the PR's head commit")
 	fs.StringVar(&o.repo, "repo", ".", "the CI checkout: the diff's source and the review's repository context")
 	fs.StringVar(&o.knowledge, "knowledge", "", "an OKF wiki directory to ground the review in (optional)")
+	fs.Func("lint-json", "a linter report (golangci-lint JSON or SARIF) produced from the checkout, explained on changed lines (repeatable)", func(s string) error {
+		o.lintJSON = append(o.lintJSON, s)
+		return nil
+	})
 	fs.StringVar(&o.litellmURL, "litellm-url", getenv("VIZZINI_LITELLM_URL"), "OpenAI-compatible API root of the LiteLLM proxy")
 	fs.StringVar(&o.model, "model", getenv("VIZZINI_MODEL"), "model name as configured in LiteLLM")
 	fs.StringVar(&o.grantPolicy, "grant-policy", getenv("VIZZINI_GRANT_POLICY"), "the committed garmr policy directory that authorizes posting (required unless --dry-run)")
@@ -194,6 +199,21 @@ func reviewDiff(ctx context.Context, opts *options, diff []byte, getenv func(str
 	ropts := reviewer.ReviewOptions{Repo: os.DirFS(opts.repo)}
 	if opts.knowledge != "" {
 		ropts.Knowledge = os.DirFS(opts.knowledge)
+	}
+	for _, name := range opts.lintJSON {
+		data, rerr := os.ReadFile(name) //nolint:gosec // G304: reading the user-named lint report is the point
+		if rerr != nil {
+			return nil, fmt.Errorf("--lint-json: %w", rerr)
+		}
+		ropts.LintReports = append(ropts.LintReports, bytes.NewReader(data))
+	}
+	if len(ropts.LintReports) > 0 {
+		// Reports come from the checkout's root; SARIF file:// URIs resolve against it.
+		root, aerr := filepath.Abs(opts.repo)
+		if aerr != nil {
+			return nil, aerr
+		}
+		ropts.LintRoot = root
 	}
 	rec := &reviewer.RunRecorder{}
 	ctx = reviewer.WithRunRecorder(reviewer.WithAttribution(ctx, opts.attr), rec)

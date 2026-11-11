@@ -177,6 +177,30 @@ func TestBot_DryRunTouchesNoForge(t *testing.T) {
 	}
 }
 
+// A lint report reaches the review prompt.
+func TestBot_LintJSON(t *testing.T) {
+	repo := gitRepo(t)
+	srv := llmtest.NewServer(t, func(_ int, _ *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"summary":"s","risk_score":10,"findings":[]}`}
+	})
+	lint := filepath.Join(t.TempDir(), "lint.json")
+	report := `{"Issues":[{"FromLinter":"gosec","Text":"G202: SQL string concatenation","Pos":{"Filename":"store.go","Line":3,"Column":1}}]}`
+	if err := os.WriteFile(lint, []byte(report), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	if code, _, stderr := runBot(t, env, "--repo", repo, "--base", "main", "--dry-run", "--lint-json", lint); code != exitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if reqs := srv.Requests(); len(reqs) != 1 || !strings.Contains(llmtest.UserPrompt(&reqs[0]), "G202") {
+		t.Error("the lint diagnostic did not reach the prompt")
+	}
+	if code, _, stderr := runBot(t, env, "--repo", repo, "--base", "main", "--dry-run", "--lint-json", "/nonexistent"); code != exitError ||
+		!strings.Contains(stderr, "--lint-json") {
+		t.Errorf("a missing report: exit %d: %s", code, stderr)
+	}
+}
+
 func TestParseFlags_PostingNeedsAPolicy(t *testing.T) {
 	for _, tc := range []struct {
 		args []string
