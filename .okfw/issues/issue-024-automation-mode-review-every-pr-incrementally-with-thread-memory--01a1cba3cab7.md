@@ -30,7 +30,16 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
 - **Governance:** the bot posts only comment or draft events by default. Approve and request-changes need an explicit, auditable policy (garmr), mirroring mrman's human grant.
 
 ## Acceptance criteria
-- [ ] Design ADR: where state lives (forge thread markers vs a store), forge abstraction (reuse mrman's drivers?), and the posting policy
+- [x] Design ADR: where state lives (forge thread markers vs a store), forge abstraction (reuse mrman's drivers?), and the posting policy
 - [ ] CI entry point posts a review on a test PR (ADO first, since vizzini-uat already has it)
 - [ ] Incremental re-review on push, with no duplicate threads, verified in vizzini-uat
 - [ ] Thread resolution when fixed, and suppression from dismissal
+
+## Design decided (2026-11-11): [ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)
+- **Composition** (user's choice): `vizzini-bot` (Vizzini) reviews; mrman's CLI does all forge work.
+- **Authorization** (user's choice): mrman `review submit --grant-policy DIR` posts without a human only when a committed garmr policy allows the forge-verified identity's event. The default is comments only, and every decision is audited.
+
+**Slice 1 (in progress):**
+- mrman: `--grant-policy` plus the `AgentSubmit` policy pack and tests.
+- Vizzini: `cmd/vizzini-bot`.
+- vizzini-uat: the bot posts on an ADO PR with no human step, and a policy deny posts nothing.
