@@ -32,7 +32,7 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
 ## Acceptance criteria
 - [x] Design ADR: where state lives (forge thread markers vs a store), forge abstraction (reuse mrman's drivers?), and the posting policy
 - [x] CI entry point posts a review on a test PR (ADO first, since vizzini-uat already has it): slice 1, 2026-11-11
-- [ ] Incremental re-review on push, with no duplicate threads, verified in vizzini-uat
+- [x] Incremental re-review on push, with no duplicate threads, verified in vizzini-uat: slices 2-3, 2026-11-11
 - [ ] Thread resolution when fixed, and suppression from dismissal
 
 ## Design decided (2026-11-11): [ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)
@@ -55,6 +55,19 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
   - The committed default denied the PAT's identity (MRM-002), exit 3, nothing posted.
   - The pack listing the forge-verified identity allowed it: 9/9 findings posted as marked threads.
   - Cost $0.217 for two live runs, attributed per PR.
+
+**Slice 3, incremental review (done 2026-11-11):** [ADR-0018](/decisions/adr-0018-incremental-review-by-file-since-the-last-reviewed-head-learned-from-thread-markers--01a1cc54bd32.md)
+- **Vizzini** `vizzini-bot` (1eda2f4):
+  - Threads are read before the review. The last reviewed head is the newest marker head that is an ancestor of the current head.
+  - Only the PR's files changed since then are reviewed (`base...head` limited to them).
+  - When the head has not moved, or a push only merges the base branch, no model call is made.
+  - Threads on other files are carried.
+  - `--full` forces a full review.
+  - The JSON result gains `mode`, `since`, `reviewed_files` and `carried`.
+- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #22, 27/27:
+  - The idle leg made no review.
+  - The `--full` rerun duplicated nothing.
+  - The pushed fix was reviewed incrementally: one file, $0.0081 against about $0.057 for a full review. It resolved the MD5 thread and carried the 10 threads on other files.
 
 **Slice 2, thread memory (done 2026-11-11):** [ADR-0017](/decisions/adr-0017-thread-memory-matches-by-fingerprint-or-mapped-anchor-and-resolves-only-when-the-code-changed--01a1cc2bd91a.md)
 - **mrman** `feature/thread-resolve` (3e2324e, 71c0201):

@@ -21,16 +21,20 @@ vizzini-bot \
 
 ## What happens
 
-1. **Review.** `git diff base...head` in `--repo` (default `.`) is reviewed.
-   The checkout supplies [repository context](../repository-context/), and
-   you can add a [knowledge base](../knowledge/) and
-   [linter reports](../lint/). Every request carries
-   [attribution](../cost-attribution/): agent `vizzini-bot`, the head commit
-   as the iteration, and the run ID.
-2. **Remember.** `mrman pr URL --json` opens the PR headlessly, and
+1. **Remember.** `mrman pr URL --json` opens the PR headlessly, and
    `mrman review threads` lists what the bot said in earlier runs (see
-   [thread memory](#thread-memory)). Findings an earlier thread already
-   raises are skipped.
+   [thread memory](#thread-memory)).
+2. **Review.** On the first run, `git diff base...head` in `--repo`
+   (default `.`) is reviewed. After that, only the files changed since the
+   last reviewed head are reviewed (see
+   [incremental review](#incremental-review)), and nothing at all when the
+   head has not moved.
+   - The checkout supplies [repository context](../repository-context/), and
+     you can add a [knowledge base](../knowledge/) and
+     [linter reports](../lint/).
+   - Every request carries [attribution](../cost-attribution/): agent
+     `vizzini-bot`, the head commit as the iteration, and the run ID.
+   - Findings an earlier thread already raises are skipped.
 3. **Draft.** `mrman review add` drafts one comment per new finding. Each
    comment ends with a hidden marker,
    `<!-- vizzini:fp=v1:… run=… head=… lines=…-… cat=… -->`. It records the
@@ -53,9 +57,12 @@ vizzini-bot \
 stdout is one JSON object for the run:
 
 ```json
-{"run_id":"…","head":"…","findings":9,"posted":1,"already_posted":["v1:…"],
- "resolved":["197"],"kept_open":["195"],"submit":{…},"resolve":{…}}
+{"run_id":"…","head":"…","mode":"incremental","since":"…","reviewed_files":["src/a.cs"],
+ "findings":2,"posted":1,"already_posted":["v1:…"],"resolved":["197"],"kept_open":[],
+ "carried":["195"],"submit":{…},"resolve":{…}}
 ```
+
+`mode` is `full`, `incremental` or `unchanged` (no review was needed).
 
 | exit | meaning |
 |---|---|
@@ -66,6 +73,30 @@ stdout is one JSON object for the run:
 mrman calls that fail with a network error are retried, up to three
 attempts. A submit that failed that way keeps its unposted comments for the
 next attempt.
+
+## Incremental review
+
+The bot does not re-review the whole pull request on every push.
+- **Last reviewed head:** every posted finding's marker records the head it
+  was posted at. The newest of those that is an ancestor of the current
+  head is the last reviewed head.
+- **What is reviewed:** the pull request's own diff (`base...head`),
+  limited to the files that changed since that head. Each file is reviewed
+  with its whole PR diff as context.
+- **Base merges are left out:** changes merged in from the base branch are
+  not part of `base...head`, so they are never reviewed.
+- **No review needed:** when the head has not moved, or a push only merges
+  the base branch, no model call is made (`mode: "unchanged"`).
+- **Carried threads:** open threads on files that were not reviewed are
+  carried as they are (`carried`), neither resolved nor kept open.
+- **Full review instead:** with `--full`, or with no usable earlier head
+  (the first run, a rebased or force-pushed branch, a shallow clone), the
+  whole pull request is reviewed.
+
+A run that posts nothing leaves no marker, so the next run reviews from the
+last head that did post: more than needed, never less. On the UAT's C#
+fixture, an incremental review of a one-file push cost about 1/7 of a full
+review.
 
 ## Thread memory
 
@@ -88,9 +119,10 @@ earlier anchor to the current head through `git diff`:
 - **Ownership:** mrman resolves only threads the token's own identity
   started, so a person's thread can never be closed by the bot.
 
-Resolution needs the earlier commits in the checkout: fetch full history in
-CI (`fetch-depth: 0`, or `git fetch --unshallow`). Without them, earlier
-anchors cannot be mapped, and nothing is resolved.
+Resolution and incremental review need the earlier commits in the
+checkout: fetch full history in CI (`fetch-depth: 0`, or
+`git fetch --unshallow`). Without them, earlier anchors cannot be mapped,
+nothing is resolved, and every run is a full review.
 
 ## The policy is the grant
 
@@ -128,9 +160,10 @@ against a real Azure DevOps PR, with no person involved:
 - **Allow leg:** a policy listing the identity mrman verified with the forge
   posts one marked thread per finding.
 
-It also reruns the bot on the same head, and that run must duplicate
-nothing. Then it pushes a fix: the fixed defect's thread must be resolved,
-and no thread outside the changed lines may be.
+It also runs the bot again at the same head: incrementally it must make no
+review, and with `--full` it must duplicate nothing. Then it pushes a fix,
+which must be reviewed incrementally (that file only). The fixed defect's
+thread must be resolved, and every thread on other files carried.
 
-Design: ADR-0016 and ADR-0017. Next slices (ISSUE-024): incremental review,
-in-thread `/vizzini` commands, and suppression rules from dismissed findings.
+Design: ADR-0016, ADR-0017 and ADR-0018. Next slices (ISSUE-024): in-thread
+`/vizzini` commands, and suppression rules from dismissed findings.
