@@ -36,8 +36,14 @@ type finding struct {
 	Body      string `json:"body"`
 }
 
+// Security rule ids from SARIF tools: ruff's flake8-bandit (S608), Roslyn's
+// security analyzers (CA2100, CA3xxx, CA5xxx) and gosec's own codes (G202).
+var securityRule = regexp.MustCompile(`^(S\d{3}|CA2100|CA[35]\d{3}|G\d{3})$`)
+
 // "path:line[:col] linter: text", as rendered by analysis.Diagnostic.String.
-var lintLine = regexp.MustCompile(`^(\S+?):(\d+)(?::\d+)? (\S+): (.+)$`)
+// The linter name may contain spaces ("Microsoft (R) Visual C# Compiler"),
+// so it runs to the first ": ".
+var lintLine = regexp.MustCompile(`^(\S+?):(\d+)(?::\d+)? (.+?): (.+)$`)
 
 func main() {
 	addr := flag.String("addr", "127.0.0.1:18765", "listen address")
@@ -80,10 +86,11 @@ func main() {
 				}
 				line, _ := strconv.Atoi(m[2])
 				sev, cat := "Minor", "Maintainability"
-				switch m[3] {
-				case "gosec":
+				rule, _, _ := strings.Cut(m[4], ":")
+				switch {
+				case m[3] == "gosec" || securityRule.MatchString(rule):
 					sev, cat = "Major", "Security"
-				case "errcheck":
+				case m[3] == "errcheck":
 					cat = "Logic"
 				}
 				findings = append(findings, finding{

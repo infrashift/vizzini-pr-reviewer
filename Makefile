@@ -1,4 +1,4 @@
-.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-garmr clean
+.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-lint-python e2e-lint-csharp e2e-garmr clean
 
 GOBIN    := $(shell go env GOPATH)/bin
 GOLANGCI ?= $(GOBIN)/golangci-lint
@@ -46,6 +46,16 @@ wiki:
 ## unless VIZZINI_LITELLM_URL/VIZZINI_MODEL point at a real proxy)
 e2e-lint: build tiktoken-cache
 	scripts/e2e-golint.sh
+
+## e2e-lint-python: the same proof for Python, via real ruff SARIF (uvx ruff
+## if ruff is not installed; skips without either)
+e2e-lint-python: build tiktoken-cache
+	scripts/e2e-pylint.sh
+
+## e2e-lint-csharp: the same proof for C#, via real Roslyn SARIF from
+## dotnet build in the .NET SDK container (skips without podman)
+e2e-lint-csharp: build tiktoken-cache
+	scripts/e2e-cslint.sh
 
 ## e2e-garmr: pr-review reports evaluated by a real garmr-server with
 ## policies/garmr (skips unless garmr is on PATH or GARMR_BIN_DIR is set)

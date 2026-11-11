@@ -137,3 +137,46 @@ func TestOnChangedLines_SARIF(t *testing.T) {
 		t.Errorf("got %v", got)
 	}
 }
+
+// Captured from real ruff 0.17.4 by scripts/e2e-pylint.sh (SARIF_FIXTURE_OUT),
+// with the temp repo path rewritten to file:///work/repo/.
+func TestParseSARIF_RealRuff(t *testing.T) {
+	got, err := ParseLintReport(bytes.NewReader(readFixture(t, "sarif/ruff-0.17.4.sarif")), "/work/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"app/views.py:1:8 ruff: F401: `json` imported but unused",
+		"app/views.py:2:8 ruff: F401: `os` imported but unused",
+		"app/views.py:6:12 ruff: S307: Use of possibly insecure function; consider using `ast.literal_eval`",
+		"app/views.py:10:13 ruff: S608: Possible SQL injection vector through string-based query construction",
+	}
+	if g := diagStrings(got); !reflect.DeepEqual(g, want) {
+		t.Errorf("got\n  %s\nwant\n  %s", strings.Join(g, "\n  "), strings.Join(want, "\n  "))
+	}
+}
+
+// Captured from real Roslyn (C# compiler 5.9.0, .NET SDK 10.0.404) by
+// scripts/e2e-cslint.sh (SARIF_FIXTURE_OUT), with the temp repo path
+// rewritten to /work/repo. Roslyn writes absolute file:// URIs and 331
+// rule descriptors; results reference rules by ruleIndex.
+func TestParseSARIF_RealRoslyn(t *testing.T) {
+	got, err := ParseLintReport(bytes.NewReader(readFixture(t, "sarif/roslyn-5.9.0.sarif")), "/work/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"src/Users.cs:9:13 Microsoft (R) Visual C# Compiler: CS0168: The variable 'unused' is declared but never used",
+		"src/Users.cs:14:13 Microsoft (R) Visual C# Compiler: CS0168: The variable 'retries' is declared but never used",
+		"src/Users.cs:15:9 Microsoft (R) Visual C# Compiler: CA2100: Review if the query string passed to 'string DbCommand.CommandText' in 'Find', accepts any user input",
+	}
+	if g := diagStrings(got); !reflect.DeepEqual(g, want) {
+		t.Errorf("got\n  %s\nwant\n  %s", strings.Join(g, "\n  "), strings.Join(want, "\n  "))
+	}
+
+	// Without the matching root, absolute URIs cannot be placed and are dropped.
+	none, err := ParseLintReport(bytes.NewReader(readFixture(t, "sarif/roslyn-5.9.0.sarif")), "/elsewhere")
+	if err != nil || len(none) != 0 {
+		t.Errorf("wrong root: %d diagnostics, err %v", len(none), err)
+	}
+}

@@ -132,70 +132,7 @@ set -e
 echo "   exit code $code; stderr: $(cat "$work/stderr")"
 
 echo "== 5. assertions"
-python3 -I - "$work/lint.json" "$work/change.patch" "$work/review.json" "$mode" "$code" "${work}/prompts.log" <<'EOF'
-import json, os, re, sys
-lint_path, patch_path, review_path, mode, code, prompts_path = sys.argv[1:]
-code = int(code)
-
-def ok(msg): print(f"  \033[32mPASS\033[0m {msg}")
-def die(msg):
-    print(f"  \033[31mFAIL\033[0m {msg}"); sys.exit(1)
-
-# Independently derive the added new-side lines from the raw patch.
-added, new = set(), 0
-for line in open(patch_path):
-    m = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)", line)
-    if m:
-        new = int(m.group(1)); continue
-    if line.startswith("+++") or line.startswith("---"):
-        continue
-    if line.startswith("+"):
-        added.add(new); new += 1
-    elif line.startswith(" "):
-        new += 1
-
-issues = json.JSONDecoder().raw_decode(open(lint_path).read())[0]["Issues"] or []
-on_added = [i for i in issues if i["Pos"]["Line"] in added]
-untouched = [i for i in issues if i["Pos"]["Line"] not in added]
-if not on_added: die("golangci-lint reported nothing on added lines; the fixture is broken")
-if not untouched: die("expected the pre-existing Legacy issue on an untouched line")
-ok(f"golangci-lint: {len(on_added)} issue(s) on added lines, {len(untouched)} on untouched lines")
-
-review = json.loads(open(review_path).read())
-if review.get("diagnostics") != len(on_added):
-    die(f'diagnostics={review.get("diagnostics")}, want {len(on_added)}')
-ok(f'pr-review injected exactly the {len(on_added)} changed-line diagnostic(s)')
-
-diff_files = set(re.findall(r"^\+\+\+ b/(\S+)$", open(patch_path).read(), re.M))
-for f in review["findings"]:
-    if f["file"] not in diff_files: die(f"finding outside the diff: {f}")
-    if not any(f["start_line"] <= ln <= f["end_line"] for ln in added) and mode == "stub":
-        die(f"stub finding not on an added line: {f}")
-if review["chunks"] < 1: die("nothing was reviewed")
-ok(f'{len(review["findings"])} finding(s), all schema-validated and anchored to the diff')
-
-if mode == "stub":
-    prompts = open(prompts_path).read()
-    for i in on_added:
-        needle = f'{i["Pos"]["Filename"]}:{i["Pos"]["Line"]}:'
-        if needle not in prompts: die(f"prompt lacks changed-line diagnostic {needle}")
-    for i in untouched:
-        needle = f'{i["Pos"]["Filename"]}:{i["Pos"]["Line"]}:'
-        if needle in prompts.split("<lint>")[-1].split("</lint>")[0]:
-            die(f"prompt <lint> block leaked untouched-line diagnostic {needle}")
-    ok("prompt <lint> block holds the new issues and none of the pre-existing ones")
-    if len(review["findings"]) != len(on_added): die("stub should echo one finding per diagnostic")
-    want = 2 if any(i["FromLinter"] == "gosec" for i in on_added) else 0
-    if code != want: die(f"exit code {code}, want {want} (gosec maps to Major, which the default gate blocks)")
-    ok(f"policy gate: exit {code} (Major security finding blocks by default)")
-else:
-    if code not in (0, 2): die(f"exit code {code}")
-    ok(f"real model run completed (exit {code})")
-
-if review["auto_approve"]:
-    die("auto_approve must be false: the change has security findings or a risky diff")
-ok(f'risk {review["risk_score"]} (diff {review["base_risk_score"]}, model {review["model_risk_score"]}), auto_approve false')
-EOF
+python3 -I "$root/scripts/e2e/assert_lint.py" "$work/lint.json" "$work/change.patch" "$work/review.json" "$mode" "$code" "$work/prompts.log" "$repo"
 
 echo "== 6. Markdown review (as mrman would render it)"
 sed 's/^/   | /' "$work/review.md"

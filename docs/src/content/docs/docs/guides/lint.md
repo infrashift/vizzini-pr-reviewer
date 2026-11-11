@@ -35,6 +35,20 @@ golangci-lint run --output.json.path=stdout --output.text.path=/dev/null --show-
 git diff main...HEAD | pr-review --mode review --lint-json go.json --lint-json ruff.sarif
 ```
 
+### Verified tools
+
+These were captured and proven end to end (`make e2e-lint-python`,
+`make e2e-lint-csharp`):
+
+| Language | Tool (version verified) | Produce SARIF with | Notes |
+|---|---|---|---|
+| Python | ruff 0.17.4 | `ruff check --output-format=sarif .` | Writes absolute `file://` URIs. Run `pr-review` from the same repo root. Security rules are the `S` group (`select = ["F", "S"]`) |
+| C# | Roslyn, C# compiler 5.9.0 (.NET SDK 10.0.404) | `<ErrorLog>roslyn.sarif,version=2.1</ErrorLog>` in the project, then `dotnet build` | Writes absolute `file://` URIs. Security analyzers are off by default; enable them with `<AnalysisLevelSecurity>latest-all</AnalysisLevelSecurity>`. CA2100 fires on `DbCommand.CommandText`, not through `IDbCommand` |
+
+If `dotnet build` runs in a container, mount the repository at the **same
+absolute path** (`-v "$PWD:$PWD" -w "$PWD"`), so the URIs Roslyn writes match
+where `pr-review` runs.
+
 How a SARIF result is read:
 
 | SARIF | Becomes |
@@ -46,8 +60,6 @@ How a SARIF result is read:
 | `kind: pass` / `notApplicable`, suppressions in effect, no line | skipped |
 
 Absolute locations outside the repository, such as SDK files, are ignored.
-The exact flags for ruff and Roslyn (`dotnet build -p:ErrorLog=…`) are
-verified with captured output in an upcoming end-to-end proof.
 
 ## What reaches the model
 
@@ -88,7 +100,9 @@ A malformed report fails the review before any request is made.
 ## See it work
 
 ```sh
-make e2e-lint
+make e2e-lint          # Go: golangci-lint JSON
+make e2e-lint-python   # Python: ruff SARIF (uses uvx ruff if ruff isn't installed)
+make e2e-lint-csharp   # C#: Roslyn SARIF from dotnet build in the .NET SDK container
 ```
 
 This builds a throwaway Go repo with a pre-existing lint issue, makes a change
