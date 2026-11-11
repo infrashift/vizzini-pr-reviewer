@@ -51,3 +51,11 @@ Done 2026-11-11. Decisions: [ADR-0010](/decisions/adr-0010-json-reports-carry-an
 - [ISSUE-004: Triage and severity policy gate](/issues/issue-004-triage-and-severity-policy-gate--01a1c9b61563.md)
 - [ISSUE-007: Automated risk scoring and approvals](/issues/issue-007-automated-risk-scoring-and-approvals--01a1c9b61578.md)
 - [ADR-0003: CUE as the strict LLM output boundary](/decisions/adr-0003-cue-as-the-strict-llm-output-boundary--01a1c9b61530.md)
+
+## Follow-up 2026-11-11: local evaluation
+
+garmr (branch `feature/improvements-for-vizzini`) added `garmr eval --policy-dir`/`--local` and `forEach.allowMissing`. Vizzini now uses both:
+- **`scripts/e2e-garmr.sh`** evaluates in-process with no `garmr-server`. It checks the exact set of failing rules and garmr's exit code (1 deny, 0 allow/warn). A fourth scenario covers a lockfile-only change: there is no `risk_files`, VZA-002 must pass and only VZA-003 fires. A garmr without `--policy-dir` makes the script SKIP.
+- **VZA-002** uses `allowMissing: true` instead of the `any`/`exists: false` workaround. A mutation check confirmed that dropping it makes VZA-002 fail with "path 'risk_files' not found". This means the pack now needs a garmr that knows `allowMissing`.
+- **The guide's CI recipe** is serverless and adds `--request-id "<repo>#<pr>@<sha>"`.
+

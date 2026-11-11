@@ -30,7 +30,7 @@ description: "pr-review JSON is a schema-validated report with apiVersion vizzin
   - `review-gate` (deny): VZ-001 no Critical or Major findings; VZ-002 no Architecture findings (a violated design decision blocks); VZ-003 nothing skipped.
   - `review-advisory` (warn): VZA-001 risk ≤ 70; VZA-002 no sensitive paths (weight < 2.5; an absent `risk_files` passes); VZA-003 at least one chunk reviewed.
   - `garmr test` suites ship with the pack.
-- **CI recipe:** `pr-review --fail-on none --format json > review.json`, then `garmr eval --input review.json -n vizzini`. garmr exits 1 for deny and 2 when evaluation can't run; Vizzini's own gate keeps exit 2 for its gate. They run as separate steps, so the codes don't collide.
+- **CI recipe:** `pr-review --fail-on none --format json > review.json`, then `garmr eval --policy-dir policies/garmr --input review.json -n vizzini`. Since 2026-11-11 garmr evaluates in-process, so CI needs no garmr-server. `--server URL` gives the same decision from a central server. garmr exits 1 for deny and 2 when evaluation can't run; Vizzini's own gate keeps exit 2 for its gate. They run as separate steps, so the codes don't collide.
 - **The built-in `#PolicyGate` stays the default,** for offline or microVM use and for anyone without garmr.
 
 ## Consequences

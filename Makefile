@@ -57,8 +57,8 @@ e2e-lint-python: build tiktoken-cache
 e2e-lint-csharp: build tiktoken-cache
 	scripts/e2e-cslint.sh
 
-## e2e-garmr: pr-review reports evaluated by a real garmr-server with
-## policies/garmr (skips unless garmr is on PATH or GARMR_BIN_DIR is set)
+## e2e-garmr: pr-review reports evaluated in-process by garmr eval --policy-dir
+## policies/garmr, no server (skips unless garmr is on PATH or GARMR_BIN_DIR is set)
 e2e-garmr: build tiktoken-cache
 	scripts/e2e-garmr.sh
 

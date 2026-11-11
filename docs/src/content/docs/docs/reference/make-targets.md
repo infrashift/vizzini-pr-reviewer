@@ -16,7 +16,7 @@ committed.
 | `make e2e-lint` | `scripts/e2e-golint.sh` | Real golangci-lint + git + `pr-review` end-to-end proof; stand-in model unless `VIZZINI_LITELLM_URL` is set |
 | `make e2e-lint-python` | `scripts/e2e-pylint.sh` | The same proof for Python with real ruff SARIF; skips without ruff or uv |
 | `make e2e-lint-csharp` | `scripts/e2e-cslint.sh` | The same proof for C# with real Roslyn SARIF from the .NET SDK container; skips without podman |
-| `make e2e-garmr` | `scripts/e2e-garmr.sh` | `pr-review` reports evaluated by a real `garmr-server` with `policies/garmr`; skips without garmr |
+| `make e2e-garmr` | `scripts/e2e-garmr.sh` | `pr-review` reports evaluated by `garmr eval --policy-dir policies/garmr` (in-process, no server); skips without garmr |
 | `make wiki` | `okfw validate --all && okfw validate --okf` | Checks the project's OKF knowledge base in `.okfw/` |
 | `make docs-dev` | `bun run dev` in `docs/` | This site, with live reload |
 | `make docs-build` | `bun run build` in `docs/` | Builds the site into `docs/dist/` |

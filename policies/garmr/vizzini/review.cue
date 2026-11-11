@@ -4,9 +4,11 @@
 // carry apiVersion "vizzini.infrashift.io/v1" and kind "Review", which is
 // what these policies target, so they never fire on other inputs.
 //
-//   GARMR_HTTP_ADDR=:8080 garmr-server --policy-dir policies/garmr
 //   pr-review --mode review --fail-on none --format json > review.json
-//   garmr eval --input review.json -n vizzini
+//   garmr eval --policy-dir policies/garmr --input review.json -n vizzini
+//
+// --policy-dir evaluates in-process, with no garmr-server; a server loaded
+// with the same directory (garmr eval --server URL) decides identically.
 //
 // The namespace yields DENY when a gate rule fails, WARN when only advisory
 // rules fail, and ALLOW otherwise. Copy the pack and tune it: severities,
@@ -98,14 +100,12 @@ reviewAdvisory: {
 				severity:    "medium"
 				priority:    20
 				// risk_files is omitted when nothing was reviewable; absent passes.
-				expr: any: [
-					{match: {path: "risk_files", exists: false}},
-					{forEach: {
-						path: "risk_files"
-						as:   "r"
-						condition: match: {path: "r.weight", lessThan: 2.5}
-					}},
-				]
+				expr: forEach: {
+					path:         "risk_files"
+					as:           "r"
+					allowMissing: true
+					condition: match: {path: "r.weight", lessThan: 2.5}
+				}
 				message:     "{{r.path}} is a sensitive path (risk weight {{r.weight}})"
 				remediation: "Route the change to the owners of this area."
 				category:    "risk"
