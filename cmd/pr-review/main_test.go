@@ -285,6 +285,39 @@ func TestRun_RiskPolicyAndAutoApprove(t *testing.T) {
 	}
 }
 
+func TestRun_Suppressions(t *testing.T) {
+	srv := mockProxy(t)
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m", "VIZZINI_API_KEY": "k"}
+	rules := filepath.Join(t.TempDir(), "suppressions.yaml")
+	if err := os.WriteFile(rules, []byte("suppressions:\n  - id: ADMIN-ONLY\n    reason: Internal admin tool.\n    paths: [\"internal/store/**\"]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The only finding is suppressed: no gate failure, reported as suppressed.
+	r := runCLI(t, env, patch, "--mode", "review", "--format", "json", "--suppressions", rules)
+	if r.code != exitOK || !strings.Contains(r.stdout, `"rule": "ADMIN-ONLY"`) || !strings.Contains(r.stdout, `"findings": []`) {
+		t.Errorf("json: exit %d\n%s\n%s", r.code, r.stdout, r.stderr)
+	}
+	r = runCLI(t, env, patch, "--mode", "review", "--suppressions", rules)
+	if r.code != exitOK || !strings.Contains(r.stdout, "Suppressed by repository rules (1)") || !strings.Contains(r.stdout, "(rule `ADMIN-ONLY`)") {
+		t.Errorf("markdown: exit %d\n%s", r.code, r.stdout)
+	}
+	for name, args := range map[string][]string{
+		"missing file": {"--mode", "review", "--suppressions", filepath.Join(t.TempDir(), "none.yaml")},
+		"wrong mode":   {"--mode", "describe", "--suppressions", rules},
+	} {
+		if r := runCLI(t, env, patch, args...); r.code == exitOK || !strings.Contains(r.stderr, "--suppressions") {
+			t.Errorf("%s: exit %d: %s", name, r.code, r.stderr)
+		}
+	}
+	bad := filepath.Join(t.TempDir(), "bad.yaml")
+	if err := os.WriteFile(bad, []byte("suppressions:\n  - id: X\n    reason: r\n    categories: [Logic]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := runCLI(t, env, patch, "--mode", "review", "--suppressions", bad); r.code == exitOK || !strings.Contains(r.stderr, "--suppressions") {
+		t.Errorf("an invalid rule must fail: exit %d: %s", r.code, r.stderr)
+	}
+}
+
 func TestRun_Knowledge(t *testing.T) {
 	srv := reviewWith(t, "")
 	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}

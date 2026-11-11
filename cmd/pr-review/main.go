@@ -78,13 +78,15 @@ type options struct {
 	lintJSON   []string
 	riskPolicy string
 	knowledge  string
-	repo       string
-	attr       reviewer.Attribution
-	command    string
-	thread     string
-	issue      string
-	tree       string
-	okfIndex   string
+	// suppressions is a repository suppression-rules file (YAML or JSON).
+	suppressions string
+	repo         string
+	attr         reviewer.Attribution
+	command      string
+	thread       string
+	issue        string
+	tree         string
+	okfIndex     string
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -277,6 +279,15 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 		return s, reviewer.FormatSuggestions(s), nil
 	default: // "review"; parseFlags rejects anything else
 		ropts := reviewer.ReviewOptions{SkipOversized: opts.skipOversized}
+		if opts.suppressions != "" {
+			data, rerr := os.ReadFile(opts.suppressions) //nolint:gosec // G703: reading the user-named rules file is the point
+			if rerr != nil {
+				return nil, "", fmt.Errorf("--suppressions: %w", rerr)
+			}
+			if ropts.Suppressions, rerr = reviewer.ParseSuppressions(data); rerr != nil {
+				return nil, "", fmt.Errorf("--suppressions: %w", rerr)
+			}
+		}
 		if opts.knowledge != "" {
 			st, serr := os.Stat(opts.knowledge) //nolint:gosec // G703: inspecting the user-named knowledge directory is the point
 			if serr != nil {
@@ -352,6 +363,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "overall deadline")
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
 	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
+	fs.StringVar(&o.suppressions, "suppressions", "", "review mode: suppression rules (YAML or JSON, e.g. .vizzini/suppressions.yaml); matching findings are reported as suppressed, not as findings")
 	fs.StringVar(&o.knowledge, "knowledge", "", "review mode: OKF knowledge-base directory (e.g. .okfw) whose relevant documents the model may cite")
 	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "attribution: this run's id (default: a generated UUIDv7); sent with every request")
 	fs.StringVar(&o.attr.PRKey, "pr", getenv("VIZZINI_PR"), `attribution: the pull request, e.g. "ado:dev.azure.com/org/project/repo#42"`)
@@ -407,6 +419,9 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	}
 	if o.knowledge != "" && o.mode != "review" {
 		return nil, errors.New("--knowledge applies only to --mode review")
+	}
+	if o.suppressions != "" && o.mode != "review" {
+		return nil, errors.New("--suppressions applies only to --mode review")
 	}
 	if o.repo != "" && o.mode != "review" {
 		return nil, errors.New("--repo applies only to --mode review")

@@ -113,10 +113,17 @@ type ReviewOutput struct {
 	// KnowledgeDocs lists the IDs of the knowledge-base documents given to
 	// the model (see ReviewOptions.Knowledge), sorted.
 	KnowledgeDocs []string `json:"knowledge_docs,omitempty"`
+	// Suppressed are findings a ReviewOptions.Suppressions rule matched:
+	// not in Findings, so not posted and not gated on, but counted against
+	// AutoApprove (ISSUE-024 slice 5).
+	Suppressed []SuppressedFinding `json:"suppressed,omitempty"`
 }
 
 // ReviewOptions tunes a single Review call.
 type ReviewOptions struct {
+	// Suppressions, if set, are the repository's rules for findings it
+	// decided not to be told about again (see ParseSuppressions).
+	Suppressions *Suppressions
 	// SkipOversized leaves out any hunk larger than the token budget instead
 	// of sending it in a chunk of its own. Skipped files are reported in
 	// ReviewOutput.Skipped.

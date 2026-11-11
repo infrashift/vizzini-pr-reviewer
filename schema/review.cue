@@ -200,6 +200,10 @@ package review
 	merged_findings?: int & >=1
 	// Repository-context snippets given to the model (ISSUE-023, ADR-0014).
 	context_snippets?: int & >=1
+	// Findings a repository suppression rule matched: reported here, never
+	// posted (ISSUE-024 slice 5). Added by Vizzini after the model answered;
+	// the model's #ReviewOutput cannot carry them.
+	suppressed?: [...#SuppressedFinding]
 	// Attribution and usage (ISSUE-025, ADR-0015): run_id joins the
 	// proxy's spend logs, pr_key and iteration place the run in its pull
 	// request's lifecycle.
@@ -220,4 +224,38 @@ package review
 	output_tokens:       int & >=0
 	cached_input_tokens: int & >=0
 	cost_usd?:           number & >=0
+}
+
+// Repository suppression rules (ISSUE-024 slice 5, ADR-0020): findings a
+// team decided, in a reviewed change, not to be told about again. A rule
+// matches a finding when every condition it names holds; it must name at
+// least one of fingerprint, paths or title, so no rule silences everything.
+#Suppression: {
+	id:     string & =~"^[A-Za-z0-9][A-Za-z0-9._-]*$"
+	reason: string & !=""
+	// The finding's fingerprint (vizzini-bot's v1 recipe: file, category,
+	// normalized title). Exact, but a model rewording the title escapes it.
+	fingerprint?: string & =~"^v1:[0-9a-f]{16}$"
+	// Path globs with the exclude-glob semantics; any may match.
+	paths?: [string & !="", ...string & !=""]
+	// Categories; any may match.
+	categories?: [#Category, ...#Category]
+	// A case-insensitive substring of the finding's title.
+	title?: string & !=""
+	// The rule lapses after this day (YYYY-MM-DD, UTC).
+	expires?: string & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+}
+
+#Suppressions: {
+	suppressions: [...#Suppression]
+	// Every rule names at least one of fingerprint, paths or title.
+	_specific: [for r in suppressions {
+		[if r.fingerprint != _|_ {1}, if r.paths != _|_ {1}, if r.title != _|_ {1}] & [_, ...]
+	}]
+}
+
+#SuppressedFinding: {
+	rule:    string & !=""
+	reason:  string & !=""
+	finding: #Finding
 }

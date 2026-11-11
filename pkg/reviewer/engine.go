@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/infrashift/vizzini-pr-reviewer/internal/analysis"
 	"github.com/infrashift/vizzini-pr-reviewer/internal/chunker"
@@ -198,7 +199,10 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 	out.Summary = strings.Join(summaries, "\n\n")
 	out.RiskScore = max(out.BaseRiskScore, out.ModelRiskScore)
 	out.Findings, out.MergedFindings = foldDuplicates(out.Findings)
+	// Auto-approval sees every finding, suppressed or not: a suppression
+	// rule decides what is posted, never that a human may be skipped.
 	out.AutoApprove = e.autoApprove(out)
+	out.Findings, out.Suppressed = opts.Suppressions.Apply(out.Findings, time.Now())
 	slices.SortStableFunc(out.Findings, func(a, b Finding) int {
 		return cmp.Or(
 			cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)),

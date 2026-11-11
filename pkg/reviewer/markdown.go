@@ -45,6 +45,14 @@ func FormatReview(r *ReviewOutput) string {
 	if len(r.KnowledgeDocs) > 0 {
 		fmt.Fprintf(&b, "\n_Knowledge base consulted: %s_\n", codeList(r.KnowledgeDocs))
 	}
+	if len(r.Suppressed) > 0 {
+		fmt.Fprintf(&b, "\n_Suppressed by repository rules (%d):_\n\n", len(r.Suppressed))
+		for i := range r.Suppressed {
+			s := &r.Suppressed[i]
+			fmt.Fprintf(&b, "- `%s` %s: %s (rule `%s`)\n", location(s.Finding.File, s.Finding.StartLine, s.Finding.EndLine),
+				s.Finding.Severity, s.Finding.Title, s.Rule)
+		}
+	}
 	if len(r.Excluded) > 0 {
 		fmt.Fprintf(&b, "\n_Not reviewed (generated or vendored): %s_\n", codeList(r.Excluded))
 	}
