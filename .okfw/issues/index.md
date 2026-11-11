@@ -18,4 +18,5 @@
 * [ISSUE-012: Multi-language lint input via SARIF](issue-012-multi-language-lint-input-via-sarif--01a1c9ed12c7.md) - Accept SARIF reports (ruff, Roslyn analyzers, Semgrep, CodeQL) alongside golangci-lint JSON so lint-aware reviews work beyond Go.
 * [ISSUE-013: Explore what mrman gains from consuming Vizzini's risk score](issue-013-explore-what-mrman-gains-from-consuming-vizzinis-risk-score--01a1ca04b280.md) - Discovery: decide which mrman views would use risk_score, base/model split, risk_files and auto_approve, and what LLM-free API that needs.
 * [ISSUE-014: Prove SARIF lint input with real ruff (Python) and Roslyn (C#) output](issue-014-prove-sarif-lint-input-with-real-ruff-python-and-roslyn-c-output--01a1ca11ff98.md) - Capture real ruff and Roslyn SARIF as fixtures and add Python and C# end-to-end proofs mirroring make e2e-lint.
+* [ISSUE-015: Public LLM-free risk API (pkg/risk) for mrman](issue-015-public-llm-free-risk-api-pkg-risk-for-mrman--01a1ca2a2474.md) - Expose an LLM-free pkg/risk (AssessRisk, Policy, Band, ParseReport) that mrman can embed without linking the LLM client; the prerequisite for ISSUE-013.
 

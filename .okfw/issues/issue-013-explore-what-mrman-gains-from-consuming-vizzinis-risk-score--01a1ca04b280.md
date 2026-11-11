@@ -47,10 +47,19 @@ An **LLM-free API** such as `reviewer.AssessRisk(patch io.Reader, policy) (*Risk
 - Where does the risk policy live for mrman users? Per repo (`.vizzini/risk.json`?) or in [garmr](/issues/issue-011-integrate-the-policy-gate-with-garmr--01a1c9e416ce.md)?
 
 ## Acceptance Criteria
-- [ ] A short decision (ADR or issue comment) on which uses to pursue, agreed with the mrman side
-- [ ] If use 1 or 2 is chosen: an LLM-free `AssessRisk` API with tests and docs in Vizzini
+- [x] A short decision (ADR or issue comment) on which uses to pursue, agreed with the mrman side
+- [ ] If use 1 or 2 is chosen: an LLM-free `AssessRisk` API with tests and docs in Vizzini (tracked in [ISSUE-015](/issues/issue-015-public-llm-free-risk-api-pkg-risk-for-mrman--01a1ca2a2474.md))
 - [ ] A follow-up issue in mrman for the UI work
 
+## Decision (2026-11-11, mrman side)
+mrman pursues all five uses, opt-in behind `[risk] enabled` (off by default, so plain mrman is unchanged):
+- Uses 1, 2 and 5 embed a new LLM-free `pkg/risk` package (see [ISSUE-015](/issues/issue-015-public-llm-free-risk-api-pkg-risk-for-mrman--01a1ca2a2474.md)). It's pure computation, with no model, proxy or network.
+- Uses 3 and 4 **ingest a report file** (`pr-review --format json`, or a garmr envelope). mrman never calls a model itself.
+- Display: a band plus the number (`● med 42`). Bands come from `auto_approve_threshold` and a new `high_threshold` in `#RiskPolicy`.
+- Policy location: `.vizzini/risk.json` at the repo root, then mrman's `[risk] policy`, then the schema defaults.
+- `auto_approve` is shown only as a suggestion. mrman's human-only submit grant stays authoritative.
+
 ## Related
+- [ISSUE-015: Public LLM-free risk API (pkg/risk) for mrman](/issues/issue-015-public-llm-free-risk-api-pkg-risk-for-mrman--01a1ca2a2474.md)
 - [ISSUE-007: Automated risk scoring and approvals](/issues/issue-007-automated-risk-scoring-and-approvals--01a1c9b61578.md)
 - [ISSUE-006: Semantic dependency walkthroughs](/issues/issue-006-semantic-dependency-walkthroughs--01a1c9b61571.md)
