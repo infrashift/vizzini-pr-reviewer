@@ -108,10 +108,12 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 		return nil, err
 	}
 	var diags []analysis.Diagnostic
-	if opts.LintReport != nil {
-		if diags, err = analysis.ParseGolangciJSON(opts.LintReport); err != nil {
-			return nil, err
+	for i, rep := range opts.LintReports {
+		ds, lerr := analysis.ParseLintReport(rep, opts.LintRoot)
+		if lerr != nil {
+			return nil, fmt.Errorf("lint report %d: %w", i+1, lerr)
 		}
+		diags = append(diags, ds...)
 	}
 	risk := analysis.ScoreRisk(d.Files, e.risk)
 	out := &ReviewOutput{Findings: []Finding{}, Excluded: d.Excluded, BaseRiskScore: risk.Score, RiskScore: risk.Score, RiskFiles: risk.Files}

@@ -96,7 +96,7 @@ type ReviewOutput struct {
 	// Chunks is the number of LLM requests the review took.
 	Chunks int `json:"chunks"`
 	// Diagnostics counts the linter diagnostics on changed lines that were
-	// added to the prompts (see ReviewOptions.LintReport).
+	// added to the prompts (see ReviewOptions.LintReports).
 	Diagnostics int `json:"diagnostics,omitempty"`
 	// KnowledgeDocs lists the IDs of the knowledge-base documents given to
 	// the model (see ReviewOptions.Knowledge), sorted.
@@ -114,11 +114,17 @@ type ReviewOptions struct {
 	// the model, within Config.MaxKnowledgeTokens per chunk, so it can cite
 	// design decisions; Architecture findings must cite one of them.
 	Knowledge fs.FS
-	// LintReport, if set, is golangci-lint JSON output (v1 --out-format=json
-	// or v2 --output.json.path=stdout) produced from the repository root.
-	// Diagnostics on lines the diff adds are given to the model so it can
-	// explain them and propose fixes; all others are ignored.
-	LintReport io.Reader
+	// LintReports are linter reports produced from the repository root, each
+	// either golangci-lint JSON (v1 --out-format=json, v2
+	// --output.json.path=stdout) or SARIF 2.1.0 (ruff, Roslyn analyzers,
+	// Semgrep, CodeQL, …); the format is detected per report. Diagnostics on
+	// lines the diff adds are given to the model so it can explain them and
+	// propose fixes; all others are ignored.
+	LintReports []io.Reader
+	// LintRoot is the repository root as an absolute path. SARIF file://
+	// URIs (and absolute golangci-lint paths) under it are made relative;
+	// absolute locations outside it are ignored.
+	LintRoot string
 }
 
 // Config configures an Engine. Zero values select the defaults.

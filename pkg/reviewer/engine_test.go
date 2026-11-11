@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -383,7 +384,7 @@ func TestReview_InjectsLintOnChangedLinesOnly(t *testing.T) {
 
 	t.Run("single chunk", func(t *testing.T) {
 		srv := llmtest.NewServer(t, answerByFile)
-		out, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{LintReport: bytes.NewReader(lint)})
+		out, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{LintReports: []io.Reader{bytes.NewReader(lint)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -407,7 +408,7 @@ func TestReview_InjectsLintOnChangedLinesOnly(t *testing.T) {
 	t.Run("each chunk gets only its own diagnostics", func(t *testing.T) {
 		srv := llmtest.NewServer(t, answerByFile)
 		out, err := newEngine(t, srv, func(c *Config) { c.MaxChunkTokens = 150 }).
-			Review(context.Background(), fixture(t), ReviewOptions{LintReport: bytes.NewReader(lint)})
+			Review(context.Background(), fixture(t), ReviewOptions{LintReports: []io.Reader{bytes.NewReader(lint)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -435,8 +436,8 @@ func TestReview_InjectsLintOnChangedLinesOnly(t *testing.T) {
 
 	t.Run("malformed report fails before any request", func(t *testing.T) {
 		srv := llmtest.NewServer(t, answerByFile)
-		_, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{LintReport: strings.NewReader("{")})
-		if err == nil || !strings.Contains(err.Error(), "golangci-lint JSON") {
+		_, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{LintReports: []io.Reader{strings.NewReader("{")}})
+		if err == nil || !strings.Contains(err.Error(), "lint report 1: parse lint report") {
 			t.Errorf("err = %v", err)
 		}
 		if len(srv.Requests()) != 0 {
@@ -653,4 +654,50 @@ func TestReview_KnowledgeGrounding(t *testing.T) {
 			t.Error("LLM called despite a malformed knowledge bundle")
 		}
 	})
+}
+
+// Several reports in different formats are merged, and each still only
+// contributes diagnostics on changed lines.
+func TestReview_PolyglotLintReports(t *testing.T) {
+	golangci, err := os.ReadFile("testdata/golangci.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	py := "diff --git a/app/views.py b/app/views.py\nnew file mode 100644\n--- /dev/null\n+++ b/app/views.py\n@@ -0,0 +1,3 @@\n+import os\n+def find(uid):\n+    return db.execute(\"SELECT * FROM t WHERE id = \" + uid)\n"
+	sarif := `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"ruff"}},"originalUriBaseIds":{"ROOT":{"uri":"file:///work/repo/"}},"results":[
+		{"ruleId":"S608","message":{"text":"Possible SQL injection"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"file:///work/repo/app/views.py"},"region":{"startLine":3,"startColumn":12}}}]},
+		{"ruleId":"F401","message":{"text":"os imported but unused"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"app/views.py","uriBaseId":"ROOT"},"region":{"startLine":1}}}]},
+		{"ruleId":"E501","message":{"text":"not in the diff"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"app/models.py"},"region":{"startLine":9}}}]}]}]}`
+
+	srv := llmtest.NewServer(t, answerByFile)
+	out, err := newEngine(t, srv).Review(context.Background(), strings.NewReader(mustRead(t)+py), ReviewOptions{
+		LintReports: []io.Reader{bytes.NewReader(golangci), strings.NewReader(sarif)},
+		LintRoot:    "/work/repo",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Diagnostics != 4 {
+		t.Errorf("Diagnostics = %d, want 4 (2 golangci-lint + 2 ruff on changed lines)", out.Diagnostics)
+	}
+	block := between(llmtest.UserPrompt(&srv.Requests()[0]), "<lint>\n", "</lint>")
+	for _, want := range []string{
+		"app/views.py:1 ruff: F401: os imported but unused",
+		"app/views.py:3:12 ruff: S608: Possible SQL injection",
+		"internal/api/handler.go:4:13 errcheck:",
+		"internal/store/users.go:44:7 gosec:",
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("lint block lacks %q:\n%s", want, block)
+		}
+	}
+	if strings.Contains(block, "app/models.py") {
+		t.Error("a diagnostic outside the diff reached the prompt")
+	}
+
+	if _, err := newEngine(t, srv).Review(context.Background(), fixture(t), ReviewOptions{
+		LintReports: []io.Reader{bytes.NewReader(golangci), strings.NewReader(`{"what":1}`)},
+	}); err == nil || !strings.Contains(err.Error(), "lint report 2") {
+		t.Errorf("bad second report: err = %v, want it named", err)
+	}
 }

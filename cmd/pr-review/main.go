@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -69,7 +70,7 @@ type options struct {
 	skipOversized  bool
 	// failOn is nil unless --fail-on was given; nil selects the schema default.
 	failOn     []reviewer.Severity
-	lintJSON   string
+	lintJSON   []string
 	riskPolicy string
 	knowledge  string
 	command    string
@@ -238,13 +239,29 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 			}
 			ropts.Knowledge = os.DirFS(opts.knowledge)
 		}
-		if opts.lintJSON != "" {
-			lint, closeLint, lerr := openPatch(opts.lintJSON, nil)
+		// The reports stay open until the review is done.
+		var closers []func()
+		defer func() {
+			for _, c := range closers {
+				c()
+			}
+		}()
+		for _, name := range opts.lintJSON {
+			lint, closeLint, lerr := openPatch(name, nil)
 			if lerr != nil {
 				return nil, "", fmt.Errorf("--lint-json: %w", lerr)
 			}
-			defer closeLint()
-			ropts.LintReport = lint
+			closers = append(closers, closeLint)
+			ropts.LintReports = append(ropts.LintReports, lint)
+		}
+		if len(ropts.LintReports) > 0 {
+			// Reports are produced from the repository root, which is where
+			// pr-review runs too; SARIF file:// URIs resolve against it.
+			wd, werr := os.Getwd()
+			if werr != nil {
+				return nil, "", werr
+			}
+			ropts.LintRoot = wd
 		}
 		r, rerr := engine.Review(ctx, patch, ropts)
 		if rerr != nil {
@@ -278,7 +295,10 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
 	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
 	fs.StringVar(&o.knowledge, "knowledge", "", "review mode: OKF knowledge-base directory (e.g. .okfw) whose relevant documents the model may cite")
-	fs.StringVar(&o.lintJSON, "lint-json", "", "review mode: golangci-lint JSON report (run from the repo root) to explain on changed lines")
+	fs.Func("lint-json", "review mode: linter report to explain on changed lines, golangci-lint JSON or SARIF (repeatable; run linters from the repo root)", func(s string) error {
+		o.lintJSON = append(o.lintJSON, s)
+		return nil
+	})
 	fs.Func("fail-on", "review mode: comma-separated severities that exit 2, or none (default Critical,Major)", func(s string) error {
 		o.failOn = []reviewer.Severity{}
 		if s == "none" {
@@ -318,13 +338,13 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	if o.failOn != nil && o.mode != "review" {
 		return nil, errors.New("--fail-on applies only to --mode review")
 	}
-	if o.lintJSON != "" && o.mode != "review" {
+	if len(o.lintJSON) > 0 && o.mode != "review" {
 		return nil, errors.New("--lint-json applies only to --mode review")
 	}
 	if o.knowledge != "" && o.mode != "review" {
 		return nil, errors.New("--knowledge applies only to --mode review")
 	}
-	if o.lintJSON == "-" {
+	if slices.Contains(o.lintJSON, "-") {
 		return nil, errors.New("--lint-json must be a file; stdin is reserved for the patch")
 	}
 	switch o.format {

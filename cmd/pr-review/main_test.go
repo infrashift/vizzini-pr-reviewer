@@ -126,6 +126,7 @@ func TestRun_Errors(t *testing.T) {
 		{"fail-on outside review", base, []string{"--mode", "improve", "--fail-on", "Minor"}, "--fail-on applies only to --mode review"},
 		{"lint-json outside review", base, []string{"--mode", "describe", "--lint-json", "x.json"}, "--lint-json applies only to --mode review"},
 		{"lint-json from stdin", base, []string{"--lint-json", "-"}, "--lint-json must be a file"},
+		{"lint-json stdin among several", base, []string{"--lint-json", "a.json", "--lint-json", "-"}, "--lint-json must be a file"},
 		{"lint-json missing", base, []string{"--lint-json", "/does/not/exist.json"}, "--lint-json: open /does/not/exist.json"},
 		{"command without --command", base, []string{"--mode", "command"}, "--command and --mode command go together"},
 		{"--command without mode", base, []string{"--command", "/explain a.go:1"}, "--command and --mode command go together"},
@@ -343,5 +344,32 @@ func TestRun_PlanMode(t *testing.T) {
 	}
 	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "<tree>\na.go\nb.go\n</tree>") {
 		t.Errorf("tree not sent:\n%s", p)
+	}
+}
+
+func TestRun_LintJSONRepeatableWithSARIF(t *testing.T) {
+	srv := mockProxy(t)
+	dir := t.TempDir()
+	golangci := filepath.Join(dir, "golangci.json")
+	sarif := filepath.Join(dir, "ruff.sarif")
+	if err := os.WriteFile(golangci, []byte(`{"Issues":[{"FromLinter":"gosec","Text":"G202: SQL string concatenation","Pos":{"Filename":"internal/store/users.go","Line":42,"Column":9}}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sarif, []byte(`{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"semgrep"}},"results":[{"ruleId":"sql-concat","message":{"text":"string-built SQL"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"internal/store/users.go"},"region":{"startLine":42}}}]}]}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	r := runCLI(t, env, patch, "--lint-json", golangci, "--lint-json", sarif, "--format", "json", "--fail-on", "none")
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	if !strings.Contains(r.stdout, `"diagnostics": 2`) {
+		t.Errorf("want both reports counted:\n%s", r.stdout)
+	}
+	p := llmtest.UserPrompt(&srv.Requests()[0])
+	for _, want := range []string{"internal/store/users.go:42:9 gosec: G202", "internal/store/users.go:42 semgrep: sql-concat: string-built SQL"} {
+		if !strings.Contains(p, want) {
+			t.Errorf("prompt lacks %q", want)
+		}
 	}
 }

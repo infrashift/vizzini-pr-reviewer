@@ -1,6 +1,6 @@
 ---
 title: Lint-Aware Reviews
-description: Feed golangci-lint diagnostics into a review so the model explains real issues instead of guessing.
+description: Feed golangci-lint or SARIF diagnostics into a review so the model explains real issues instead of guessing.
 ---
 
 Linters are precise and models are articulate. Give Vizzini a golangci-lint
@@ -21,6 +21,33 @@ golangci-lint v1's `--out-format=json` works as well, because both versions
 write the same `Issues[]` shape. Without `--show-stats=false`, v2 appends a
 plain-text summary after the JSON. Vizzini ignores it, but other JSON tools
 may not.
+
+## Other languages: SARIF
+
+Any tool that writes [SARIF 2.1.0](https://sarifweb.azurewebsites.net/) works:
+ruff for Python, Roslyn analyzers for C#, Semgrep, CodeQL and many more. Pass
+the report the same way; the format is detected automatically, and
+`--lint-json` can be repeated for repositories with several linters:
+
+```sh
+ruff check --output-format=sarif . > ruff.sarif
+golangci-lint run --output.json.path=stdout --output.text.path=/dev/null --show-stats=false ./... > go.json
+git diff main...HEAD | pr-review --mode review --lint-json go.json --lint-json ruff.sarif
+```
+
+How a SARIF result is read:
+
+| SARIF | Becomes |
+|---|---|
+| `tool.driver.name` | the linter name |
+| `ruleId` + `message.text` | `S608: Possible SQL injection…` (falls back to the rule's description) |
+| first `physicalLocation` | file, line and column |
+| `file://` URIs, `uriBaseId` + `originalUriBaseIds` | repository-relative paths (`pr-review` resolves against its working directory, so run it from the repo root) |
+| `kind: pass` / `notApplicable`, suppressions in effect, no line | skipped |
+
+Absolute locations outside the repository, such as SDK files, are ignored.
+The exact flags for ruff and Roslyn (`dotnet build -p:ErrorLog=…`) are
+verified with captured output in an upcoming end-to-end proof.
 
 ## What reaches the model
 
@@ -48,9 +75,12 @@ The JSON output reports how many were included in `"diagnostics"`.
 ## From Go
 
 ```go
-lint, _ := os.Open("lint.json")
-defer lint.Close()
-out, err := engine.Review(ctx, patch, reviewer.ReviewOptions{LintReport: lint})
+goLint, _ := os.Open("go.json")
+ruff, _ := os.Open("ruff.sarif")
+out, err := engine.Review(ctx, patch, reviewer.ReviewOptions{
+	LintReports: []io.Reader{goLint, ruff},
+	LintRoot:    repoRoot, // absolute; resolves SARIF file:// URIs
+})
 ```
 
 A malformed report fails the review before any request is made.

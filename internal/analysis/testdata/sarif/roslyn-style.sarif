@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json.schemastore.org/sarif-2.1.0",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {"driver": {"name": "Microsoft (R) Visual C# Compiler", "rules": [{"id": "CA2100"}, {"id": "CS0168"}]}},
+      "originalUriBaseIds": {"SRCROOT": {"uri": "file:///work/repo/"}},
+      "results": [
+        {
+          "ruleId": "CA2100", "level": "warning",
+          "message": {"text": "Review SQL queries for security vulnerabilities"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "file:///work/repo/src/App/Users%20Repo.cs"}, "region": {"startLine": 14, "startColumn": 9}}}]
+        },
+        {
+          "ruleId": "CS0168", "level": "warning",
+          "message": {"text": "The variable 'ex' is declared but never used"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "src/App/Program.cs", "uriBaseId": "SRCROOT"}, "region": {"startLine": 7}}}]
+        },
+        {
+          "ruleId": "CS0168", "level": "warning",
+          "message": {"text": "outside the repository: dropped"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "file:///usr/share/dotnet/sdk/Microsoft.Common.targets"}, "region": {"startLine": 3}}}]
+        },
+        {
+          "ruleId": "CA2100", "level": "warning",
+          "message": {"text": "suppressed in source: skipped"},
+          "suppressions": [{"kind": "inSource"}],
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "file:///work/repo/src/App/Program.cs"}, "region": {"startLine": 20}}}]
+        },
+        {
+          "ruleId": "CA2100", "level": "warning",
+          "message": {"text": "suppression under review: kept"},
+          "suppressions": [{"kind": "external", "status": "underReview"}],
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "file:///work/repo/src/App/Program.cs"}, "region": {"startLine": 21}}}]
+        },
+        {
+          "ruleId": "CA2100", "kind": "pass",
+          "message": {"text": "passing check: skipped"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "file:///work/repo/src/App/Program.cs"}, "region": {"startLine": 22}}}]
+        },
+        {
+          "ruleId": "CS0168",
+          "message": {"text": "no region: skipped"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "file:///work/repo/src/App/Program.cs"}}}]
+        }
+      ]
+    },
+    {
+      "tool": {"driver": {"name": "semgrep"}},
+      "results": [
+        {
+          "ruleId": "python.lang.security.audit.eval", "message": {"text": "Detected eval()"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "tools/gen.py"}, "region": {"startLine": 2}}}]
+        }
+      ]
+    }
+  ]
+}

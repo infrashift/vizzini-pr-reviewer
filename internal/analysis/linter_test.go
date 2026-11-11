@@ -13,7 +13,7 @@ import (
 
 func readFixture(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("testdata", filepath.Base(name)))
+	b, err := os.ReadFile(filepath.Join("testdata", filepath.Clean(name)))
 	if err != nil {
 		t.Fatal(err)
 	}

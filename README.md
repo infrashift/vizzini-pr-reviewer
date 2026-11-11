@@ -49,7 +49,7 @@ offline QEMU microVMs.
 
 **Not released yet.** The engine, the Go API and the `pr-review` CLI build
 and pass their tests today. That includes the severity policy gate
-(`--fail-on`), lint-aware reviews (`--lint-json`), risk scoring with
+(`--fail-on`), lint-aware reviews from golangci-lint or any SARIF tool (`--lint-json`), risk scoring with
 auto-approve, dependency-ordered walkthroughs, and design-decision citations
 from an OKF knowledge base (`--knowledge`), `/explain` `/refactor`
 `/docstrings` slash commands, issue-to-plan handoff for coding agents
