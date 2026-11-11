@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -63,9 +64,12 @@ func mockProxy(t *testing.T) *llmtest.Server {
 
 // fakeMrman intercepts mrman calls (git still runs) and records them.
 type fakeMrman struct {
-	calls     [][]string
-	submitOut string
-	submitErr error
+	calls      [][]string
+	threadsOut string // `review threads` answer; default no threads
+	submitOut  string
+	submitErr  error
+	resolveOut string
+	resolveErr error
 }
 
 func (f *fakeMrman) install(t *testing.T) {
@@ -79,8 +83,12 @@ func (f *fakeMrman) install(t *testing.T) {
 		switch {
 		case args[0] == "pr":
 			return []byte(`{"slug":"ado-org-proj-repo-7"}`), nil, nil
+		case args[1] == "threads":
+			return []byte(cmp.Or(f.threadsOut, `{"threads":[]}`)), nil, nil
 		case args[1] == "submit":
 			return []byte(f.submitOut), []byte("mrman: authorization: {}\n"), f.submitErr
+		case args[1] == "resolve":
+			return []byte(f.resolveOut), []byte("mrman: authorization: {}\n"), f.resolveErr
 		}
 		return nil, nil, nil
 	}
@@ -109,15 +117,15 @@ func TestBot_PostsThroughMrmanUnderTheGrantPolicy(t *testing.T) {
 	if code != exitOK {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if len(f.calls) != 3 {
+	if len(f.calls) != 4 || f.calls[1][1] != "threads" {
 		t.Fatalf("mrman calls %v", f.calls)
 	}
-	add := f.calls[1]
+	add := f.calls[2]
 	if !slices.Equal(add[:9], []string{"review", "add", "--session", "ado-org-proj-repo-7", "--target-file", "store.go", "--line", "3", "--side"}) ||
-		!strings.Contains(add[len(add)-1], "<!-- vizzini:fp=v1:") || !strings.Contains(add[len(add)-1], "run=run-1 -->") {
+		!strings.Contains(add[len(add)-1], "<!-- vizzini:fp=v1:") || !strings.Contains(add[len(add)-1], " run=run-1 head=") || !strings.Contains(add[len(add)-1], " lines=3-3 cat=Security -->") {
 		t.Errorf("review add %q", add)
 	}
-	submit := strings.Join(f.calls[2], " ")
+	submit := strings.Join(f.calls[3], " ")
 	abs, _ := filepath.Abs("policies/mrman")
 	for _, want := range []string{"--event comment", "--grant-policy " + abs, "--run-id run-1", "--agent vizzini-bot", "--garmr garmr"} {
 		if !strings.Contains(submit, want) {

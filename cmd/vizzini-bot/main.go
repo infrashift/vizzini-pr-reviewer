@@ -7,14 +7,18 @@
 //   - Vizzini (this module's library) reviews `git diff base...head`, with
 //     the checkout as repository context and attribution for cost logs.
 //   - mrman does all forge work: `mrman pr URL --json` opens the PR
-//     headlessly, `mrman review add` drafts one comment per finding, and
-//     `mrman review submit --grant-policy DIR` posts them.
+//     headlessly, `mrman review threads` lists what the bot said before
+//     (memory.go), `mrman review add` drafts one comment per new finding,
+//     `mrman review submit --grant-policy DIR` posts them, and
+//     `mrman review resolve` closes the bot's threads whose code changed
+//     and whose finding is gone.
 //   - garmr, run by mrman, decides whether the submit is allowed by the
 //     committed policy in DIR. The bot never authorizes itself: a deny (or
 //     an evaluation error) posts nothing.
 //
-// Exit codes: 0 posted (or nothing to post), 1 error, 3 denied by the grant
-// policy.
+// stdout is one JSON object (botResult): what was posted, skipped as already
+// posted, resolved and kept open. Exit codes: 0 done, 1 error, 3 denied by
+// the grant policy.
 package main
 
 import (
@@ -167,23 +171,45 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 	if err != nil {
 		return err
 	}
-	comments := plan(review.Findings, opts.attr.RunID)
+	comments := plan(review.Findings, opts.attr.RunID, opts.attr.Iteration)
 	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d findings, risk %d\n", len(comments), review.RiskScore)
 
 	if opts.dryRun {
 		enc := json.NewEncoder(stdout)
 		for i := range comments {
-			if err := enc.Encode(&comments[i]); err != nil {
-				return err
+			if eerr := enc.Encode(&comments[i]); eerr != nil {
+				return eerr
 			}
 		}
 		return nil
 	}
-	if len(comments) == 0 {
-		_, _ = fmt.Fprintln(stderr, "vizzini-bot: nothing to post")
-		return nil
+	res := &botResult{RunID: opts.attr.RunID, Head: opts.attr.Iteration, Findings: len(comments),
+		AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}}
+	err = post(ctx, opts, comments, res, stderr)
+	if werr := json.NewEncoder(stdout).Encode(res); werr != nil && err == nil {
+		err = werr
 	}
-	return post(ctx, opts, comments, stdout, stderr)
+	return err
+}
+
+// botResult is what a run prints on stdout.
+type botResult struct {
+	RunID    string `json:"run_id"`
+	Head     string `json:"head"`
+	Findings int    `json:"findings"`
+	// Posted counts the new comments submitted.
+	Posted int `json:"posted"`
+	// AlreadyPosted are fingerprints of findings an earlier thread raises.
+	AlreadyPosted []string `json:"already_posted"`
+	// Resolved are threads closed because their code changed and their
+	// finding is gone.
+	Resolved []string `json:"resolved"`
+	// KeptOpen are threads whose finding went unreported though their code
+	// did not change: left for a person (or a later run) to judge.
+	KeptOpen []string `json:"kept_open"`
+	// Submit and Resolve are mrman's own JSON answers, when it was called.
+	Submit  json.RawMessage `json:"submit,omitempty"`
+	Resolve json.RawMessage `json:"resolve,omitempty"`
 }
 
 // reviewDiff runs the Vizzini review and, with --out, writes its report.
@@ -240,6 +266,7 @@ func reviewDiff(ctx context.Context, opts *options, diff []byte, getenv func(str
 // comment is one finding as the bot posts it.
 type comment struct {
 	File        string `json:"file"`
+	Category    string `json:"category"`
 	StartLine   int    `json:"start_line"`
 	EndLine     int    `json:"end_line"`
 	Fingerprint string `json:"fingerprint"`
@@ -247,9 +274,9 @@ type comment struct {
 }
 
 // plan turns findings into comments, each carrying a hidden marker with its
-// fingerprint and the run that posted it, so later runs can recognize their
-// own threads (ISSUE-024 slice 2).
-func plan(findings []reviewer.Finding, runID string) []comment {
+// fingerprint, the run that posted it and where it was anchored at head, so
+// later runs can recognize their own threads (memory.go).
+func plan(findings []reviewer.Finding, runID, head string) []comment {
 	out := make([]comment, 0, len(findings))
 	for i := range findings {
 		f := &findings[i]
@@ -262,8 +289,10 @@ func plan(findings []reviewer.Finding, runID string) []comment {
 		if len(f.Citations) > 0 {
 			fmt.Fprintf(&b, "\n\nSee: %s", strings.Join(f.Citations, ", "))
 		}
-		fmt.Fprintf(&b, "\n\n_Posted by %s._\n\n<!-- vizzini:fp=%s run=%s -->", agentName, fp, runID)
-		out = append(out, comment{File: f.File, StartLine: f.StartLine, EndLine: f.EndLine, Fingerprint: fp, Body: b.String()})
+		m := marker{FP: fp, Run: runID, Head: head, Category: string(f.Category), Start: f.StartLine, End: f.EndLine}
+		fmt.Fprintf(&b, "\n\n_Posted by %s._\n\n%s", agentName, m.String())
+		out = append(out, comment{File: f.File, Category: string(f.Category), StartLine: f.StartLine, EndLine: f.EndLine,
+			Fingerprint: fp, Body: b.String()})
 	}
 	return out
 }
@@ -301,9 +330,10 @@ func mrman(ctx context.Context, opts *options, stderr io.Writer, args ...string)
 	}
 }
 
-// post opens the PR in mrman, drafts every comment, and submits a comment
-// review that mrman posts only if the grant policy allows it.
-func post(ctx context.Context, opts *options, comments []comment, stdout, stderr io.Writer) error {
+// post opens the PR in mrman, reads the bot's earlier threads, drafts and
+// submits only the new findings, and resolves the threads whose finding is
+// gone; mrman does each only if the grant policy allows it.
+func post(ctx context.Context, opts *options, comments []comment, res *botResult, stderr io.Writer) error {
 	opened, errOut, err := mrman(ctx, opts, stderr, "pr", opts.prURL, "--json")
 	if err != nil {
 		return fmt.Errorf("mrman pr: %w: %s", err, strings.TrimSpace(string(errOut)))
@@ -316,10 +346,44 @@ func post(ctx context.Context, opts *options, comments []comment, stdout, stderr
 	}
 	_, _ = fmt.Fprintf(stderr, "vizzini-bot: mrman session %s\n", session.Slug)
 
+	listed, errOut, err := mrman(ctx, opts, stderr, "review", "threads", "--session", session.Slug)
+	if err != nil {
+		return fmt.Errorf("mrman review threads: %w: %s", err, strings.TrimSpace(string(errOut)))
+	}
+	var remote struct {
+		Threads []remoteThread `json:"threads"`
+	}
+	if jerr := json.Unmarshal(listed, &remote); jerr != nil {
+		return fmt.Errorf("mrman review threads: %w", jerr)
+	}
+	mine := botThreads(ctx, remote.Threads, opts.attr.Iteration, gitLineMapper(opts.repo))
+	r := reconcile(comments, mine)
+	res.AlreadyPosted = append(res.AlreadyPosted, r.AlreadyPosted...)
+	res.KeptOpen = append(res.KeptOpen, r.KeptOpen...)
+	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d earlier threads; %d new, %d already posted, %d to resolve, %d kept open\n",
+		len(mine), len(r.Post), len(r.AlreadyPosted), len(r.Resolve), len(r.KeptOpen))
+
+	policy, err := filepath.Abs(opts.grantPolicy)
+	if err != nil {
+		return err
+	}
+	if len(r.Post) > 0 {
+		if err := submitNew(ctx, opts, session.Slug, policy, r.Post, res, stderr); err != nil {
+			return err
+		}
+	}
+	if len(r.Resolve) > 0 {
+		return resolveGone(ctx, opts, session.Slug, policy, r.Resolve, res, stderr)
+	}
+	return nil
+}
+
+// submitNew drafts comments and submits them as a comment review.
+func submitNew(ctx context.Context, opts *options, slug, policy string, comments []comment, res *botResult, stderr io.Writer) error {
 	added := 0
 	for i := range comments {
 		c := &comments[i]
-		args := []string{"review", "add", "--session", session.Slug, "--target-file", c.File,
+		args := []string{"review", "add", "--session", slug, "--target-file", c.File,
 			"--line", strconv.Itoa(c.StartLine), "--side", "new"}
 		if c.EndLine > c.StartLine {
 			args = append(args, "--end-line", strconv.Itoa(c.EndLine))
@@ -334,26 +398,73 @@ func post(ctx context.Context, opts *options, comments []comment, stdout, stderr
 	if added == 0 {
 		return errors.New("mrman accepted none of the comments")
 	}
-
-	policy, err := filepath.Abs(opts.grantPolicy)
-	if err != nil {
-		return err
-	}
-	res, errOut, err := mrman(ctx, opts, stderr, "review", "submit", "--session", session.Slug,
+	out, errOut, err := mrman(ctx, opts, stderr, "review", "submit", "--session", slug,
 		"--event", "comment", "--grant-policy", policy, "--garmr", opts.garmr,
 		"--run-id", opts.attr.RunID, "--agent", agentName)
 	// mrman prints the authorization on stderr; keep it in the CI log.
 	_, _ = stderr.Write(errOut)
-	_, _ = stdout.Write(res)
+	res.Submit = rawJSON(out)
 	if err != nil {
-		var denied struct {
-			Code string `json:"error"`
-		}
-		if json.Unmarshal(res, &denied) == nil && denied.Code == "policy_denied" {
+		if policyDenied(out) {
 			return errDenied
 		}
 		return fmt.Errorf("mrman review submit: %w", err)
 	}
-	_, _ = fmt.Fprintf(stderr, "vizzini-bot: posted %d of %d comments\n", added, len(comments))
+	res.Posted = added
+	_, _ = fmt.Fprintf(stderr, "vizzini-bot: posted %d of %d new comments\n", added, len(comments))
 	return nil
+}
+
+// resolveGone resolves threads whose code changed and whose finding is gone.
+// A forge that cannot resolve, or a thread that would not resolve, is
+// reported, not fatal: the review itself is posted.
+func resolveGone(ctx context.Context, opts *options, slug, policy string, ids []string, res *botResult, stderr io.Writer) error {
+	args := make([]string, 0, 14+2*len(ids))
+	args = append(args, "review", "resolve", "--session", slug,
+		"--reply", fmt.Sprintf("Resolved by %s: the code here changed and the review of %.12s no longer reports this.", agentName, opts.attr.Iteration),
+		"--grant-policy", policy, "--garmr", opts.garmr, "--run-id", opts.attr.RunID, "--agent", agentName)
+	for _, id := range ids {
+		args = append(args, "--thread", id)
+	}
+	out, errOut, err := mrman(ctx, opts, stderr, args...)
+	_, _ = stderr.Write(errOut)
+	res.Resolve = rawJSON(out)
+	var answer struct {
+		Resolved        []string `json:"resolved"`
+		AlreadyResolved []string `json:"already_resolved"`
+		Failed          []struct {
+			Thread, Error string
+		} `json:"failed"`
+	}
+	_ = json.Unmarshal(out, &answer)
+	res.Resolved = append(res.Resolved, answer.Resolved...)
+	for _, f := range answer.Failed {
+		_, _ = fmt.Fprintf(stderr, "vizzini-bot: thread %s not resolved: %s\n", f.Thread, f.Error)
+	}
+	if err != nil {
+		if policyDenied(out) {
+			return errDenied
+		}
+		if len(answer.Failed) == 0 {
+			_, _ = fmt.Fprintf(stderr, "vizzini-bot: threads not resolved: %s\n", strings.TrimSpace(string(errOut)))
+		}
+	}
+	_, _ = fmt.Fprintf(stderr, "vizzini-bot: resolved %d of %d threads\n", len(answer.Resolved), len(ids))
+	return nil
+}
+
+func policyDenied(out []byte) bool {
+	var denied struct {
+		Code string `json:"error"`
+	}
+	return json.Unmarshal(out, &denied) == nil && denied.Code == "policy_denied"
+}
+
+// rawJSON keeps mrman's answer when it is JSON.
+func rawJSON(b []byte) json.RawMessage {
+	b = bytes.TrimSpace(b)
+	if !json.Valid(b) {
+		return nil
+	}
+	return b
 }
