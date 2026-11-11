@@ -114,6 +114,11 @@ type CodeSuggestion struct {
 	ImprovedCode string   `json:"improved_code"`
 }
 
+// Explanation mirrors #Explanation.
+type Explanation struct {
+	Answer string `json:"answer"`
+}
+
 // ImproveOutput mirrors #ImproveOutput.
 type ImproveOutput struct {
 	Suggestions []CodeSuggestion `json:"suggestions"`
@@ -150,6 +155,15 @@ func (v *Validator) ValidateReview(data []byte) (*ReviewOutput, error) {
 func (v *Validator) ValidateDescription(data []byte) (*PRDescription, error) {
 	var out PRDescription
 	if err := v.Validate("#PRDescription", data, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ValidateExplanation validates raw JSON against #Explanation and decodes it.
+func (v *Validator) ValidateExplanation(data []byte) (*Explanation, error) {
+	var out Explanation
+	if err := v.Validate("#Explanation", data, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

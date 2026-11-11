@@ -381,3 +381,28 @@ func TestRenderReview_Knowledge(t *testing.T) {
 		t.Error("knowledge block rendered without documents")
 	}
 }
+
+func TestRenderCommands(t *testing.T) {
+	data := CommandData{Target: "a.go:3-4", Question: "why?", Diff: "DIFF", Thread: []ThreadMessage{{Author: "alice", Body: "hm"}}}
+	for _, name := range []string{"explain", "refactor", "docstrings"} {
+		p, err := Render(name, data)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !strings.Contains(p.System, "/"+name+" command") {
+			t.Errorf("%s system prompt does not name the command", name)
+		}
+		for _, want := range []string{"/" + name + " a.go:3-4: why?", "<thread>\nalice: hm\n</thread>", "<diff>\nDIFF\n</diff>"} {
+			if !strings.Contains(p.User, want) {
+				t.Errorf("%s user prompt lacks %q:\n%s", name, want, p.User)
+			}
+		}
+	}
+	noThread, err := Render("explain", CommandData{Target: "a.go:1", Diff: "D"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(noThread.User, "<thread>") || strings.Contains(noThread.User, ": ") && strings.Contains(noThread.User, "/explain a.go:1:") {
+		t.Errorf("empty thread or question rendered:\n%s", noThread.User)
+	}
+}

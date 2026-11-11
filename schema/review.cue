@@ -96,3 +96,9 @@ package review
 	// needs a human.
 	sensitive_weight: number & >0 | *2.5
 }
+
+// Slash commands (Milestone 4.6). /explain answers with #Explanation;
+// /refactor and /docstrings answer with #ImproveOutput.
+#Explanation: {
+	answer: string & !=""
+}

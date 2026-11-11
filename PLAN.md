@@ -213,8 +213,8 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **User Story Context:** Invoke slash commands (`/explain`, `/refactor`, `/docstrings`) directly within the `mrman` review thread.
 * **Technical Spec (`pkg/reviewer/commands.go`):**
-* [ ] Implement a command parser supporting `/explain [file:line-range]`, `/refactor [file:line-range]`, and `/docstrings [file]`.
-* [ ] Route each command to a dedicated template in `internal/llm/templates/` scoped strictly to the selected hunk and thread history.
+* [x] Implement a command parser supporting `/explain [file:line-range]`, `/refactor [file:line-range]`, and `/docstrings [file]`.
+* [x] Route each command to a dedicated template in `internal/llm/templates/` scoped strictly to the selected hunk and thread history.
 
 
 * **Verification:** Unit tests verifying command parsing, line-range extraction, and template rendering.

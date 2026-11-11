@@ -33,6 +33,7 @@ viewport.SetContent(reviewer.FormatReview(out)) // or render with glamour
 | `Review(ctx, patch, opts)` | `*ReviewOutput`: summary, max risk score, sorted findings, excluded and skipped paths |
 | `Describe(ctx, patch)` | `*PRDescription`, or `ErrNoChanges` if every file was excluded |
 | `Improve(ctx, patch)` | `[]CodeSuggestion` sorted by file and line |
+| `RunCommand(ctx, patch, cmd, thread)` | `*CommandResult` for a [slash command](../commands/) parsed with `ParseCommand` |
 | `Policy(failOn)` | A schema-validated `*PolicyGate`; `Blocking(findings)` returns the findings that fail it |
 
 The package-level `OrderFilesByDependency(files)` orders a parsed diff for a

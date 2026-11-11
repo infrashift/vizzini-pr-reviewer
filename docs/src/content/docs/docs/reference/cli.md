@@ -16,7 +16,9 @@ pr-review --patch-file change.patch --mode describe --format json
 | Flag | Default | Meaning |
 |---|---|---|
 | `--patch-file` | `-` | Unified diff to read. `-` reads stdin |
-| `--mode` | `review` | `describe`, `review` or `improve` |
+| `--mode` | `review` | `describe`, `review`, `improve` or `command` |
+| `--command` | | Command mode: a [slash command](../../guides/commands/), e.g. `"/explain a.go:44-45 why?"` |
+| `--thread` | | Command mode: JSON file with the thread history, `[{"author": "...", "body": "..."}]` |
 | `--litellm-url` | `$VIZZINI_LITELLM_URL` | OpenAI-compatible API root, e.g. `http://litellm:4000/v1` |
 | `--model` | `$VIZZINI_MODEL` | Model name as configured in LiteLLM |
 | `--format` | `markdown` | `markdown` (for humans and mrman) or `json` |
@@ -44,6 +46,7 @@ pr-review --patch-file change.patch --mode describe --format json
 | `review` | `{summary, risk_score, base_risk_score, model_risk_score, risk_files[], auto_approve, findings[], knowledge_docs[], excluded[], skipped[], chunks, diagnostics}` with findings sorted most severe first |
 | `describe` | `{title, type, summary, changes[]}` |
 | `improve` | `{suggestions: [{file, start_line, end_line, category, summary, existing_code, improved_code}]}` |
+| `command` | `{command, answer}` for `/explain`; `{command, suggestions[]}` for `/refactor` and `/docstrings` |
 
 Every model answer is validated against [the schema](../review-schema/) and
 anchored to the diff before it is printed.

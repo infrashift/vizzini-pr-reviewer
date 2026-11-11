@@ -147,3 +147,32 @@ func fenceLang(file string) string {
 	}
 	return extLang[strings.ToLower(path.Ext(file))]
 }
+
+// FormatCommandResult renders a slash command's answer as Markdown for the
+// review thread.
+func FormatCommandResult(r *CommandResult) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "**/%s** `%s`", r.Command.Kind, r.Command.String())
+	if r.Command.Question != "" {
+		fmt.Fprintf(&b, ": %s", r.Command.Question)
+	}
+	b.WriteString("\n\n")
+	if r.Command.Kind == CommandExplain {
+		b.WriteString(strings.TrimSpace(r.Answer))
+		b.WriteString("\n")
+		return b.String()
+	}
+	if len(r.Suggestions) == 0 {
+		b.WriteString("No changes suggested.\n")
+		return b.String()
+	}
+	for i := range r.Suggestions {
+		c := &r.Suggestions[i]
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "%s · `%s`\n\n", c.Summary, location(c.File, c.StartLine, c.EndLine))
+		b.WriteString(codeBlock(c.File, c.ImprovedCode))
+	}
+	return b.String()
+}

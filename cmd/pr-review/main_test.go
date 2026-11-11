@@ -116,7 +116,7 @@ func TestRun_Errors(t *testing.T) {
 	}{
 		{"missing url", map[string]string{"VIZZINI_MODEL": "m"}, nil, "--litellm-url (or VIZZINI_LITELLM_URL) is required"},
 		{"missing model", map[string]string{"VIZZINI_LITELLM_URL": "http://x/v1"}, nil, "--model (or VIZZINI_MODEL) is required"},
-		{"bad mode", base, []string{"--mode", "explain"}, "--mode must be describe, review or improve"},
+		{"bad mode", base, []string{"--mode", "explain"}, "--mode must be describe, review, improve or command"},
 		{"bad format", base, []string{"--format", "yaml"}, "--format must be json or markdown"},
 		{"stray argument", base, []string{"extra"}, "unexpected arguments"},
 		{"unknown flag", base, []string{"--nope"}, "flag provided but not defined"},
@@ -127,6 +127,11 @@ func TestRun_Errors(t *testing.T) {
 		{"lint-json outside review", base, []string{"--mode", "describe", "--lint-json", "x.json"}, "--lint-json applies only to --mode review"},
 		{"lint-json from stdin", base, []string{"--lint-json", "-"}, "--lint-json must be a file"},
 		{"lint-json missing", base, []string{"--lint-json", "/does/not/exist.json"}, "--lint-json: open /does/not/exist.json"},
+		{"command without --command", base, []string{"--mode", "command"}, "--command and --mode command go together"},
+		{"--command without mode", base, []string{"--command", "/explain a.go:1"}, "--command and --mode command go together"},
+		{"thread outside command", base, []string{"--thread", "t.json"}, "--thread applies only to --mode command"},
+		{"bad command", base, []string{"--mode", "command", "--command", "/summarize x.go:1"}, "unknown command /summarize"},
+		{"command out of scope", base, []string{"--mode", "command", "--command", "/explain nope.go:1"}, "nope.go is not part of this diff"},
 		{"knowledge outside review", base, []string{"--mode", "improve", "--knowledge", "."}, "--knowledge applies only to --mode review"},
 		{"knowledge missing", base, []string{"--knowledge", "/does/not/exist"}, "--knowledge: stat /does/not/exist"},
 		{"knowledge not a dir", base, []string{"--knowledge", "main.go"}, "--knowledge: main.go is not a directory"},
@@ -285,5 +290,30 @@ func TestRun_Knowledge(t *testing.T) {
 	}
 	if p := llmtest.UserPrompt(&srv.Requests()[0]); !strings.Contains(p, "<knowledge>") {
 		t.Error("prompt lacks the knowledge block")
+	}
+}
+
+func TestRun_CommandMode(t *testing.T) {
+	srv := llmtest.NewServer(t, func(_ int, req *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"answer":"It builds SQL from input."}`}
+	})
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	thread := filepath.Join(t.TempDir(), "thread.json")
+	if err := os.WriteFile(thread, []byte(`[{"author":"alice","body":"Safe?"}]`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := runCLI(t, env, patch, "--mode", "command", "--command", "/explain internal/store/users.go:42 safe?", "--thread", thread)
+	if r.code != exitOK {
+		t.Fatalf("exit %d: %s", r.code, r.stderr)
+	}
+	if r.stdout != "**/explain** `internal/store/users.go:42`: safe?\n\nIt builds SQL from input.\n" {
+		t.Errorf("stdout %q", r.stdout)
+	}
+	if !strings.Contains(llmtest.UserPrompt(&srv.Requests()[0]), "alice: Safe?") {
+		t.Error("thread not sent")
+	}
+	r = runCLI(t, env, patch, "--mode", "command", "--command", "/explain internal/store/users.go:42", "--format", "json")
+	if r.code != exitOK || !strings.Contains(r.stdout, `"answer": "It builds SQL from input."`) {
+		t.Errorf("json: exit %d stdout %s", r.code, r.stdout)
 	}
 }

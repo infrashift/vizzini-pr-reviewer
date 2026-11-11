@@ -76,6 +76,24 @@ type DescribeData struct {
 // ImproveData feeds the "improve" template.
 type ImproveData = ReviewData
 
+// CommandData feeds the "explain", "refactor" and "docstrings" templates.
+type CommandData struct {
+	// Target is "file:start-end" (or just "file" for docstrings).
+	Target string
+	// Question is free text after the target, if any.
+	Question string
+	// Diff holds only the hunks the command is scoped to.
+	Diff string
+	// Thread is the review-thread history, oldest first.
+	Thread []ThreadMessage
+}
+
+// ThreadMessage is one comment in a review thread.
+type ThreadMessage struct {
+	Author string `json:"author"`
+	Body   string `json:"body"`
+}
+
 // Render executes the "<name>.system" and "<name>.user" templates.
 func Render(name string, data any) (Prompt, error) {
 	var sys, usr strings.Builder

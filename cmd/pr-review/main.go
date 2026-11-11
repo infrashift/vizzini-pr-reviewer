@@ -72,6 +72,8 @@ type options struct {
 	lintJSON   string
 	riskPolicy string
 	knowledge  string
+	command    string
+	thread     string
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -177,6 +179,26 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 			return nil, "", derr
 		}
 		return d, reviewer.FormatDescription(d), nil
+	case "command":
+		cmd, cerr := reviewer.ParseCommand(opts.command)
+		if cerr != nil {
+			return nil, "", cerr
+		}
+		var thread []reviewer.ThreadMessage
+		if opts.thread != "" {
+			data, terr := os.ReadFile(opts.thread) //nolint:gosec // G304: reading the user-named thread file is the point
+			if terr != nil {
+				return nil, "", fmt.Errorf("--thread: %w", terr)
+			}
+			if terr = json.Unmarshal(data, &thread); terr != nil {
+				return nil, "", fmt.Errorf("--thread: %w", terr)
+			}
+		}
+		res, rerr := engine.RunCommand(ctx, patch, cmd, thread)
+		if rerr != nil {
+			return nil, "", rerr
+		}
+		return res, reviewer.FormatCommandResult(res), nil
 	case "improve":
 		s, ierr := engine.Improve(ctx, patch)
 		if ierr != nil {
@@ -220,7 +242,9 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		fs.PrintDefaults()
 	}
 	fs.StringVar(&o.patchFile, "patch-file", "-", "unified diff to review; - reads stdin")
-	fs.StringVar(&o.mode, "mode", "review", "describe | review | improve")
+	fs.StringVar(&o.mode, "mode", "review", "describe | review | improve | command")
+	fs.StringVar(&o.command, "command", "", `command mode: slash command, e.g. "/explain internal/store/users.go:44-45 why?"`)
+	fs.StringVar(&o.thread, "thread", "", "command mode: JSON file with the thread history, [{\"author\": ..., \"body\": ...}]")
 	fs.StringVar(&o.litellmURL, "litellm-url", getenv("VIZZINI_LITELLM_URL"), "OpenAI-compatible API root of the LiteLLM proxy, e.g. http://litellm:4000/v1")
 	fs.StringVar(&o.model, "model", getenv("VIZZINI_MODEL"), "model name as configured in LiteLLM")
 	fs.StringVar(&o.format, "format", "markdown", "json | markdown")
@@ -251,9 +275,15 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		return nil, fmt.Errorf("unexpected arguments: %v", fs.Args())
 	}
 	switch o.mode {
-	case "describe", "review", "improve":
+	case "describe", "review", "improve", "command":
 	default:
-		return nil, fmt.Errorf("--mode must be describe, review or improve, got %q", o.mode)
+		return nil, fmt.Errorf("--mode must be describe, review, improve or command, got %q", o.mode)
+	}
+	if (o.mode == "command") != (o.command != "") {
+		return nil, errors.New("--command and --mode command go together")
+	}
+	if o.thread != "" && o.mode != "command" {
+		return nil, errors.New("--thread applies only to --mode command")
 	}
 	if o.failOn != nil && o.mode != "review" {
 		return nil, errors.New("--fail-on applies only to --mode review")

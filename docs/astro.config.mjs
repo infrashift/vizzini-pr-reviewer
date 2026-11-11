@@ -41,6 +41,7 @@ export default defineConfig({
 						{ label: 'Dependency Walkthroughs', slug: 'docs/guides/walkthrough' },
 						{ label: 'Risk & Auto-Approve', slug: 'docs/guides/risk' },
 						{ label: 'Knowledge-Grounded Reviews', slug: 'docs/guides/knowledge' },
+						{ label: 'Slash Commands', slug: 'docs/guides/commands' },
 						{ label: 'Running Offline', slug: 'docs/guides/offline' },
 					],
 				},
