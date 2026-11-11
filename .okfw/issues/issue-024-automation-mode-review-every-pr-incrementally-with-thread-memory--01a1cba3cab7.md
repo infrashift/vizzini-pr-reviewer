@@ -56,6 +56,27 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
   - The pack listing the forge-verified identity allowed it: 9/9 findings posted as marked threads.
   - Cost $0.217 for two live runs, attributed per PR.
 
+**Slice 2, thread memory (done 2026-11-11):** [ADR-0017](/decisions/adr-0017-thread-memory-matches-by-fingerprint-or-mapped-anchor-and-resolves-only-when-the-code-changed--01a1cc2bd91a.md)
+- **mrman** `feature/thread-resolve` (3e2324e, 71c0201):
+  - `review threads` (read-only).
+  - `review resolve --thread ID… --reply`, gated like submit: a human grant naming `resolve`, or `--grant-policy` with event `resolve`.
+  - `forge.ThreadResolver` and `AsThreadResolver`.
+  - Azure DevOps resolves only threads whose root comment is the token's own identity, compared by id.
+  - The default pack allows `resolve`.
+- **Vizzini** `vizzini-bot` (2ddfb3e):
+  - The marker records head, lines and category.
+  - A finding is already posted when its fingerprint matches, or its file and category match on git-mapped lines.
+  - A thread is resolved only when its finding is gone and its code changed; variance keeps it open.
+  - stdout is a JSON result.
+- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #19, 21/21:
+  - A same-head rerun duplicated nothing.
+  - A pushed fix resolved exactly the MD5 thread, with a reply and status fixed, and kept one variance-only thread open.
+  - Cost $0.22 for four reviews.
+- **Toward the criteria below:**
+  - *No duplicate threads on push* is verified, though the re-review is still a full review, not incremental (slice 3).
+  - *Thread resolution when fixed* is verified.
+  - Suppression is partial: a thread a person resolved stays resolved and is not reposted. Formal suppression rules are slice 5.
+
 **Learned in slice 1:**
 - dev.azure.com intermittently resets TLS handshakes, so forge calls need retries.
 - In a reused workspace, a denied run's drafts stay in the mrman session. CI workspaces are fresh, but slice 2's dedupe should not count on that: it should match against the forge's threads and ignore local drafts.
