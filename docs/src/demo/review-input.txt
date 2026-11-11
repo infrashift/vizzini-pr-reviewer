@@ -1,0 +1,10 @@
+### internal/store/users.go (modified)
+@@ -41,6 +41,7 @@ func (s *Store) FindUser(ctx context.Context, name string) (*User, error) {
+41 41       if name == "" {
+42 42           return nil, ErrEmptyName
+43 43       }
+44    -     row := s.db.QueryRowContext(ctx, "SELECT id, name FROM users WHERE name = $1", name)
+   44 +     q := "SELECT id, name FROM users WHERE name = '" + name + "'"
+   45 +     row := s.db.QueryRowContext(ctx, q)
+45 46       var u User
+46 47       return &u, row.Scan(&u.ID, &u.Name)

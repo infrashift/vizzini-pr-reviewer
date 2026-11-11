@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Vizzini">
+  <rect width="64" height="64" rx="14" fill="#1c1416"/>
+  <rect x="4.5" y="4.5" width="55" height="55" rx="11" fill="none" stroke="#b8475c" stroke-opacity="0.55" stroke-width="2"/>
+  <path d="M19 15 H45 C45 28 39.5 35 32 35 C24.5 35 19 28 19 15 Z" fill="none" stroke="#e7e2d6" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M21.2 22 H42.8 C41.6 29.5 37.4 32.6 32 32.6 C26.6 32.6 22.4 29.5 21.2 22 Z" fill="#c4506a"/>
+  <path d="M32 35 V45" stroke="#e7e2d6" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M23 49 H41" stroke="#e7e2d6" stroke-width="4" stroke-linecap="round"/>
+</svg>

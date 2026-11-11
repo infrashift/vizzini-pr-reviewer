@@ -1,2 +1,7 @@
 /bin/
 /.cache/
+
+# Documentation site (Astro)
+docs/node_modules/
+docs/dist/
+docs/.astro/

@@ -1,4 +1,4 @@
-.PHONY: all test vet-cue lint build tiktoken-cache wiki clean
+.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build clean
 
 GOBIN    := $(shell go env GOPATH)/bin
 GOLANGCI ?= $(GOBIN)/golangci-lint
@@ -41,6 +41,14 @@ tiktoken-cache:
 wiki:
 	okfw validate --all
 	okfw validate --okf
+
+## docs-dev: run the Astro Starlight site locally (bun)
+docs-dev:
+	cd docs && bun install && bun --bun run dev
+
+## docs-build: build the site into docs/dist (what CI and the Pages deploy run)
+docs-build:
+	cd docs && bun install --frozen-lockfile && bun --bun run build
 
 clean:
 	rm -rf bin/

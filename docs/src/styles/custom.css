@@ -1,0 +1,34 @@
+/* Vizzini Starlight theme: a wine-red accent taken from the mascot's goblets,
+   distinct from mrman's teal and garmr's violet. */
+
+/* Starlight's own theme rules live in a cascade layer, and unlayered rules
+   like these win over layered ones regardless of specificity. A plain :root
+   override of a scale color therefore leaks into light mode as well, so the
+   dark-only values are scoped to data-theme="dark" (which Starlight sets on
+   <html> after resolving "auto"). */
+:root {
+	--sl-content-width: 52rem;
+}
+
+:root[data-theme='dark'] {
+	--sl-color-accent-low: hsl(348, 38%, 15%);
+	--sl-color-accent: hsl(348, 52%, 52%);
+	--sl-color-accent-high: hsl(348, 70%, 84%);
+	--sl-color-black: hsl(345, 12%, 8%);
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: hsl(348, 60%, 92%);
+	--sl-color-accent: hsl(348, 55%, 40%);
+	--sl-color-accent-high: hsl(348, 50%, 20%);
+}
+
+/* Inline code contrast */
+:root[data-theme='light'] .sl-markdown-content :not(pre) > code {
+	background-color: hsl(40, 30%, 92%);
+	color: hsl(348, 45%, 28%);
+}
+
+.sl-markdown-content table :not(pre) > code {
+	white-space: nowrap;
+}

@@ -1,0 +1,65 @@
+---
+title: Vizzini
+description: A pure-Go AI code review engine. It chunks diffs by tokens, asks any model behind a LiteLLM proxy for findings, and validates every answer against a CUE schema.
+sidebar:
+  order: 0
+  label: Overview
+---
+
+import { CardGrid, Card, LinkCard, Aside } from '@astrojs/starlight/components';
+
+**Vizzini** is a stateless AI code review engine written in pure Go. It reads a
+unified diff and drops generated files. It labels every line with its old and
+new line number, packs the hunks into token-bounded chunks, and asks an LLM
+behind your **LiteLLM** proxy for findings. Every answer is unified with a
+**CUE schema** before it reaches the caller. An answer that doesn't fit is
+sent back to the model to fix.
+
+Vizzini is built as a library first. Its primary consumer is the
+[mrman](https://infrashift.github.io/mrman/) terminal review tool. It also
+ships as a static `pr-review` binary for CI, UBI9 containers and offline QEMU
+microVMs.
+
+<Aside type="caution" title="Early development">
+The engine core is done: diff parsing, chunking, the CUE validator and the
+LiteLLM client. The public `pkg/reviewer` API and the `pr-review` CLI are the
+next milestone. See the [roadmap](./project/roadmap/).
+</Aside>
+
+<LinkCard
+  title="Getting Started"
+  description="Build Vizzini from source and run the test suite offline."
+  href="./getting-started/"
+/>
+
+## Why Vizzini
+
+<CardGrid>
+	<Card title="The schema has the final say">
+		LLM output is untrusted input. Closed CUE definitions reject unknown
+		severities, invented fields and impossible line ranges, so callers always
+		get typed data with a guaranteed shape.
+	</Card>
+	<Card title="Findings that point at real lines">
+		The model sees every hunk line labeled with its old and new line
+		numbers, so a finding's `start_line` refers to an actual line in the
+		new file.
+	</Card>
+	<Card title="Exact token budgets">
+		Chunks stay within a tiktoken budget. Large files split only between
+		hunks, and the token counts are exact, not estimated.
+	</Card>
+	<Card title="Small, static, offline">
+		`CGO_ENABLED=0`, a short pinned dependency list, and checksum-pinned
+		tokenizer encodings, so it never needs the network at runtime.
+	</Card>
+</CardGrid>
+
+## Learn more
+
+<CardGrid>
+	<LinkCard title="How a Review Works" href="./guides/how-it-works/" description="From patch to validated findings, stage by stage." />
+	<LinkCard title="Review Schema" href="./reference/review-schema/" description="The CUE contract every answer must satisfy." />
+	<LinkCard title="Running Offline" href="./guides/offline/" description="Seeding the tokenizer cache for containers and microVMs." />
+	<LinkCard title="Design Decisions" href="./project/decisions/" description="Why pure Go, why CUE, why LiteLLM." />
+</CardGrid>

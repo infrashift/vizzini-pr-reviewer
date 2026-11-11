@@ -1,0 +1,16 @@
+{
+  "summary": "FindUser now builds its SQL by string concatenation instead of a bound parameter.",
+  "risk_score": 92,
+  "findings": [
+    {
+      "file": "internal/store/users.go",
+      "start_line": 44,
+      "end_line": 45,
+      "severity": "Critical",
+      "category": "Security",
+      "title": "SQL injection via string-built query",
+      "body": "name is concatenated into the query, so a name like ' OR '1'='1 returns arbitrary rows. The previous version bound it as $1.",
+      "suggestion": "row := s.db.QueryRowContext(ctx, \"SELECT id, name FROM users WHERE name = $1\", name)"
+    }
+  ]
+}
