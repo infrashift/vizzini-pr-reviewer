@@ -73,6 +73,8 @@ type fakeMrman struct {
 	replyErr   error
 	// inputs holds each --input @file's content, read when mrman is called.
 	inputs map[string]string
+	// policy is agent-submit.cue as handed to the last submit.
+	policy string
 }
 
 func (f *fakeMrman) install(t *testing.T) {
@@ -89,6 +91,12 @@ func (f *fakeMrman) install(t *testing.T) {
 		case args[1] == "threads":
 			return []byte(cmp.Or(f.threadsOut, `{"threads":[]}`)), nil, nil
 		case args[1] == "submit":
+			// The policy as mrman would read it, captured while it exists.
+			if i := slices.Index(args, "--grant-policy"); i >= 0 && i+1 < len(args) {
+				if data, err := os.ReadFile(filepath.Join(args[i+1], "agent-submit.cue")); err == nil { //nolint:gosec // G304: the bot's own temp copy
+					f.policy = string(data)
+				}
+			}
 			return []byte(f.submitOut), []byte("mrman: authorization: {}\n"), f.submitErr
 		case args[1] == "resolve":
 			return []byte(f.resolveOut), []byte("mrman: authorization: {}\n"), f.resolveErr
@@ -123,6 +131,35 @@ func botEnv(t *testing.T) map[string]string {
 
 func TestBot_PostsThroughMrmanUnderTheGrantPolicy(t *testing.T) {
 	repo := gitRepo(t)
+	// The base branch carries the policy; the PR rewrites it to allow
+	// itself more. mrman must be handed the base's.
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), "git", append([]string{"-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"}, args...)...) //nolint:gosec // G204: fixed git subcommands from this test
+		cmd.Dir = repo
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	policyFile := filepath.Join(repo, "policies", "mrman", "agent-submit.cue")
+	writePolicy := func(body string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(policyFile), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(policyFile, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("checkout", "-q", "main")
+	writePolicy("package mrman\n_allowedEvents: [\"comment\"]\n")
+	git("add", "policies")
+	git("commit", "-q", "-m", "policy")
+	git("checkout", "-q", "feature")
+	git("merge", "-q", "--no-edit", "main")
+	writePolicy("package mrman\n_allowedEvents: [\"comment\", \"approve\"]\n")
+	git("commit", "-q", "-am", "let me approve myself")
+
 	f := &fakeMrman{submitOut: `{"state":"COMMENTED"}`}
 	f.install(t)
 	out := filepath.Join(t.TempDir(), "review.json")
@@ -141,11 +178,13 @@ func TestBot_PostsThroughMrmanUnderTheGrantPolicy(t *testing.T) {
 		t.Errorf("review add %q", add)
 	}
 	submit := strings.Join(f.calls[3], " ")
-	abs, _ := filepath.Abs("policies/mrman")
-	for _, want := range []string{"--event comment", "--grant-policy " + abs, "--run-id run-1", "--agent vizzini-bot", "--garmr garmr"} {
+	for _, want := range []string{"--event comment", "--grant-policy ", "--run-id run-1", "--agent vizzini-bot", "--garmr garmr"} {
 		if !strings.Contains(submit, want) {
 			t.Errorf("submit %q lacks %q", submit, want)
 		}
+	}
+	if !strings.Contains(f.policy, `_allowedEvents: ["comment"]`) || strings.Contains(f.policy, "approve") {
+		t.Errorf("mrman evaluated %q, want the base branch's policy", f.policy)
 	}
 	if !strings.Contains(stderr, "mrman: authorization:") {
 		t.Errorf("the authorization line must reach the CI log: %s", stderr)
@@ -171,7 +210,7 @@ func TestBot_PolicyDenialPostsNothingAndExits3(t *testing.T) {
 	repo := gitRepo(t)
 	f := &fakeMrman{submitOut: `{"error":"policy_denied","message":"denied"}`, submitErr: errors.New("exit status 1")}
 	f.install(t)
-	code, stdout, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+	code, stdout, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p")
 	if code != exitDenied || !strings.Contains(stderr, "denied posting") || !strings.Contains(stdout, "policy_denied") {
 		t.Errorf("exit %d\nstdout %s\nstderr %s", code, stdout, stderr)
 	}
@@ -200,7 +239,7 @@ func TestBot_RetriesForgeNetworkErrors(t *testing.T) {
 			}
 			return inner(ctx, dir, name, args...)
 		}
-		code, _, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+		code, _, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p")
 		if code != tc.wantCode || prCalls != tc.wantPr || !strings.Contains(stderr, "retrying") {
 			t.Errorf("%d failures: exit %d after %d opens, want %d after %d: %s", tc.failures, code, prCalls, tc.wantCode, tc.wantPr, stderr)
 		}
@@ -212,7 +251,7 @@ func TestBot_SubmitFailureIsAnError(t *testing.T) {
 	repo := gitRepo(t)
 	f := &fakeMrman{submitOut: `{"error":"forge"}`, submitErr: errors.New("exit status 1")}
 	f.install(t)
-	if code, _, _ := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p"); code != exitError {
+	if code, _, _ := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p"); code != exitError {
 		t.Errorf("exit %d, want %d", code, exitError)
 	}
 }
@@ -261,8 +300,8 @@ func TestParseFlags_PostingNeedsAPolicy(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"--pr-url", "u", "--grant-policy", "p"}, "--base is required"},
-		{[]string{"--base", "main", "--grant-policy", "p"}, "--pr-url is required"},
+		{[]string{"--pr-url", "u", "--grant-policy", "/p"}, "--base is required"},
+		{[]string{"--base", "main", "--grant-policy", "/p"}, "--pr-url is required"},
 		{[]string{"--base", "main", "--pr-url", "u"}, "--grant-policy is required"},
 		{[]string{"--base", "main", "--dry-run", "extra"}, "unexpected arguments"},
 	} {

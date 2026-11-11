@@ -119,7 +119,7 @@ func TestBot_ThreadMemoryAcrossPushes(t *testing.T) {
 		return llmtest.Reply{Content: strings.Replace(reply, "%s", title, 1)}
 	})
 	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
-	args := []string{"--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p"}
+	args := []string{"--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p"}
 
 	// Run 1: nothing posted yet.
 	f := &fakeMrman{submitOut: `{"submitted":true}`}

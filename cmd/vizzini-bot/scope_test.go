@@ -63,7 +63,7 @@ func TestReviewScope(t *testing.T) {
 		return llmtest.Reply{Content: `{"summary":"s","risk_score":5,"findings":[]}`}
 	})
 	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
-	args := []string{"--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "p"}
+	args := []string{"--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "/p"}
 	reviewed := func() string { // the diff part of the last prompt
 		reqs := srv.Requests()
 		return llmtest.UserPrompt(&reqs[len(reqs)-1])
@@ -164,7 +164,7 @@ func TestReviewScope_AResolutionRecordsTheHead(t *testing.T) {
 		}}}})
 	f := &fakeMrman{threadsOut: string(b)}
 	f.install(t)
-	_, stdout, stderr := runBot(t, env, "--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+	_, stdout, stderr := runBot(t, env, "--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "/p")
 	var res botResult
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil || res.Mode != "unchanged" || len(srv.Requests()) != 0 {
 		t.Errorf("result %s, %d requests: %s", stdout, len(srv.Requests()), stderr)

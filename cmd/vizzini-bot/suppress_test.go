@@ -84,7 +84,7 @@ func TestBot_SuppressedFindingIsNotPostedAndItsThreadIsLeftAlone(t *testing.T) {
 		"id": "31", "path": "a.go", "comments": []any{map[string]any{"id": "1", "body": "x\n\n" + m.String()}}}}})
 	f := &fakeMrman{submitOut: `{}`, threadsOut: string(threads)}
 	f.install(t)
-	code, stdout, stderr := runBot(t, env, "--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "p", "--full")
+	code, stdout, stderr := runBot(t, env, "--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "/p", "--full")
 	var res botResult
 	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil {
 		t.Fatalf("exit %d, %s: %s", code, stdout, stderr)

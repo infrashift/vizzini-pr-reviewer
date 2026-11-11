@@ -69,11 +69,14 @@ type options struct {
 	litellmURL  string
 	model       string
 	grantPolicy string
-	mrman       string
-	garmr       string
-	out         string
-	dryRun      bool
-	full        bool
+	// policyDir is the grant policy as mrman evaluates it: the base
+	// revision's copy of a relative --grant-policy (policy.go).
+	policyDir string
+	mrman     string
+	garmr     string
+	out       string
+	dryRun    bool
+	full      bool
 	// commandAuthors limits who may run /vizzini commands (empty: anyone
 	// who can comment); maxCommands bounds the commands answered per run.
 	commandAuthors []string
@@ -101,7 +104,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	})
 	fs.StringVar(&o.litellmURL, "litellm-url", getenv("VIZZINI_LITELLM_URL"), "OpenAI-compatible API root of the LiteLLM proxy")
 	fs.StringVar(&o.model, "model", getenv("VIZZINI_MODEL"), "model name as configured in LiteLLM")
-	fs.StringVar(&o.grantPolicy, "grant-policy", getenv("VIZZINI_GRANT_POLICY"), "the committed garmr policy directory that authorizes posting (required unless --dry-run)")
+	fs.StringVar(&o.grantPolicy, "grant-policy", getenv("VIZZINI_GRANT_POLICY"), "the garmr policy directory that authorizes posting (required unless --dry-run); a relative path is read from the base branch, an absolute one used as is")
 	fs.StringVar(&o.mrman, "mrman", cmp.Or(getenv("VIZZINI_MRMAN"), "mrman"), "the mrman binary")
 	fs.StringVar(&o.garmr, "garmr", cmp.Or(getenv("VIZZINI_GARMR"), "garmr"), "the garmr binary mrman evaluates the policy with")
 	fs.StringVar(&o.out, "out", "", "also write the review report (JSON) here")
@@ -202,6 +205,12 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 	var threads []remoteThread
 	if !opts.dryRun {
 		var err error
+		dir, cleanup, perr := basePolicy(ctx, opts)
+		if perr != nil {
+			return perr
+		}
+		defer cleanup()
+		opts.policyDir = dir
 		if slug, threads, err = recall(ctx, opts, stderr); err != nil {
 			return err
 		}
@@ -219,10 +228,7 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 	if rerr := reviewAndPost(ctx, opts, engine, slug, mine, reviewedHeads(threads), res, stdout, stderr); rerr != nil || opts.dryRun {
 		return rerr
 	}
-	policy, err := filepath.Abs(opts.grantPolicy)
-	if err != nil {
-		return err
-	}
+	policy := opts.policyDir
 	if serr := suggestSuppressions(ctx, opts, slug, policy, threads, res, stderr); serr != nil {
 		return serr
 	}
@@ -481,10 +487,7 @@ func post(ctx context.Context, opts *options, slug string, comments []comment, m
 	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d earlier threads; %d new, %d already posted, %d to resolve, %d kept open, %d carried\n",
 		len(mine), len(r.Post), len(r.AlreadyPosted), len(r.Resolve), len(r.KeptOpen), len(r.Carried))
 
-	policy, err := filepath.Abs(opts.grantPolicy)
-	if err != nil {
-		return err
-	}
+	policy := opts.policyDir
 	if len(r.Post) > 0 {
 		if err := submitNew(ctx, opts, slug, policy, r.Post, res, stderr); err != nil {
 			return err

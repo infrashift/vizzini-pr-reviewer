@@ -101,7 +101,7 @@ func TestBot_AnswersCommandsOnce(t *testing.T) {
 	f := &fakeMrman{threadsOut: threads()}
 	f.install(t)
 
-	code, stdout, stderr := runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p", "--pr", "ado:o/p/r#7")
+	code, stdout, stderr := runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p", "--pr", "ado:o/p/r#7")
 	var res botResult
 	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil || !slices.Equal(res.Answered, []string{"2", "3"}) {
 		t.Fatalf("exit %d, result %s: %s", code, stdout, stderr)
@@ -152,7 +152,7 @@ func TestBot_AnswersCommandsOnce(t *testing.T) {
 		map[string]any{"id": "4", "author": "bot", "body": first},
 		map[string]any{"id": "5", "author": "bot", "body": second})}
 	f.install(t)
-	_, stdout, _ = runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+	_, stdout, _ = runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p")
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil || len(res.Answered) != 0 {
 		t.Errorf("second run answered again: %s", stdout)
 	}
@@ -160,14 +160,14 @@ func TestBot_AnswersCommandsOnce(t *testing.T) {
 	// A denied reply exits 3.
 	f = &fakeMrman{threadsOut: threads(), replyOut: `{"error":"policy_denied"}`, replyErr: errExit1}
 	f.install(t)
-	if code, _, _ := runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p"); code != exitDenied {
+	if code, _, _ := runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p"); code != exitDenied {
 		t.Errorf("denied reply: exit %d", code)
 	}
 
 	// --max-commands 0 answers none.
 	f = &fakeMrman{threadsOut: threads()}
 	f.install(t)
-	_, stdout, _ = runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p", "--max-commands", "0")
+	_, stdout, _ = runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p", "--max-commands", "0")
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil || len(res.Answered) != 0 {
 		t.Errorf("--max-commands 0: %s", stdout)
 	}
