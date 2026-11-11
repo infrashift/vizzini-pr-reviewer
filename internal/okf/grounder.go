@@ -16,6 +16,7 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	cueyaml "cuelang.org/go/encoding/yaml"
+	"github.com/bluekeyes/go-gitdiff/gitdiff"
 
 	"github.com/infrashift/vizzini-pr-reviewer/internal/diff"
 )
@@ -52,8 +53,30 @@ type Match struct {
 var (
 	// Markdown links in index.md listings: [Title](target) or [dir/](dir/).
 	indexLink = regexp.MustCompile(`\[[^\]]*\]\(([^)\s]+)\)`)
-	// Go package clause inside hunk text.
-	packageClause = regexp.MustCompile(`^\s*package\s+([A-Za-z_][A-Za-z0-9_]*)`)
+	// declarations maps a file extension to the line that declares the
+	// file's package or namespace; group 1 is the name (ISSUE-021).
+	declarations = func() map[string]*regexp.Regexp {
+		goPkg := regexp.MustCompile(`^\s*package\s+([A-Za-z_][A-Za-z0-9_]*)`)
+		jvm := regexp.MustCompile(`^\s*package\s+([A-Za-z_][\w.]*)\s*;?\s*$`)
+		cs := regexp.MustCompile(`^\s*namespace\s+([A-Za-z_][\w.]*)\s*[;{]?\s*$`)
+		php := regexp.MustCompile(`^\s*namespace\s+([A-Za-z_][\w\\]*)\s*[;{]`)
+		cpp := regexp.MustCompile(`^\s*(?:inline\s+)?namespace\s+([A-Za-z_][\w:]*)\s*\{?\s*$`)
+		ts := regexp.MustCompile(`^\s*(?:export\s+)?(?:declare\s+)?(?:namespace|module)\s+([A-Za-z_$][\w$.]*)\s*\{?\s*$`)
+		m := map[string]*regexp.Regexp{".go": goPkg, ".cs": cs, ".php": php}
+		for _, e := range []string{".java", ".kt", ".kts", ".scala", ".groovy"} {
+			m[e] = jvm
+		}
+		for _, e := range []string{".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"} {
+			m[e] = cpp
+		}
+		for _, e := range []string{".ts", ".tsx", ".mts", ".cts"} {
+			m[e] = ts
+		}
+		return m
+	}()
+	// qualifiedSeparators are the ways a qualified name is spelled across
+	// languages; all of them normalize to dots.
+	qualifiedSeparators = strings.NewReplacer("::", ".", `\`, ".", "/", ".")
 )
 
 // Load reads a bundle by progressive disclosure: starting at the root
@@ -252,22 +275,31 @@ func list(v cue.Value, field string) []string {
 // Target is a changed file the documents are matched against.
 type Target struct {
 	Path string
-	// Package is the Go package name if known; otherwise the directory name
-	// stands in.
+	// Package is the file's declared package or namespace, dot-separated
+	// ("store", "com.acme.store", "Shop.Repositories", "App.Http"), when
+	// its declaration is visible in the diff; otherwise empty, and the
+	// file's directories stand in.
 	Package string
 }
 
-// TargetsFor derives match targets from parsed diff files, reading the Go
-// package clause from hunk text when it is visible.
+// TargetsFor derives match targets from parsed diff files. It reads the
+// first package or namespace declaration on a surviving (added or context)
+// hunk line: Go, Java, Kotlin, Scala, Groovy, C#, PHP, C++ and TypeScript
+// (ISSUE-021). Other languages declare no file namespace; their paths are
+// their modules.
 func TargetsFor(files []*diff.File) []Target {
 	out := make([]Target, 0, len(files))
 	for _, f := range files {
 		t := Target{Path: f.Path}
+		re := declarations[strings.ToLower(path.Ext(f.Path))]
 	scan:
 		for i := range f.Hunks {
 			for _, l := range f.Hunks[i].Lines {
-				if m := packageClause.FindStringSubmatch(l.Text); m != nil {
-					t.Package = m[1]
+				if re == nil || l.Op == gitdiff.OpDelete {
+					continue
+				}
+				if m := re.FindStringSubmatch(l.Text); m != nil {
+					t.Package = strings.Trim(qualifiedSeparators.Replace(m[1]), ".")
 					break scan
 				}
 			}
@@ -313,21 +345,61 @@ func (d *Doc) matchReason(targets []Target) string {
 	return ""
 }
 
-// namesAny reports whether any term equals (case-insensitively) a changed
-// file's package name or one of its directory names.
+// namesAny reports whether any term names a changed file, case-insensitively.
+// A single-segment term ("store") matches any segment of the file's package
+// or namespace, or any of its directory names. A qualified term
+// ("Shop.Repositories", also spelled with ::, a backslash or /) matches that
+// namespace or one nested under it, or the same run of directories.
 func namesAny(terms []string, targets []Target) bool {
 	for _, term := range terms {
+		want := splitQualified(term)
+		if len(want) == 0 {
+			continue
+		}
 		for _, t := range targets {
-			if t.Package != "" && strings.EqualFold(term, t.Package) {
+			if t.Package != "" && namesPackage(want, strings.Split(t.Package, ".")) {
 				return true
 			}
-			segs := strings.Split(path.Dir(t.Path), "/")
-			for _, s := range segs {
-				if s != "." && strings.EqualFold(term, s) {
-					return true
-				}
+			if containsRun(strings.Split(path.Dir(t.Path), "/"), want) {
+				return true
 			}
 		}
 	}
 	return false
+}
+
+func splitQualified(term string) []string {
+	q := strings.Trim(qualifiedSeparators.Replace(strings.TrimSpace(term)), ".")
+	if q == "" {
+		return nil
+	}
+	return strings.Split(q, ".")
+}
+
+// namesPackage: one segment matches any segment; a qualified name matches
+// the package itself or a package nested under it (a prefix of segments).
+func namesPackage(want, pkg []string) bool {
+	if len(want) == 1 {
+		return slices.ContainsFunc(pkg, func(s string) bool { return strings.EqualFold(s, want[0]) })
+	}
+	return len(pkg) >= len(want) && equalFold(pkg[:len(want)], want)
+}
+
+// containsRun reports whether segs holds want as consecutive elements.
+func containsRun(segs, want []string) bool {
+	for i := 0; i+len(want) <= len(segs); i++ {
+		if equalFold(segs[i:i+len(want)], want) {
+			return true
+		}
+	}
+	return false
+}
+
+func equalFold(a, b []string) bool {
+	for i := range a {
+		if !strings.EqualFold(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
 }

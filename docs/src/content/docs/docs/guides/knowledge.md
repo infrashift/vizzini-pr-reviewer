@@ -29,15 +29,41 @@ type: "ADR"
 tags: ["adr", "persistence"]
 x:
   paths: ["internal/store/**"]   # repository globs
-  domain: "store"                # package or directory names
+  domain: "store"                # package, namespace or directory names
 ---
 ```
 
 | Key | Matches when… | Priority |
 |---|---|---|
 | `paths` | a glob matches a changed file (`**` spans directories) | 1 |
-| `domain` | it names a changed file's Go package or one of its directories | 2 |
+| `domain` | it names a changed file's package or namespace, or its directories (see below) | 2 |
 | `tags` | same as domain, as a weaker signal | 3 |
+
+A `domain` or tag can be one name or a qualified one:
+
+- **One name** (`store`, `Repositories`) matches any part of a changed file's
+  package or namespace, or any of its directory names.
+- **Qualified** (`Shop.Repositories`, or spelled `Shop::Repositories`,
+  `App\Http` or `com/acme/store`) matches that namespace and anything nested
+  in it (`Shop.Repositories.Sql`), but not siblings (`Shop.Repo`). It also
+  matches the same run of directories (`src/Shop/Repositories/`).
+
+The package or namespace comes from the file's own declaration:
+
+| Language | Declaration read |
+|---|---|
+| Go | `package store` |
+| Java, Kotlin, Scala, Groovy | `package com.acme.store;` |
+| C# | `namespace Shop.Repositories;` or `namespace Shop.Repositories {` |
+| PHP | `namespace App\Http;` |
+| C++ | `namespace geo::v2 {`, `inline namespace …` |
+| TypeScript | `[export] [declare] namespace Billing {` or `module Billing {` |
+
+Vizzini reads only the diff, so the declaration counts only if it appears in a
+hunk. That's true for every new file, and for a change near the top of an
+existing one. Python, Ruby, Rust, Swift and plain JavaScript declare no file
+namespace, so their modules are their directories. Use `paths` globs when a
+match must not depend on what the diff shows.
 
 A document with none of these is never selected, which keeps general notes
 out of every prompt. Documents are found by following `index.md` listings from
