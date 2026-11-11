@@ -58,9 +58,9 @@ TypeScript and JavaScript are the last major languages Vizzini reviews without r
 - Knowledge grounding matches only Go `package` clauses. TypeScript knowledge bases need `x.paths` globs.
 
 ## Progress (2026-11-11)
-The real toolchain works without parser changes: ESLint 10.13.0 + typescript-eslint 8.72.1 + \`@microsoft/eslint-formatter-sarif\` 3.1.0 on Node 24.22.1.
-- **Format:** SARIF 2.1.0 with absolute \`file://\` URIs, \`artifacts\` and \`ruleIndex\`.
-- **Suppressions:** \`eslint-disable\` produces \`suppressions: [{"kind": "inSource"}]\` with no status. Vizzini already treats that as suppressed, and the e2e now proves a suppressed result on an *added* line stays out of the prompt.
-- **ESLint 10:** the formatter's dependency on \`eslint ^8.9.0\` installs an old ESLint 8 copy, but that copy isn't used for output: the run's driver version reads 10.13.0.
-- **Shared assertions:** \`assert_lint.py\` now reads SARIF suppressions on its own terms (SARIF 3.35: no status or \`accepted\` means in effect). The Go, Python and C# proofs still pass.
+The real toolchain works without parser changes: ESLint 10.13.0 + typescript-eslint 8.72.1 + `@microsoft/eslint-formatter-sarif` 3.1.0 on Node 24.22.1.
+- **Format:** SARIF 2.1.0 with absolute `file://` URIs, `artifacts` and `ruleIndex`.
+- **Suppressions:** `eslint-disable` produces `suppressions: [{"kind": "inSource"}]` with no status. Vizzini already treats that as suppressed, and the e2e now proves a suppressed result on an *added* line stays out of the prompt.
+- **ESLint 10:** the formatter's dependency on `eslint ^8.9.0` installs an old ESLint 8 copy, but that copy isn't used for output: the run's driver version reads 10.13.0.
+- **Shared assertions:** `assert_lint.py` now reads SARIF suppressions on its own terms (SARIF 3.35: no status or `accepted` means in effect). The Go, Python and C# proofs still pass.
 - **Stub, stub mode:** the 4 code-execution diagnostics become Major and the gate exits 2.
