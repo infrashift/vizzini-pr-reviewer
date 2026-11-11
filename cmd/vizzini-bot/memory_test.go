@@ -80,7 +80,7 @@ func TestReconcile(t *testing.T) {
 		th("6", "c.cs", "Security", "fp-regressed", true, anchorChanged, 0, 0),  // fixed earlier
 		th("7", "e.cs", "Logic", "fp-dismissed", true, anchorSame, 1, 1),        // resolved by a person: leave
 	}
-	r := reconcile(comments, threads)
+	r := reconcile(comments, threads, nil)
 	posted := make([]string, 0, len(r.Post))
 	for _, p := range r.Post {
 		posted = append(posted, p.Fingerprint)
@@ -99,7 +99,7 @@ func TestReconcile(t *testing.T) {
 // A finding a person resolved (won't fix) is not posted again.
 func TestReconcile_DismissedFindingStaysDismissed(t *testing.T) {
 	r := reconcile([]comment{{File: "a.cs", Category: "Logic", Fingerprint: "fp", StartLine: 4, EndLine: 4}},
-		[]botThread{{ID: "9", Path: "a.cs", Resolved: true, Anchor: anchorSame, Start: 4, End: 4, Marker: marker{FP: "fp", Category: "Logic"}}})
+		[]botThread{{ID: "9", Path: "a.cs", Resolved: true, Anchor: anchorSame, Start: 4, End: 4, Marker: marker{FP: "fp", Category: "Logic"}}}, nil)
 	if len(r.Post) != 0 || len(r.Resolve) != 0 {
 		t.Errorf("%+v", r)
 	}
@@ -134,32 +134,43 @@ func TestBot_ThreadMemoryAcrossPushes(t *testing.T) {
 		t.Fatalf("run 1 result %s (%v)", stdout, err)
 	}
 
-	// Run 2, same head, the model rewords the title: nothing new, nothing resolved.
+	// Run 2 again with --full, the model rewords the title: nothing new, nothing resolved.
 	thread := func(resolved bool) string {
 		b, _ := json.Marshal(map[string]any{"threads": []any{map[string]any{
 			"id": "77", "path": "/store.go", "is_resolved": resolved, "comments": []any{map[string]any{"body": body}},
 		}}})
 		return string(b)
 	}
+	// Run 2, same head: by default nothing changed, so no review at all.
+	before := len(srv.Requests())
+	f = &fakeMrman{threadsOut: thread(false)}
+	f.install(t)
+	code, stdout, _ = runBot(t, env, args...)
+	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil || res.Mode != "unchanged" ||
+		len(srv.Requests()) != before || len(f.calls) != 2 {
+		t.Fatalf("run 2 (incremental): exit %d, result %s, %d requests, calls %v", code, stdout, len(srv.Requests())-before, f.calls)
+	}
+
 	title = "Query built by string concatenation"
 	f = &fakeMrman{threadsOut: thread(false)}
 	f.install(t)
-	code, stdout, stderr = runBot(t, env, args...)
+	code, stdout, stderr = runBot(t, env, append(args, "--full")...)
 	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil || res.Posted != 0 ||
 		len(res.AlreadyPosted) != 1 || len(f.calls) != 2 {
 		t.Fatalf("run 2: exit %d, result %s, calls %v: %s", code, stdout, f.calls, stderr)
 	}
 
-	// Run 2b, same head, the model misses it: the thread stays open.
+	// Run 2b, --full at the same head, the model misses it: the thread stays open.
 	title = ""
 	f = &fakeMrman{threadsOut: thread(false)}
 	f.install(t)
-	_, stdout, _ = runBot(t, env, args...)
+	_, stdout, _ = runBot(t, env, append(args, "--full")...)
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil || !slices.Equal(res.KeptOpen, []string{"77"}) || len(f.calls) != 2 {
 		t.Fatalf("run 2b: result %s, calls %v", stdout, f.calls)
 	}
 
-	// Run 3: a push fixes line 3 and the finding is gone: resolve thread 77.
+	// Run 3: a push fixes line 3 and the finding is gone: an incremental
+	// review of store.go resolves thread 77.
 	if err := os.WriteFile(filepath.Join(repo, "store.go"),
 		[]byte("package store\n\n// Bound parameter.\nconst q = \"SELECT * FROM users WHERE name = $1\"\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -172,7 +183,8 @@ func TestBot_ThreadMemoryAcrossPushes(t *testing.T) {
 	f = &fakeMrman{threadsOut: thread(false), resolveOut: `{"resolved":["77"],"already_resolved":[],"failed":[]}`}
 	f.install(t)
 	code, stdout, stderr = runBot(t, env, args...)
-	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil || !slices.Equal(res.Resolved, []string{"77"}) {
+	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil || !slices.Equal(res.Resolved, []string{"77"}) ||
+		res.Mode != "incremental" || !slices.Equal(res.ReviewedFiles, []string{"store.go"}) || len(res.Since) != 40 {
 		t.Fatalf("run 3: exit %d, result %s: %s", code, stdout, stderr)
 	}
 	resolve := strings.Join(f.calls[len(f.calls)-1], " ")

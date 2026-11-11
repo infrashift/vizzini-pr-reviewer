@@ -6,6 +6,8 @@
 //
 //   - Vizzini (this module's library) reviews `git diff base...head`, with
 //     the checkout as repository context and attribution for cost logs.
+//     After the first run only the files changed since the last reviewed
+//     head are reviewed (scope.go); --full reviews everything.
 //   - mrman does all forge work: `mrman pr URL --json` opens the PR
 //     headlessly, `mrman review threads` lists what the bot said before
 //     (memory.go), `mrman review add` drafts one comment per new finding,
@@ -72,6 +74,7 @@ type options struct {
 	garmr       string
 	out         string
 	dryRun      bool
+	full        bool
 	timeout     time.Duration
 	attr        reviewer.Attribution
 }
@@ -96,6 +99,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.StringVar(&o.garmr, "garmr", cmp.Or(getenv("VIZZINI_GARMR"), "garmr"), "the garmr binary mrman evaluates the policy with")
 	fs.StringVar(&o.out, "out", "", "also write the review report (JSON) here")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "review and print the comments it would post; touch no forge")
+	fs.BoolVar(&o.full, "full", false, "review the whole pull request, not only the files changed since the last reviewed head")
 	fs.DurationVar(&o.timeout, "timeout", 15*time.Minute, "overall time limit")
 	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "this run's id (default: a generated UUIDv7)")
 	fs.StringVar(&o.attr.PRKey, "pr", getenv("VIZZINI_PR"), `attribution: the pull request key, e.g. "ado:dev.azure.com/org/project/repo#42"`)
@@ -161,17 +165,63 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 		return fmt.Errorf("--head %s: %w", opts.head, err)
 	}
 	opts.attr.Iteration = strings.TrimSpace(string(head))
-	diff, gitErr, err := command(ctx, opts.repo, "git", "diff", "--no-color", "--no-ext-diff", opts.base+"..."+opts.attr.Iteration)
+	res := &botResult{RunID: opts.attr.RunID, Head: opts.attr.Iteration,
+		ReviewedFiles: []string{}, AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}, Carried: []string{}}
+	err = botReview(ctx, opts, res, stdout, stderr, getenv)
+	if opts.dryRun {
+		return err
+	}
+	if werr := json.NewEncoder(stdout).Encode(res); werr != nil && err == nil {
+		err = werr
+	}
+	return err
+}
+
+// botReview recalls the bot's earlier threads, reviews what changed since
+// the last reviewed head (or everything), and posts and resolves.
+func botReview(ctx context.Context, opts *options, res *botResult, stdout, stderr io.Writer, getenv func(string) string) error {
+	var slug string
+	var mine []botThread
+	if !opts.dryRun {
+		var err error
+		if slug, mine, err = recall(ctx, opts, stderr); err != nil {
+			return err
+		}
+	}
+	sc, err := reviewScope(ctx, opts, mine)
+	if err != nil {
+		return err
+	}
+	res.Mode, res.Since, res.ReviewedFiles = sc.mode, sc.since, append(res.ReviewedFiles, sc.files...)
+	if sc.mode == scopeUnchanged {
+		_, _ = fmt.Fprintf(stderr, "vizzini-bot: nothing in the pull request changed since %.12s; no review\n", sc.since)
+		return nil
+	}
+
+	args := []string{"diff", "--no-color", "--no-ext-diff", opts.base + "..." + opts.attr.Iteration}
+	if sc.mode == scopeIncremental {
+		args = append(args, "--")
+		for _, f := range sc.files {
+			args = append(args, ":(literal)"+f)
+		}
+	}
+	diff, gitErr, err := command(ctx, opts.repo, "git", args...)
 	if err != nil {
 		return fmt.Errorf("git diff %s...%s: %w: %s", opts.base, opts.head, err, strings.TrimSpace(string(gitErr)))
 	}
-	_, _ = fmt.Fprintf(stderr, "vizzini-bot: run %s reviewing %s...%.12s\n", opts.attr.RunID, opts.base, opts.attr.Iteration)
+	if sc.mode == scopeIncremental {
+		_, _ = fmt.Fprintf(stderr, "vizzini-bot: run %s reviewing %d file(s) changed since %.12s (of %s...%.12s)\n",
+			opts.attr.RunID, len(sc.files), sc.since, opts.base, opts.attr.Iteration)
+	} else {
+		_, _ = fmt.Fprintf(stderr, "vizzini-bot: run %s reviewing %s...%.12s\n", opts.attr.RunID, opts.base, opts.attr.Iteration)
+	}
 
 	review, err := reviewDiff(ctx, opts, diff, getenv)
 	if err != nil {
 		return err
 	}
 	comments := plan(review.Findings, opts.attr.RunID, opts.attr.Iteration)
+	res.Findings = len(comments)
 	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d findings, risk %d\n", len(comments), review.RiskScore)
 
 	if opts.dryRun {
@@ -183,13 +233,7 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 		}
 		return nil
 	}
-	res := &botResult{RunID: opts.attr.RunID, Head: opts.attr.Iteration, Findings: len(comments),
-		AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}}
-	err = post(ctx, opts, comments, res, stderr)
-	if werr := json.NewEncoder(stdout).Encode(res); werr != nil && err == nil {
-		err = werr
-	}
-	return err
+	return post(ctx, opts, slug, comments, mine, sc.scope(), res, stderr)
 }
 
 // botResult is what a run prints on stdout.
@@ -207,6 +251,15 @@ type botResult struct {
 	// KeptOpen are threads whose finding went unreported though their code
 	// did not change: left for a person (or a later run) to judge.
 	KeptOpen []string `json:"kept_open"`
+	// Carried are open threads on files this run did not review: left as
+	// they are, neither matched nor resolved.
+	Carried []string `json:"carried"`
+	// Mode is "full", "incremental" (only the files changed since Since) or
+	// "unchanged" (nothing changed since Since; no review was made).
+	Mode  string `json:"mode"`
+	Since string `json:"since,omitempty"`
+	// ReviewedFiles lists the files an incremental review covered.
+	ReviewedFiles []string `json:"reviewed_files"`
 	// Submit and Resolve are mrman's own JSON answers, when it was called.
 	Submit  json.RawMessage `json:"submit,omitempty"`
 	Resolve json.RawMessage `json:"resolve,omitempty"`
@@ -330,50 +383,57 @@ func mrman(ctx context.Context, opts *options, stderr io.Writer, args ...string)
 	}
 }
 
-// post opens the PR in mrman, reads the bot's earlier threads, drafts and
-// submits only the new findings, and resolves the threads whose finding is
-// gone; mrman does each only if the grant policy allows it.
-func post(ctx context.Context, opts *options, comments []comment, res *botResult, stderr io.Writer) error {
+// recall opens the PR in mrman and reads the bot's earlier threads back,
+// each mapped to the current head.
+func recall(ctx context.Context, opts *options, stderr io.Writer) (string, []botThread, error) {
 	opened, errOut, err := mrman(ctx, opts, stderr, "pr", opts.prURL, "--json")
 	if err != nil {
-		return fmt.Errorf("mrman pr: %w: %s", err, strings.TrimSpace(string(errOut)))
+		return "", nil, fmt.Errorf("mrman pr: %w: %s", err, strings.TrimSpace(string(errOut)))
 	}
 	var session struct {
 		Slug string `json:"slug"`
 	}
 	if jerr := json.Unmarshal(opened, &session); jerr != nil || session.Slug == "" {
-		return errors.New("mrman pr: no session slug in its output")
+		return "", nil, errors.New("mrman pr: no session slug in its output")
 	}
 	_, _ = fmt.Fprintf(stderr, "vizzini-bot: mrman session %s\n", session.Slug)
 
 	listed, errOut, err := mrman(ctx, opts, stderr, "review", "threads", "--session", session.Slug)
 	if err != nil {
-		return fmt.Errorf("mrman review threads: %w: %s", err, strings.TrimSpace(string(errOut)))
+		return "", nil, fmt.Errorf("mrman review threads: %w: %s", err, strings.TrimSpace(string(errOut)))
 	}
 	var remote struct {
 		Threads []remoteThread `json:"threads"`
 	}
 	if jerr := json.Unmarshal(listed, &remote); jerr != nil {
-		return fmt.Errorf("mrman review threads: %w", jerr)
+		return "", nil, fmt.Errorf("mrman review threads: %w", jerr)
 	}
-	mine := botThreads(ctx, remote.Threads, opts.attr.Iteration, gitLineMapper(opts.repo))
-	r := reconcile(comments, mine)
+	return session.Slug, botThreads(ctx, remote.Threads, opts.attr.Iteration, gitLineMapper(opts.repo)), nil
+}
+
+// post drafts and submits only the new findings and resolves the threads
+// whose finding is gone; mrman does each only if the grant policy allows it.
+// scope, when not nil, is the set of files this run reviewed.
+func post(ctx context.Context, opts *options, slug string, comments []comment, mine []botThread, scope map[string]bool,
+	res *botResult, stderr io.Writer) error {
+	r := reconcile(comments, mine, scope)
 	res.AlreadyPosted = append(res.AlreadyPosted, r.AlreadyPosted...)
 	res.KeptOpen = append(res.KeptOpen, r.KeptOpen...)
-	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d earlier threads; %d new, %d already posted, %d to resolve, %d kept open\n",
-		len(mine), len(r.Post), len(r.AlreadyPosted), len(r.Resolve), len(r.KeptOpen))
+	res.Carried = append(res.Carried, r.Carried...)
+	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d earlier threads; %d new, %d already posted, %d to resolve, %d kept open, %d carried\n",
+		len(mine), len(r.Post), len(r.AlreadyPosted), len(r.Resolve), len(r.KeptOpen), len(r.Carried))
 
 	policy, err := filepath.Abs(opts.grantPolicy)
 	if err != nil {
 		return err
 	}
 	if len(r.Post) > 0 {
-		if err := submitNew(ctx, opts, session.Slug, policy, r.Post, res, stderr); err != nil {
+		if err := submitNew(ctx, opts, slug, policy, r.Post, res, stderr); err != nil {
 			return err
 		}
 	}
 	if len(r.Resolve) > 0 {
-		return resolveGone(ctx, opts, session.Slug, policy, r.Resolve, res, stderr)
+		return resolveGone(ctx, opts, slug, policy, r.Resolve, res, stderr)
 	}
 	return nil
 }

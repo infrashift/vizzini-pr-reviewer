@@ -127,6 +127,8 @@ type reconciled struct {
 	// KeptOpen are open threads whose finding was not reported this run
 	// although their code did not change (or could not be mapped).
 	KeptOpen []string
+	// Carried are open threads on files this run did not review.
+	Carried []string
 }
 
 // matches reports whether comment c raises what thread t raised.
@@ -138,7 +140,10 @@ func matches(c *comment, t *botThread) bool {
 		c.StartLine <= t.End && c.EndLine >= t.Start
 }
 
-func reconcile(comments []comment, threads []botThread) reconciled {
+// reconcile decides what to post, skip and resolve. scope, when not nil, is
+// the set of files this run reviewed: an open thread on any other file was
+// not looked at, so it is carried as it is.
+func reconcile(comments []comment, threads []botThread, scope map[string]bool) reconciled {
 	var r reconciled
 	matched := make([]bool, len(threads))
 	for i := range comments {
@@ -166,9 +171,12 @@ func reconcile(comments []comment, threads []botThread) reconciled {
 		if t.Resolved || matched[j] {
 			continue
 		}
-		if t.Anchor == anchorChanged {
+		switch {
+		case scope != nil && !scope[t.Path]:
+			r.Carried = append(r.Carried, t.ID)
+		case t.Anchor == anchorChanged:
 			r.Resolve = append(r.Resolve, t.ID)
-		} else {
+		default:
 			r.KeptOpen = append(r.KeptOpen, t.ID)
 		}
 	}
