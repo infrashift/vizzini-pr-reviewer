@@ -1,4 +1,7 @@
 /bin/
+# go build ./cmd/... at the root
+/pr-review
+/vizzini-bot
 /.cache/
 
 # Documentation site (Astro)

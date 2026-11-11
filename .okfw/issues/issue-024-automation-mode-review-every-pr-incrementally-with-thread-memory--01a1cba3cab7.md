@@ -31,7 +31,7 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
 
 ## Acceptance criteria
 - [x] Design ADR: where state lives (forge thread markers vs a store), forge abstraction (reuse mrman's drivers?), and the posting policy
-- [ ] CI entry point posts a review on a test PR (ADO first, since vizzini-uat already has it)
+- [x] CI entry point posts a review on a test PR (ADO first, since vizzini-uat already has it): slice 1, 2026-11-11
 - [ ] Incremental re-review on push, with no duplicate threads, verified in vizzini-uat
 - [ ] Thread resolution when fixed, and suppression from dismissal
 
@@ -39,7 +39,24 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
 - **Composition** (user's choice): `vizzini-bot` (Vizzini) reviews; mrman's CLI does all forge work.
 - **Authorization** (user's choice): mrman `review submit --grant-policy DIR` posts without a human only when a committed garmr policy allows the forge-verified identity's event. The default is comments only, and every decision is audited.
 
-**Slice 1 (in progress):**
-- mrman: `--grant-policy` plus the `AgentSubmit` policy pack and tests.
-- Vizzini: `cmd/vizzini-bot`.
-- vizzini-uat: the bot posts on an ADO PR with no human step, and a policy deny posts nothing.
+**Slice 1 (done 2026-11-11):**
+- **mrman** `feature/grant-policy` (efef0ce):
+  - `review submit --grant-policy DIR` (`--grant-namespace`, `--garmr`, `--run-id`, `--agent`).
+  - The `policies/garmr/mrman` `AgentSubmit` pack (MRM-001..004).
+  - Fails closed.
+  - Writes an audit log beside the session.
+- **Vizzini** `cmd/vizzini-bot`:
+  - Reviews `git diff base...head` with `--repo`, `--knowledge`, `--lint-json` and attribution.
+  - Drafts through `mrman review add` with the `<!-- vizzini:fp=v1:… run=… -->` marker.
+  - Submits through `--grant-policy`.
+  - Exits 3 on a deny, retries mrman network errors, and has `--dry-run`.
+  - Guide: [docs/guides/bot](https://infrashift.github.io/vizzini-pr-reviewer/docs/guides/bot/).
+- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #16:
+  - The committed default denied the PAT's identity (MRM-002), exit 3, nothing posted.
+  - The pack listing the forge-verified identity allowed it: 9/9 findings posted as marked threads.
+  - Cost $0.217 for two live runs, attributed per PR.
+
+**Learned in slice 1:**
+- dev.azure.com intermittently resets TLS handshakes, so forge calls need retries.
+- In a reused workspace, a denied run's drafts stay in the mrman session. CI workspaces are fresh, but slice 2's dedupe should not count on that: it should match against the forge's threads and ignore local drafts.
+- On ADO, the identity mrman verifies is the token owner's display name. A real deployment needs a dedicated bot account, or the pipeline's build-service identity, listed in the policy.

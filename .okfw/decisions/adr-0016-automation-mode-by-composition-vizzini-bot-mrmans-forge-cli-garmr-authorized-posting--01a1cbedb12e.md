@@ -44,5 +44,5 @@ Open-source reviewers install as bots: they review every PR on open and push, re
 
 ## Consequences
 - **Two binaries in CI** (vizzini-bot and mrman, plus garmr for the policy), each with one job.
-- **mrman's security posture changes** from "human only" to "human or committed policy". That has to stay explicit: off unless `--grant-policy` is passed, refused alongside a TTY grant, and audited.
+- **mrman's security posture changes** from "human only" to "human or committed policy". That has to stay explicit: off unless `--grant-policy` is passed. With it, the policy alone decides and any TTY grant on the session is ignored. Every decision is audited.
 - **Forge mutations mrman lacks** (resolving or replying to a thread) are added to its drivers as later slices need them.
