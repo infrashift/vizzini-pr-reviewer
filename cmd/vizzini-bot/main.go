@@ -175,6 +175,9 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 		return fmt.Errorf("--head %s: %w", opts.head, err)
 	}
 	opts.attr.Iteration = strings.TrimSpace(string(head))
+	// Every model call of the run (review and commands) carries the run's
+	// attribution (ADR-0015).
+	ctx = reviewer.WithAttribution(ctx, opts.attr)
 	res := &botResult{RunID: opts.attr.RunID, Head: opts.attr.Iteration,
 		ReviewedFiles: []string{}, AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}, Carried: []string{},
 		Answered: []string{}, CommandFailures: []string{}}
@@ -338,7 +341,7 @@ func reviewDiff(ctx context.Context, opts *options, engine *reviewer.Engine, dif
 		ropts.LintRoot = root
 	}
 	rec := &reviewer.RunRecorder{}
-	ctx = reviewer.WithRunRecorder(reviewer.WithAttribution(ctx, opts.attr), rec)
+	ctx = reviewer.WithRunRecorder(ctx, rec)
 	review, err := engine.Review(ctx, bytes.NewReader(diff), ropts)
 	if err != nil {
 		return nil, fmt.Errorf("review: %w", err)

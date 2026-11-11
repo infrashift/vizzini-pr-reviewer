@@ -101,7 +101,7 @@ func TestBot_AnswersCommandsOnce(t *testing.T) {
 	f := &fakeMrman{threadsOut: threads()}
 	f.install(t)
 
-	code, stdout, stderr := runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+	code, stdout, stderr := runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p", "--pr", "ado:o/p/r#7")
 	var res botResult
 	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil || !slices.Equal(res.Answered, []string{"2", "3"}) {
 		t.Fatalf("exit %d, result %s: %s", code, stdout, stderr)
@@ -131,6 +131,20 @@ func TestBot_AnswersCommandsOnce(t *testing.T) {
 	}
 	if !strings.Contains(second, "I could not run that") || !strings.Contains(second, "<!-- vizzini:reply-to=3 run=") {
 		t.Errorf("reply to 3 (usage):\n%s", second)
+	}
+
+	// The command's model call is attributed like the review's (ADR-0015).
+	var commandMeta string
+	for i, req := range srv.Requests() {
+		if strings.Contains(llmtest.UserPrompt(&req), "Is this safe?") {
+			commandMeta = srv.Headers()[i].Get("x-litellm-spend-logs-metadata")
+		}
+	}
+	for _, want := range []string{`"vizzini.mode":"command"`, `"vizzini.run_id":"` + res.RunID + `"`, `"vizzini.agent":"vizzini-bot"`,
+		`"vizzini.pr_key":"ado:o/p/r#7"`, `"vizzini.iteration":"` + res.Head + `"`} {
+		if !strings.Contains(commandMeta, want) {
+			t.Errorf("command request metadata %s lacks %s", commandMeta, want)
+		}
 	}
 
 	// Next run: both carry a reply, so nothing is answered again.
