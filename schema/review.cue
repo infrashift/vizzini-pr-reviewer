@@ -133,3 +133,42 @@ package review
 	// Knowledge-base concepts (paths listed in the OKF index) the plan follows.
 	references?: [...string & !=""]
 }
+
+// Report envelope (ADR-0010): what pr-review --format json prints, and what
+// policy engines such as garmr consume. apiVersion and kind let them target
+// Vizzini reports precisely. The review report is defined field by field and
+// closed, so policies can rely on its shape; the other kinds carry the
+// envelope over their own definitions above.
+#APIVersion: "vizzini.infrashift.io/v1"
+#ReportKind: "Review" | "PRDescription" | "Suggestions" | "CommandResult" | "ImplementationPlan"
+
+#Report: {
+	apiVersion: #APIVersion
+	kind:       #ReportKind
+	...
+}
+
+#FileRisk: {
+	path:             string & !=""
+	weight:           number & >=0
+	changed:          int & >=0
+	complexity_delta: int
+	points:           number & >=0
+}
+
+#ReviewReport: {
+	apiVersion:       #APIVersion
+	kind:             "Review"
+	summary:          string
+	risk_score:       int & >=0 & <=100
+	base_risk_score:  int & >=0 & <=100
+	model_risk_score: int & >=0 & <=100
+	risk_files?: [...#FileRisk]
+	auto_approve: bool
+	findings: [...#Finding]
+	knowledge_docs?: [...string & !=""]
+	excluded?: [...string & !=""]
+	skipped?: [...string & !=""]
+	chunks:       int & >=0
+	diagnostics?: int & >=0
+}

@@ -53,7 +53,9 @@ pr-review --patch-file change.patch --mode describe --format json
 | `command` | `{command, answer}` for `/explain`; `{command, suggestions[]}` for `/refactor` and `/docstrings` |
 
 Every model answer is validated against [the schema](../review-schema/) and
-anchored to the diff before it is printed.
+anchored to the diff before it is printed. JSON output is a report: it starts
+with `"apiVersion": "vizzini.infrashift.io/v1"` and a `"kind"` and is itself
+schema-checked, ready for [garmr](../../guides/garmr/).
 
 ## Exit codes
 

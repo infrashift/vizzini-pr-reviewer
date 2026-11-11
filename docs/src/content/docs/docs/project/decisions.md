@@ -56,6 +56,13 @@ overlap a changed hunk's new lines. Misplaced findings go back to the model
 through the same repair loop. Chunk results merge deterministically: findings
 by severity, `risk_score` as the maximum.
 
+## ADR-0010: Reports with an envelope; policy in garmr
+
+JSON output carries `apiVersion: vizzini.infrashift.io/v1` and a `kind`, and
+is validated against `#ReviewReport` or `#Report` before printing. Org policy
+runs in [garmr](../../guides/garmr/) over that contract, and the built-in gate
+stays the offline default.
+
 ## ADR-0009: Architecture findings cite provided documents
 
 A fifth category, `Architecture`, must carry `citations` (a CUE conditional),

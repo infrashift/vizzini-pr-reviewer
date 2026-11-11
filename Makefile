@@ -1,4 +1,4 @@
-.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint clean
+.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-garmr clean
 
 GOBIN    := $(shell go env GOPATH)/bin
 GOLANGCI ?= $(GOBIN)/golangci-lint
@@ -46,6 +46,11 @@ wiki:
 ## unless VIZZINI_LITELLM_URL/VIZZINI_MODEL point at a real proxy)
 e2e-lint: build tiktoken-cache
 	scripts/e2e-golint.sh
+
+## e2e-garmr: pr-review reports evaluated by a real garmr-server with
+## policies/garmr (skips unless garmr is on PATH or GARMR_BIN_DIR is set)
+e2e-garmr: build tiktoken-cache
+	scripts/e2e-garmr.sh
 
 ## docs-dev: run the Astro Starlight site locally (bun)
 docs-dev:

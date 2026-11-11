@@ -14,6 +14,7 @@ committed.
 | `make build` | `go build -o bin/pr-review ./cmd/pr-review` | `CGO_ENABLED=0` static binary |
 | `make tiktoken-cache` | `scripts/tiktoken-cache.sh` | Downloads and checksum-verifies the BPE encodings |
 | `make e2e-lint` | `scripts/e2e-golint.sh` | Real golangci-lint + git + `pr-review` end-to-end proof; stand-in model unless `VIZZINI_LITELLM_URL` is set |
+| `make e2e-garmr` | `scripts/e2e-garmr.sh` | `pr-review` reports evaluated by a real `garmr-server` with `policies/garmr`; skips without garmr |
 | `make wiki` | `okfw validate --all && okfw validate --okf` | Checks the project's OKF knowledge base in `.okfw/` |
 | `make docs-dev` | `bun run dev` in `docs/` | This site, with live reload |
 | `make docs-build` | `bun run build` in `docs/` | Builds the site into `docs/dist/` |

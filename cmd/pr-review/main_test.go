@@ -65,11 +65,11 @@ func TestRun_ModesAndFormats(t *testing.T) {
 		want     []string
 	}{
 		{[]string{"--mode", "review"}, exitPolicy, []string{"## Review", "### [CRITICAL] SQL injection", "`internal/store/users.go:42` · Security"}},
-		{[]string{"--mode", "review", "--format", "json"}, exitPolicy, []string{`"risk_score": 90`, `"severity": "Critical"`, `"chunks": 1`}},
+		{[]string{"--mode", "review", "--format", "json"}, exitPolicy, []string{`"apiVersion": "vizzini.infrashift.io/v1"`, `"kind": "Review"`, `"risk_score": 90`, `"severity": "Critical"`, `"chunks": 1`}},
 		{[]string{"--mode", "describe"}, exitOK, []string{"# Inline the user query", "**Type:** Refactor"}},
 		{[]string{"--mode", "describe", "--format", "json"}, exitOK, []string{`"type": "Refactor"`}},
 		{[]string{"--mode", "improve"}, exitOK, []string{"## Suggested Improvements", "### Bind it"}},
-		{[]string{"--mode", "improve", "--format", "json"}, exitOK, []string{`"suggestions": [`, `"improved_code": "y"`}},
+		{[]string{"--mode", "improve", "--format", "json"}, exitOK, []string{`"kind": "Suggestions"`, `"suggestions": [`, `"improved_code": "y"`}},
 	}
 	for _, tt := range tests {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {

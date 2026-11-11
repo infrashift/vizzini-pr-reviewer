@@ -43,6 +43,7 @@ export default defineConfig({
 						{ label: 'Knowledge-Grounded Reviews', slug: 'docs/guides/knowledge' },
 						{ label: 'Slash Commands', slug: 'docs/guides/commands' },
 						{ label: 'Pre-Code Planning', slug: 'docs/guides/planning' },
+						{ label: 'Policy with garmr', slug: 'docs/guides/garmr' },
 						{ label: 'Running Offline', slug: 'docs/guides/offline' },
 					],
 				},

@@ -161,9 +161,13 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		return nil, nil, err
 	}
 	if opts.format == "json" {
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		err = enc.Encode(result)
+		// A schema-validated report with apiVersion/kind (ADR-0010), so
+		// policy engines like garmr can consume it directly.
+		report, rerr := reviewer.MarshalReport(result)
+		if rerr != nil {
+			return nil, nil, rerr
+		}
+		_, err = stdout.Write(report)
 	} else {
 		_, err = io.WriteString(stdout, text)
 	}
@@ -221,7 +225,7 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 		if ierr != nil {
 			return nil, "", ierr
 		}
-		return map[string]any{"suggestions": s}, reviewer.FormatSuggestions(s), nil
+		return s, reviewer.FormatSuggestions(s), nil
 	default: // "review"; parseFlags rejects anything else
 		ropts := reviewer.ReviewOptions{SkipOversized: opts.skipOversized}
 		if opts.knowledge != "" {
