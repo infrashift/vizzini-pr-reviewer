@@ -1,0 +1,73 @@
+# vizzini-bot for Azure Pipelines. Commit as .azure-pipelines/vizzini-bot.yml,
+# create a pipeline from it, and add it as a build validation policy on the
+# branches pull requests target. Setup and the first run:
+# deploy/ci/README.md (Vizzini repository).
+#
+# On every update of a pull request, vizzini-bot reviews what changed since
+# its last review, posts the findings as comment threads, resolves its own
+# threads whose code was fixed, and answers /vizzini commands written in the
+# PR's threads, all through mrman, which acts only when the grant policy
+# committed on the target branch (.vizzini/grant-policy) allows it.
+#
+# The job posts as the pipeline's identity, "<Project> Build Service (<org>)".
+# Give it "Contribute to pull requests" on the repository (Project settings >
+# Repositories > Security).
+#
+# Pipeline variables:
+#   VIZZINI_LITELLM_URL  your LiteLLM proxy, e.g. https://litellm.example.com/v1
+#   VIZZINI_MODEL        a model name configured in that proxy
+#   VIZZINI_API_KEY      a LiteLLM virtual key for the bot (secret)
+
+trigger: none # pull requests trigger it through the build validation policy
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  # Pins: the Vizzini commit the bot is built from, the mrman release, the
+  # garmr commit, and the Go version Vizzini's go.mod requires. Change them in
+  # a reviewed commit.
+  VIZZINI_REF: 0000000000000000000000000000000000000000
+  MRMAN_VERSION: v0.1.4
+  GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
+  GO_VERSION: 1.25.4
+
+steps:
+  - checkout: self
+    fetchDepth: 0 # full history, for incremental review
+    persistCredentials: false
+
+  - task: GoTool@0
+    inputs:
+      version: $(GO_VERSION)
+
+  - bash: |
+      set -euo pipefail
+      git clone --quiet --no-checkout https://github.com/infrashift/vizzini-pr-reviewer.git "$AGENT_TEMPDIRECTORY/vizzini-src"
+      git -C "$AGENT_TEMPDIRECTORY/vizzini-src" checkout --quiet "$VIZZINI_REF"
+      "$AGENT_TEMPDIRECTORY/vizzini-src/deploy/ci/install.sh" "$AGENT_TEMPDIRECTORY/vizzini"
+      echo "##vso[task.prependpath]$AGENT_TEMPDIRECTORY/vizzini/bin"
+      echo "##vso[task.setvariable variable=TIKTOKEN_CACHE_DIR]$AGENT_TEMPDIRECTORY/vizzini/tiktoken"
+    displayName: Install vizzini-bot, mrman and garmr (pinned, verified)
+
+  - bash: |
+      set -euo pipefail
+      # https://dev.azure.com/ORG/PROJECT/_git/REPO, without any "ORG@" user-info prefix
+      repo_url="$(sed -E 's#^https://[^/@]+@#https://#' <<<"$SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI")"
+      rest="${repo_url#https://}"
+      vizzini-bot \
+        --repo . \
+        --base "origin/${SYSTEM_PULLREQUEST_TARGETBRANCH#refs/heads/}" \
+        --head "$SYSTEM_PULLREQUEST_SOURCECOMMITID" \
+        --pr-url "$repo_url/pullrequest/$SYSTEM_PULLREQUEST_PULLREQUESTID" \
+        --grant-policy .vizzini/grant-policy \
+        --pr "ado:${rest%%/_git/*}/${rest##*/_git/}#$SYSTEM_PULLREQUEST_PULLREQUESTID" \
+        --requester "$BUILD_REQUESTEDFOR" \
+        --out "$AGENT_TEMPDIRECTORY/vizzini-review.json"
+    displayName: Review
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    env:
+      AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
+      VIZZINI_LITELLM_URL: $(VIZZINI_LITELLM_URL)
+      VIZZINI_MODEL: $(VIZZINI_MODEL)
+      VIZZINI_API_KEY: $(VIZZINI_API_KEY) # secret variables reach scripts only when mapped

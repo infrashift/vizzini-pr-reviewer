@@ -1,4 +1,4 @@
-.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-lint-python e2e-lint-csharp e2e-lint-js e2e-garmr clean
+.PHONY: all test vet-cue lint build ci-check tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-lint-python e2e-lint-csharp e2e-lint-js e2e-garmr clean
 
 GOBIN    := $(shell go env GOPATH)/bin
 GOLANGCI ?= $(GOBIN)/golangci-lint
@@ -33,6 +33,13 @@ lint:
 build:
 	go build -o bin/pr-review ./cmd/pr-review
 	go build -o bin/vizzini-bot ./cmd/vizzini-bot
+
+## ci-check: lint the vizzini-bot CI templates (needs shellcheck, actionlint, cue)
+ci-check:
+	shellcheck deploy/ci/install.sh
+	$(GOBIN)/actionlint deploy/ci/github/vizzini-bot.yml
+	cue export --out json deploy/ci/azure-pipelines/vizzini-bot.yml >/dev/null
+	cue export --out json deploy/ci/gitlab/vizzini-bot.gitlab-ci.yml >/dev/null
 
 ## tiktoken-cache: download and checksum-verify the BPE encodings
 tiktoken-cache:

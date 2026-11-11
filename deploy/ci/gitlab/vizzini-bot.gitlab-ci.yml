@@ -1,0 +1,52 @@
+# vizzini-bot for GitLab CI. Add this job to .gitlab-ci.yml (or `include:`
+# this file from your repository). Setup and the first run:
+# deploy/ci/README.md (Vizzini repository).
+#
+# In every merge request pipeline, vizzini-bot reviews what changed since its
+# last review and posts the findings as discussions through mrman, which
+# posts only when the grant policy committed on the target branch
+# (.vizzini/grant-policy) allows it. On GitLab, mrman cannot yet resolve
+# discussions or reply to /vizzini commands; the bot reports those as
+# unsupported and goes on.
+#
+# CI/CD variables (Settings > CI/CD > Variables):
+#   VIZZINI_LITELLM_URL   your LiteLLM proxy, e.g. https://litellm.example.com/v1
+#   VIZZINI_MODEL         a model name configured in that proxy
+#   VIZZINI_API_KEY       a LiteLLM virtual key for the bot (masked)
+#   VIZZINI_GITLAB_TOKEN  a project access token, role Reporter or higher, scope
+#                         api (masked): CI_JOB_TOKEN cannot post merge request
+#                         discussions. Its bot user is the identity your grant
+#                         policy must list. mrman reads it for gitlab.com; for a
+#                         self-managed host, list the host in mrman's config.
+
+vizzini-bot:
+  stage: test
+  image: docker.io/library/golang:1.25.4 # use the version Vizzini's go.mod requires, pinned by digest in your pipeline
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: "0" # full history, for incremental review
+    # Pins: the Vizzini commit the bot is built from, the mrman release, the
+    # garmr commit. Change them in a reviewed commit.
+    VIZZINI_REF: 0000000000000000000000000000000000000000
+    MRMAN_VERSION: v0.1.4
+    GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
+  script:
+    - set -euo pipefail
+    - tools="$CI_BUILDS_DIR/.vizzini-$CI_JOB_ID"
+    - git clone --quiet --no-checkout https://github.com/infrashift/vizzini-pr-reviewer.git "$tools-src"
+    - git -C "$tools-src" checkout --quiet "$VIZZINI_REF"
+    - '"$tools-src/deploy/ci/install.sh" "$tools"'
+    - export PATH="$tools/bin:$PATH" TIKTOKEN_CACHE_DIR="$tools/tiktoken"
+    # The target branch, as origin/<branch>, for base...head.
+    - git fetch --quiet origin "+refs/heads/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME:refs/remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    - |
+      GITLAB_TOKEN="$VIZZINI_GITLAB_TOKEN" vizzini-bot \
+        --repo . \
+        --base "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" \
+        --head "${CI_MERGE_REQUEST_SOURCE_BRANCH_SHA:-$CI_COMMIT_SHA}" \
+        --pr-url "$CI_MERGE_REQUEST_PROJECT_URL/-/merge_requests/$CI_MERGE_REQUEST_IID" \
+        --grant-policy .vizzini/grant-policy \
+        --pr "gitlab:${CI_SERVER_HOST}/${CI_MERGE_REQUEST_PROJECT_PATH}!${CI_MERGE_REQUEST_IID}" \
+        --requester "$GITLAB_USER_LOGIN" \
+        --out "$tools-review.json"

@@ -6,7 +6,10 @@
 // that diagnostic travelled lint JSON -> changed-line filter -> prompt ->
 // schema validation -> anchoring. An /explain command gets a canned answer
 // naming the selection it was given, so command plumbing can be exercised
-// without a model. Every user prompt is appended to -log.
+// without a model. With -finding-per-file it also reports one Logic finding
+// on the first added line of each file in the prompt, so a pipeline with no
+// linter still has something to post (vizzini-bot's CI templates). Every
+// user prompt is appended to -log.
 package main
 
 import (
@@ -51,6 +54,7 @@ var lintLine = regexp.MustCompile(`^(\S+?):(\d+)(?::\d+)? (.+?): (.+)$`)
 func main() {
 	addr := flag.String("addr", "127.0.0.1:18765", "listen address")
 	logPath := flag.String("log", "", "file to append every user prompt to")
+	perFile := flag.Bool("finding-per-file", false, "also report one finding on the first added line of every file in the prompt")
 	flag.Parse()
 
 	var mu sync.Mutex
@@ -113,6 +117,9 @@ func main() {
 				})
 			}
 		}
+		if *perFile {
+			findings = append(findings, firstAddedLines(user)...)
+		}
 		reply(w, req.Model, map[string]any{
 			"summary":    fmt.Sprintf("stubllm: %d linter diagnostic(s) on changed lines.", len(findings)),
 			"risk_score": 10,
@@ -123,6 +130,32 @@ func main() {
 	srv := &http.Server{Addr: *addr, ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("stubllm listening on http://%s/v1", *addr)
 	log.Fatal(srv.ListenAndServe())
+}
+
+var (
+	fileHeading = regexp.MustCompile(`^### (\S+)`)
+	addedLine   = regexp.MustCompile(`^\s*(\d+) \+ `)
+)
+
+// firstAddedLines is one finding per file of the prompt's annotated diff,
+// on its first added line.
+func firstAddedLines(prompt string) []finding {
+	var out []finding
+	file, done := "", false
+	for _, l := range strings.Split(prompt, "\n") {
+		if m := fileHeading.FindStringSubmatch(l); m != nil {
+			file, done = m[1], false
+			continue
+		}
+		if m := addedLine.FindStringSubmatch(l); m != nil && file != "" && !done {
+			line, _ := strconv.Atoi(m[1])
+			out = append(out, finding{File: file, StartLine: line, EndLine: line, Severity: "Minor", Category: "Logic",
+				Title: "stubllm: first added line of " + file,
+				Body:  "stubllm -finding-per-file reports the first added line of every file so a pipeline has something to post."})
+			done = true
+		}
+	}
+	return out
 }
 
 // reply writes content as the assistant's JSON answer.

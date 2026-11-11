@@ -1,0 +1,89 @@
+# vizzini-bot for GitHub Actions. Copy to .github/workflows/vizzini-bot.yml.
+# Setup and the first run: deploy/ci/README.md (Vizzini repository).
+#
+# On every push to a pull request, vizzini-bot reviews what changed since its
+# last review and posts the findings as review comments through mrman, which
+# posts only when the grant policy committed on the base branch
+# (.vizzini/grant-policy) allows it. On GitHub, mrman cannot yet resolve
+# threads or reply to /vizzini commands; the bot reports those as
+# unsupported and goes on.
+#
+# Repository settings:
+#   variable VIZZINI_LITELLM_URL  your LiteLLM proxy, e.g. https://litellm.example.com/v1
+#   variable VIZZINI_MODEL        a model name configured in that proxy
+#   secret   VIZZINI_API_KEY      a LiteLLM virtual key for the bot
+name: vizzini-bot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# One run per pull request at a time; a newer push waits rather than cancels
+# a run that may be posting.
+concurrency:
+  group: vizzini-bot-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  # Pins: the Vizzini commit the bot is built from, the mrman release, the
+  # garmr commit. Change them in a reviewed commit.
+  VIZZINI_REF: 0000000000000000000000000000000000000000
+  MRMAN_VERSION: v0.1.4
+  GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
+
+jobs:
+  review:
+    # Pull requests from forks get no secrets on pull_request; never switch
+    # this workflow to pull_request_target, which would run with secrets on
+    # code from the fork.
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the pull request (full history, for incremental review)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out Vizzini at the pinned commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: infrashift/vizzini-pr-reviewer
+          ref: ${{ env.VIZZINI_REF }}
+          path: .vizzini-src
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .vizzini-src/go.mod
+          cache: false
+
+      - name: Install vizzini-bot, mrman and garmr (pinned, verified)
+        run: |
+          .vizzini-src/deploy/ci/install.sh "$RUNNER_TEMP/vizzini"
+          echo "$RUNNER_TEMP/vizzini/bin" >> "$GITHUB_PATH"
+          echo "TIKTOKEN_CACHE_DIR=$RUNNER_TEMP/vizzini/tiktoken" >> "$GITHUB_ENV"
+
+      - name: Review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VIZZINI_LITELLM_URL: ${{ vars.VIZZINI_LITELLM_URL }}
+          VIZZINI_MODEL: ${{ vars.VIZZINI_MODEL }}
+          VIZZINI_API_KEY: ${{ secrets.VIZZINI_API_KEY }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_KEY: github:github.com/${{ github.repository }}#${{ github.event.pull_request.number }}
+          REQUESTER: ${{ github.event.pull_request.user.login }}
+        run: |
+          vizzini-bot \
+            --repo . --base "origin/$BASE_REF" --head "$HEAD_SHA" --pr-url "$PR_URL" \
+            --grant-policy .vizzini/grant-policy \
+            --pr "$PR_KEY" --requester "$REQUESTER" \
+            --out "$RUNNER_TEMP/vizzini-review.json"
