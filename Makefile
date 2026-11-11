@@ -29,9 +29,10 @@ lint:
 	$(GOLANGCI) run
 	go mod tidy -diff
 
-## build: static CLI binary
+## build: static CLI binaries
 build:
 	go build -o bin/pr-review ./cmd/pr-review
+	go build -o bin/vizzini-bot ./cmd/vizzini-bot
 
 ## tiktoken-cache: download and checksum-verify the BPE encodings
 tiktoken-cache:

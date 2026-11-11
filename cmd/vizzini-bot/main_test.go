@@ -1,0 +1,229 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	openai "github.com/sashabaranov/go-openai"
+
+	"github.com/infrashift/vizzini-pr-reviewer/internal/llmtest"
+	"github.com/infrashift/vizzini-pr-reviewer/pkg/reviewer"
+)
+
+func TestMain(m *testing.M) { llmtest.RunOffline(m) }
+
+// gitRepo makes a repository whose "feature" branch changes one line of
+// store.go (line 3) relative to "main".
+func gitRepo(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	dir := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), "git", append([]string{"-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"}, args...)...) //nolint:gosec // G204: fixed git subcommands from this test
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	write := func(body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, "store.go"), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("init", "-q", "-b", "main")
+	write("package store\n\nconst q = \"SELECT * FROM users WHERE name = $1\"\n")
+	git("add", ".")
+	git("commit", "-q", "-m", "base")
+	git("checkout", "-q", "-b", "feature")
+	write("package store\n\nconst q = \"SELECT * FROM users WHERE name = '\" + name + \"'\"\n")
+	git("commit", "-q", "-am", "change")
+	return dir
+}
+
+func mockProxy(t *testing.T) *llmtest.Server {
+	t.Helper()
+	return llmtest.NewServer(t, func(_ int, _ *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"summary":"Injection.","risk_score":90,"findings":[` +
+			`{"file":"store.go","start_line":3,"end_line":3,"severity":"Critical","category":"Security","title":"SQL injection","body":"Concatenated input.","suggestion":"Bind it."}]}`}
+	})
+}
+
+// fakeMrman intercepts mrman calls (git still runs) and records them.
+type fakeMrman struct {
+	calls     [][]string
+	submitOut string
+	submitErr error
+}
+
+func (f *fakeMrman) install(t *testing.T) {
+	t.Helper()
+	realCommand := command
+	command = func(ctx context.Context, dir, name string, args ...string) ([]byte, []byte, error) {
+		if name != "mrman" {
+			return realCommand(ctx, dir, name, args...)
+		}
+		f.calls = append(f.calls, args)
+		switch {
+		case args[0] == "pr":
+			return []byte(`{"slug":"ado-org-proj-repo-7"}`), nil, nil
+		case args[1] == "submit":
+			return []byte(f.submitOut), []byte("mrman: authorization: {}\n"), f.submitErr
+		}
+		return nil, nil, nil
+	}
+	t.Cleanup(func() { command = realCommand })
+}
+
+func runBot(t *testing.T, env map[string]string, args ...string) (code int, stdout, stderr string) {
+	t.Helper()
+	var out, errb bytes.Buffer
+	code = run(context.Background(), args, &out, &errb, func(k string) string { return env[k] })
+	return code, out.String(), errb.String()
+}
+
+func botEnv(t *testing.T) map[string]string {
+	return map[string]string{"VIZZINI_LITELLM_URL": mockProxy(t).BaseURL(), "VIZZINI_MODEL": "m", "VIZZINI_API_KEY": "k"}
+}
+
+func TestBot_PostsThroughMrmanUnderTheGrantPolicy(t *testing.T) {
+	repo := gitRepo(t)
+	f := &fakeMrman{submitOut: `{"state":"COMMENTED"}`}
+	f.install(t)
+	out := filepath.Join(t.TempDir(), "review.json")
+
+	code, _, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "https://dev.azure.com/o/p/_git/r/pullrequest/7",
+		"--grant-policy", "policies/mrman", "--run-id", "run-1", "--out", out)
+	if code != exitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if len(f.calls) != 3 {
+		t.Fatalf("mrman calls %v", f.calls)
+	}
+	add := f.calls[1]
+	if !slices.Equal(add[:9], []string{"review", "add", "--session", "ado-org-proj-repo-7", "--target-file", "store.go", "--line", "3", "--side"}) ||
+		!strings.Contains(add[len(add)-1], "<!-- vizzini:fp=v1:") || !strings.Contains(add[len(add)-1], "run=run-1 -->") {
+		t.Errorf("review add %q", add)
+	}
+	submit := strings.Join(f.calls[2], " ")
+	abs, _ := filepath.Abs("policies/mrman")
+	for _, want := range []string{"--event comment", "--grant-policy " + abs, "--run-id run-1", "--agent vizzini-bot", "--garmr garmr"} {
+		if !strings.Contains(submit, want) {
+			t.Errorf("submit %q lacks %q", submit, want)
+		}
+	}
+	if !strings.Contains(stderr, "mrman: authorization:") {
+		t.Errorf("the authorization line must reach the CI log: %s", stderr)
+	}
+
+	var report struct {
+		Kind      string `json:"kind"`
+		RunID     string `json:"run_id"`
+		Agent     string `json:"agent"`
+		Iteration string `json:"iteration"`
+	}
+	data, err := os.ReadFile(out) //nolint:gosec // G304: the test's own temp file
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &report); err != nil || report.Kind != "Review" || report.RunID != "run-1" ||
+		report.Agent != "vizzini-bot" || len(report.Iteration) != 40 {
+		t.Errorf("report %+v (%v)", report, err)
+	}
+}
+
+func TestBot_PolicyDenialPostsNothingAndExits3(t *testing.T) {
+	repo := gitRepo(t)
+	f := &fakeMrman{submitOut: `{"error":"policy_denied","message":"denied"}`, submitErr: errors.New("exit status 1")}
+	f.install(t)
+	code, stdout, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p")
+	if code != exitDenied || !strings.Contains(stderr, "denied posting") || !strings.Contains(stdout, "policy_denied") {
+		t.Errorf("exit %d\nstdout %s\nstderr %s", code, stdout, stderr)
+	}
+}
+
+func TestBot_SubmitFailureIsAnError(t *testing.T) {
+	repo := gitRepo(t)
+	f := &fakeMrman{submitOut: `{"error":"forge"}`, submitErr: errors.New("exit status 1")}
+	f.install(t)
+	if code, _, _ := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "p"); code != exitError {
+		t.Errorf("exit %d, want %d", code, exitError)
+	}
+}
+
+func TestBot_DryRunTouchesNoForge(t *testing.T) {
+	repo := gitRepo(t)
+	f := &fakeMrman{}
+	f.install(t)
+	code, stdout, stderr := runBot(t, botEnv(t), "--repo", repo, "--base", "main", "--dry-run")
+	if code != exitOK || len(f.calls) != 0 {
+		t.Fatalf("exit %d, mrman calls %v: %s", code, f.calls, stderr)
+	}
+	var c comment
+	if err := json.Unmarshal([]byte(stdout), &c); err != nil || c.File != "store.go" || c.StartLine != 3 ||
+		!strings.Contains(c.Body, "**Critical (Security): SQL injection**") || !strings.Contains(c.Body, "Bind it.") {
+		t.Errorf("planned comment %+v (%v)", c, err)
+	}
+}
+
+func TestParseFlags_PostingNeedsAPolicy(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--pr-url", "u", "--grant-policy", "p"}, "--base is required"},
+		{[]string{"--base", "main", "--grant-policy", "p"}, "--pr-url is required"},
+		{[]string{"--base", "main", "--pr-url", "u"}, "--grant-policy is required"},
+		{[]string{"--base", "main", "--dry-run", "extra"}, "unexpected arguments"},
+	} {
+		if _, err := parseFlags(tc.args, &bytes.Buffer{}, func(string) string { return "" }); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%v: %v, want %q", tc.args, err, tc.want)
+		}
+	}
+	o, err := parseFlags([]string{"--base", "main", "--dry-run"}, &bytes.Buffer{}, func(string) string { return "" })
+	if err != nil || len(o.attr.RunID) != 36 || o.attr.Agent != "vizzini-bot" || o.head != "HEAD" {
+		t.Errorf("defaults %+v (%v)", o, err)
+	}
+}
+
+func TestBot_GitFailureIsReported(t *testing.T) {
+	code, _, stderr := runBot(t, botEnv(t), "--repo", t.TempDir(), "--base", "main", "--dry-run")
+	if code != exitError || !strings.Contains(stderr, "--head HEAD") {
+		t.Errorf("exit %d: %s", code, stderr)
+	}
+}
+
+// A finding keeps its fingerprint when it moves; what it is about changes it.
+func TestFingerprint(t *testing.T) {
+	f := reviewer.Finding{File: "a.go", StartLine: 3, EndLine: 3, Category: "Security", Title: "SQL  Injection"}
+	moved := f
+	moved.StartLine, moved.EndLine, moved.Title = 40, 41, "sql injection"
+	if fingerprint(&f) != fingerprint(&moved) {
+		t.Error("a moved or re-cased finding changed fingerprint")
+	}
+	for _, change := range []func(*reviewer.Finding){
+		func(g *reviewer.Finding) { g.File = "b.go" },
+		func(g *reviewer.Finding) { g.Category = "Logic" },
+		func(g *reviewer.Finding) { g.Title = "Hardcoded secret" },
+	} {
+		g := f
+		change(&g)
+		if fingerprint(&g) == fingerprint(&f) {
+			t.Errorf("%+v shares a fingerprint with %+v", g, f)
+		}
+	}
+	if fp := fingerprint(&f); !strings.HasPrefix(fp, "v1:") || len(fp) != 19 {
+		t.Errorf("fingerprint %q", fp)
+	}
+}
