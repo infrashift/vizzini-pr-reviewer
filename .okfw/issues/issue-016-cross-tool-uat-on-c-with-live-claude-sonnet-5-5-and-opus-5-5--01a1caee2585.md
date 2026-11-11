@@ -34,7 +34,7 @@ Every end-to-end proof so far ran against `stubllm`. That proves the plumbing, n
 ## Acceptance criteria
 - [x] Harness committed in vizzini-uat. `make uat-stub` passes every hard check without tokens
 - [x] [ISSUE-017](/issues/issue-017-typed-review-findings-in-pkg-risk-for-mrman--01a1caee2572.md): typed findings in `pkg/risk`
-- [ ] mrman `--vizzini-report`: findings in the TUI and in headless JSON
+- [x] mrman `--vizzini-report`: findings in the TUI and in headless JSON (mrman `feature/vizzini-findings` 836f5b3)
 - [ ] `litellm.sh smoke` passes for both models
 - [ ] `make uat` passes every hard check for both models. The Sonnet vs Opus comparison and any Vizzini fixes are recorded here
 
