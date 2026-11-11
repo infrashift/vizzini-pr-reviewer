@@ -21,8 +21,8 @@ and lint passing.
 |---|---|
 | 4.1 Policy gate (done) | `#PolicyGate` in CUE. `pr-review` exits `2` when findings hit `fail_on` (default Critical and Major) |
 | 4.2 Hybrid verification (done) | `golangci-lint` JSON diagnostics on changed lines are added to the prompt, so the model explains real lint errors |
-| 4.3 Dependency walkthroughs (next) | Changed Go files ordered by an AST dependency graph (models → services → UI) for mrman's file tree |
-| 4.4 Risk scoring | A deterministic 0–100 blast-radius score from lines changed, complexity delta and CUE path weights. `AutoApprove` only for low risk with no Critical or Major findings |
+| 4.3 Dependency walkthroughs (done) | Changed Go files ordered by an AST dependency graph (models → services → UI) for mrman's file tree |
+| 4.4 Risk scoring (next) | A deterministic 0–100 blast-radius score from lines changed, complexity delta and CUE path weights. `AutoApprove` only for low risk with no Critical or Major findings |
 | 4.5 OKF grounding | Matches changed paths against an Open Knowledge Format wiki and cites design decisions in findings |
 | 4.6 Slash commands | `/explain`, `/refactor` and `/docstrings` scoped to a file and line range inside a mrman review thread |
 | 4.7 Pre-code planning | Turns an issue payload into a CUE-validated implementation plan for coding agents |

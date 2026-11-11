@@ -33,6 +33,10 @@ viewport.SetContent(reviewer.FormatReview(out)) // or render with glamour
 | `Review(ctx, patch, opts)` | `*ReviewOutput`: summary, max risk score, sorted findings, excluded and skipped paths |
 | `Describe(ctx, patch)` | `*PRDescription`, or `ErrNoChanges` if every file was excluded |
 | `Improve(ctx, patch)` | `[]CodeSuggestion` sorted by file and line |
+| `Policy(failOn)` | A schema-validated `*PolicyGate`; `Blocking(findings)` returns the findings that fail it |
+
+The package-level `OrderFilesByDependency(files)` orders a parsed diff for a
+[dependency walkthrough](../walkthrough/).
 
 `patch` is any `io.Reader` holding a unified diff (`git diff`, `git
 format-patch`, or a forge's `.diff` URL body).

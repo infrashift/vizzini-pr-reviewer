@@ -175,9 +175,9 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **User Story Context:** Order Pull Request diffs by architectural dependencies (e.g., data models first, then backend logic, then UI) for review in the `mrman` TUI.
 * **Technical Spec (`internal/analysis/dag.go`):**
-* [ ] Parse modified `.go` files with `go/parser` and `go/ast` to extract package imports and struct/interface declarations.
-* [ ] Construct a Directed Acyclic Graph (DAG) of modified files and run Kahn's topological sort algorithm (breaking cycles deterministically by path depth).
-* [ ] Expose `OrderFilesByDependency(files []*gitdiff.File) []*gitdiff.File` for the `mrman` TUI file tree.
+* [x] Parse modified `.go` files with `go/parser` and `go/ast` to extract package imports and struct/interface declarations.
+* [x] Construct a Directed Acyclic Graph (DAG) of modified files and run Kahn's topological sort algorithm (breaking cycles deterministically by path depth).
+* [x] Expose `OrderFilesByDependency(files []*gitdiff.File) []*gitdiff.File` for the `mrman` TUI file tree.
 
 
 * **Verification:** Unit test passing a 3-layer diff (`ui.go` -> `service.go` -> `model.go`) and asserting the returned slice orders `model.go` first.

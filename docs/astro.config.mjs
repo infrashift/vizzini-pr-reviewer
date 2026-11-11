@@ -38,6 +38,7 @@ export default defineConfig({
 						{ label: 'How a Review Works', slug: 'docs/guides/how-it-works' },
 						{ label: 'Embedding in Go', slug: 'docs/guides/embedding' },
 						{ label: 'Lint-Aware Reviews', slug: 'docs/guides/lint' },
+						{ label: 'Dependency Walkthroughs', slug: 'docs/guides/walkthrough' },
 						{ label: 'Running Offline', slug: 'docs/guides/offline' },
 					],
 				},

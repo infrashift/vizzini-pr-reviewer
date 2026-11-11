@@ -14,4 +14,5 @@
 * [ISSUE-008: Knowledge base grounding (OKF RAG)](issue-008-knowledge-base-grounding-okf-rag--01a1c9b6157f.md) - Load OKF index.md and frontmatter, match diff paths to relevant knowledge, and require citations on architectural findings.
 * [ISSUE-009: Interactive PR slash commands](issue-009-interactive-pr-slash-commands--01a1c9b61586.md) - Parse /explain, /refactor and /docstrings with file:line-range targets and route each to a scoped template.
 * [ISSUE-010: Pre-code planning from issue payloads](issue-010-pre-code-planning-from-issue-payloads--01a1c9b6158d.md) - Turn an IssuePayload plus repo tree and OKF index into a CUE-validated #ImplementationPlan for coding agents.
+* [ISSUE-011: Integrate the policy gate with garmr](issue-011-integrate-the-policy-gate-with-garmr--01a1c9e416ce.md) - Make pr-review JSON a first-class garmr input and ship a vizzini policy pack, keeping the built-in #PolicyGate as the offline default.
 
