@@ -180,3 +180,34 @@ func TestParseSARIF_RealRoslyn(t *testing.T) {
 		t.Errorf("wrong root: %d diagnostics, err %v", len(none), err)
 	}
 }
+
+// ISSUE-018: real ESLint 10.13.0 + typescript-eslint 8.72.1 output through
+// @microsoft/eslint-formatter-sarif 3.1.0, captured by scripts/e2e-jslint.sh.
+// It writes absolute file:// URIs and marks eslint-disable'd results with an
+// inSource suppression (no status), which must not become diagnostics: the
+// fixture has two suppressed no-eval results, at lines 12 and 31.
+func TestParseSARIF_RealESLint(t *testing.T) {
+	got, err := ParseLintReport(bytes.NewReader(readFixture(t, "sarif/eslint-10.13.0.sarif")), "/work/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"src/users.ts:2:9 ESLint: @typescript-eslint/no-unused-vars: 'unused' is assigned a value but never used.",
+		"src/users.ts:16:9 ESLint: @typescript-eslint/no-unused-vars: 'debug' is assigned a value but never used.",
+		"src/users.ts:17:14 ESLint: @typescript-eslint/no-implied-eval: Implied eval. Consider passing a function.",
+		"src/users.ts:18:17 ESLint: no-eval: `eval` can be harmful.",
+		"src/users.ts:22:10 ESLint: @typescript-eslint/no-implied-eval: Implied eval. Do not use the Function constructor to create functions.",
+		"src/users.ts:22:10 ESLint: no-new-func: The Function constructor is eval.",
+		"src/users.ts:26:3 ESLint: @typescript-eslint/no-floating-promises: Promises must be awaited, end with a call to .catch, " +
+			"end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+	}
+	if g := diagStrings(got); !reflect.DeepEqual(g, want) {
+		t.Errorf("got\n  %s\nwant\n  %s", strings.Join(g, "\n  "), strings.Join(want, "\n  "))
+	}
+
+	// Without the matching root, absolute URIs cannot be placed and are dropped.
+	none, err := ParseLintReport(bytes.NewReader(readFixture(t, "sarif/eslint-10.13.0.sarif")), "/elsewhere")
+	if err != nil || len(none) != 0 {
+		t.Errorf("wrong root: %d diagnostics, err %v", len(none), err)
+	}
+}

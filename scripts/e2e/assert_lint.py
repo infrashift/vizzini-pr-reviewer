@@ -28,17 +28,24 @@ def first_json(path):
     return json.JSONDecoder().raw_decode(open(path).read())[0]
 
 
-def issues(path, root):
-    """Return [(file, line, tool)] from either report format."""
+def in_effect(result):
+    """SARIF 2.1.0 3.35: a suppression with no status, or status "accepted",
+    is in effect; "underReview" and "rejected" are not."""
+    return any(x.get("status", "accepted") == "accepted" for x in result.get("suppressions") or [])
+
+
+def issues(path, root, want_suppressed=False):
+    """Return [(file, line, tool)] from either report format: the active
+    diagnostics, or with want_suppressed the suppressed ones instead."""
     doc = first_json(path)
     if "Issues" in doc:
-        return [(i["Pos"]["Filename"], i["Pos"]["Line"], i["FromLinter"]) for i in doc["Issues"] or []]
+        return [] if want_suppressed else [(i["Pos"]["Filename"], i["Pos"]["Line"], i["FromLinter"]) for i in doc["Issues"] or []]
     out = []
     prefix = "file://" + root.rstrip("/") + "/"
     for run in doc["runs"]:
         tool = run["tool"]["driver"]["name"]
         for r in run.get("results", []):
-            if not r.get("locations"):
+            if not r.get("locations") or in_effect(r) != want_suppressed:
                 continue
             loc = r["locations"][0]["physicalLocation"]
             uri = unquote(loc["artifactLocation"]["uri"])
@@ -113,6 +120,12 @@ def main():
             if re.search(rf"^{re.escape(f)}:{ln}[: ]", block, re.M):
                 die(f"prompt <lint> block leaked untouched-line diagnostic {f}:{ln}")
         ok("prompt <lint> block holds the new issues and none of the pre-existing ones")
+        quiet = [i for i in issues(report, root, want_suppressed=True) if i[1] in added.get(i[0], set())]
+        for f, ln, _ in quiet:
+            if re.search(rf"^{re.escape(f)}:{ln}[: ]", block, re.M):
+                die(f"prompt <lint> block leaked suppressed diagnostic {f}:{ln}")
+        if quiet:
+            ok(f"{len(quiet)} suppressed diagnostic(s) on added lines stayed out of the prompt")
         if len(review["findings"]) != len(on_added):
             die("stub should echo one finding per diagnostic")
 

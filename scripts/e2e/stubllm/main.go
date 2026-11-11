@@ -37,8 +37,9 @@ type finding struct {
 }
 
 // Security rule ids from SARIF tools: ruff's flake8-bandit (S608), Roslyn's
-// security analyzers (CA2100, CA3xxx, CA5xxx) and gosec's own codes (G202).
-var securityRule = regexp.MustCompile(`^(S\d{3}|CA2100|CA[35]\d{3}|G\d{3})$`)
+// security analyzers (CA2100, CA3xxx, CA5xxx), gosec's own codes (G202), and
+// ESLint's code-execution rules plus eslint-plugin-security (security/...).
+var securityRule = regexp.MustCompile(`^(S\d{3}|CA2100|CA[35]\d{3}|G\d{3}|no-eval|no-implied-eval|no-new-func|@typescript-eslint/no-implied-eval|security/\S+)$`)
 
 // "path:line[:col] linter: text", as rendered by analysis.Diagnostic.String.
 // The linter name may contain spaces ("Microsoft (R) Visual C# Compiler"),

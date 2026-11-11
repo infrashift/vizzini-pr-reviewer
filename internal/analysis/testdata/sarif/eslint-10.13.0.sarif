@@ -1,0 +1,301 @@
+{
+  "version": "2.1.0",
+  "$schema": "http://json.schemastore.org/sarif-2.1.0-rtm.5",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ESLint",
+          "informationUri": "https://eslint.org",
+          "rules": [
+            {
+              "id": "@typescript-eslint/no-unused-vars",
+              "helpUri": "https://typescript-eslint.io/rules/no-unused-vars",
+              "properties": {},
+              "shortDescription": {
+                "text": "Disallow unused variables"
+              }
+            },
+            {
+              "id": "@typescript-eslint/no-implied-eval",
+              "helpUri": "https://typescript-eslint.io/rules/no-implied-eval",
+              "properties": {},
+              "shortDescription": {
+                "text": "Disallow the use of `eval()`-like functions"
+              }
+            },
+            {
+              "id": "no-eval",
+              "helpUri": "https://eslint.org/docs/latest/rules/no-eval",
+              "properties": {},
+              "shortDescription": {
+                "text": "Disallow the use of `eval()`"
+              }
+            },
+            {
+              "id": "no-new-func",
+              "helpUri": "https://eslint.org/docs/latest/rules/no-new-func",
+              "properties": {},
+              "shortDescription": {
+                "text": "Disallow `new` operators with the `Function` object"
+              }
+            },
+            {
+              "id": "@typescript-eslint/no-floating-promises",
+              "helpUri": "https://typescript-eslint.io/rules/no-floating-promises",
+              "properties": {},
+              "shortDescription": {
+                "text": "Require Promise-like statements to be handled appropriately"
+              }
+            }
+          ],
+          "version": "10.13.0"
+        }
+      },
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///work/repo/src/users.ts"
+          }
+        }
+      ],
+      "results": [
+        {
+          "level": "error",
+          "message": {
+            "text": "'unused' is assigned a value but never used."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 9,
+                  "endLine": 2,
+                  "endColumn": 15
+                }
+              }
+            }
+          ],
+          "ruleId": "@typescript-eslint/no-unused-vars",
+          "ruleIndex": 0,
+          "suppressions": []
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "'debug' is assigned a value but never used."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 16,
+                  "startColumn": 9,
+                  "endLine": 16,
+                  "endColumn": 14
+                }
+              }
+            }
+          ],
+          "ruleId": "@typescript-eslint/no-unused-vars",
+          "ruleIndex": 0,
+          "suppressions": []
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "Implied eval. Consider passing a function."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 17,
+                  "startColumn": 14,
+                  "endLine": 17,
+                  "endColumn": 34
+                }
+              }
+            }
+          ],
+          "ruleId": "@typescript-eslint/no-implied-eval",
+          "ruleIndex": 1,
+          "suppressions": []
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "`eval` can be harmful."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 18,
+                  "startColumn": 17,
+                  "endLine": 18,
+                  "endColumn": 21
+                }
+              }
+            }
+          ],
+          "ruleId": "no-eval",
+          "ruleIndex": 2,
+          "suppressions": []
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "Implied eval. Do not use the Function constructor to create functions."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 22,
+                  "startColumn": 10,
+                  "endLine": 22,
+                  "endColumn": 28
+                }
+              }
+            }
+          ],
+          "ruleId": "@typescript-eslint/no-implied-eval",
+          "ruleIndex": 1,
+          "suppressions": []
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "The Function constructor is eval."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 22,
+                  "startColumn": 10,
+                  "endLine": 22,
+                  "endColumn": 28
+                }
+              }
+            }
+          ],
+          "ruleId": "no-new-func",
+          "ruleIndex": 3,
+          "suppressions": []
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 26,
+                  "startColumn": 3,
+                  "endLine": 26,
+                  "endColumn": 14
+                }
+              }
+            }
+          ],
+          "ruleId": "@typescript-eslint/no-floating-promises",
+          "ruleIndex": 4,
+          "suppressions": []
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "`eval` can be harmful."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 10,
+                  "endLine": 12,
+                  "endColumn": 14
+                }
+              }
+            }
+          ],
+          "ruleId": "no-eval",
+          "ruleIndex": 2,
+          "suppressions": [
+            {
+              "kind": "inSource",
+              "justification": ""
+            }
+          ]
+        },
+        {
+          "level": "error",
+          "message": {
+            "text": "`eval` can be harmful."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/users.ts",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 31,
+                  "startColumn": 10,
+                  "endLine": 31,
+                  "endColumn": 14
+                }
+              }
+            }
+          ],
+          "ruleId": "no-eval",
+          "ruleIndex": 2,
+          "suppressions": [
+            {
+              "kind": "inSource",
+              "justification": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

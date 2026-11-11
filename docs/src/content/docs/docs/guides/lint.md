@@ -38,16 +38,17 @@ git diff main...HEAD | pr-review --mode review --lint-json go.json --lint-json r
 ### Verified tools
 
 These were captured and proven end to end (`make e2e-lint-python`,
-`make e2e-lint-csharp`):
+`make e2e-lint-csharp`, `make e2e-lint-js`):
 
 | Language | Tool (version verified) | Produce SARIF with | Notes |
 |---|---|---|---|
 | Python | ruff 0.17.4 | `ruff check --output-format=sarif .` | Writes absolute `file://` URIs. Run `pr-review` from the same repo root. Security rules are the `S` group (`select = ["F", "S"]`) |
 | C# | Roslyn, C# compiler 5.9.0 (.NET SDK 10.0.404) | `<ErrorLog>roslyn.sarif,version=2.1</ErrorLog>` in the project, then `dotnet build` | Writes absolute `file://` URIs. Security analyzers are off by default; enable them with `<AnalysisLevelSecurity>latest-all</AnalysisLevelSecurity>`. CA2100 fires on `DbCommand.CommandText`, not through `IDbCommand` |
+| TypeScript / JavaScript | ESLint 10.13.0 + typescript-eslint 8.72.1 (TypeScript 6.0.3, Node 24.22.1) | `npm i -D @microsoft/eslint-formatter-sarif@3.1.0`, then `npx eslint -f @microsoft/eslint-formatter-sarif -o eslint.sarif .` | ESLint has no built-in SARIF; Microsoft's formatter (3.1.0) works with ESLint 10 but pulls in an old ESLint 8 as its own dependency. Writes absolute `file://` URIs. `eslint-disable` comments become suppressed results, which Vizzini skips. ESLint exits 1 when it reports errors, so don't treat that as a failure. `eval`, `new Function` and string `setTimeout` need `no-eval` and `no-new-func` on top of `recommendedTypeChecked` (which brings `@typescript-eslint/no-implied-eval`). typescript-eslint 8.72 needs TypeScript < 6.1 |
 
-If `dotnet build` runs in a container, mount the repository at the **same
-absolute path** (`-v "$PWD:$PWD" -w "$PWD"`), so the URIs Roslyn writes match
-where `pr-review` runs.
+If `dotnet build` or `eslint` runs in a container, mount the repository at
+the **same absolute path** (`-v "$PWD:$PWD" -w "$PWD"`), so the URIs the tool
+writes match where `pr-review` runs.
 
 How a SARIF result is read:
 
@@ -103,6 +104,7 @@ A malformed report fails the review before any request is made.
 make e2e-lint          # Go: golangci-lint JSON
 make e2e-lint-python   # Python: ruff SARIF (uses uvx ruff if ruff isn't installed)
 make e2e-lint-csharp   # C#: Roslyn SARIF from dotnet build in the .NET SDK container
+make e2e-lint-js       # TypeScript: ESLint + typescript-eslint SARIF in the node container
 ```
 
 This builds a throwaway Go repo with a pre-existing lint issue, makes a change

@@ -1,4 +1,4 @@
-.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-lint-python e2e-lint-csharp e2e-garmr clean
+.PHONY: all test vet-cue lint build tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-lint-python e2e-lint-csharp e2e-lint-js e2e-garmr clean
 
 GOBIN    := $(shell go env GOPATH)/bin
 GOLANGCI ?= $(GOBIN)/golangci-lint
@@ -56,6 +56,11 @@ e2e-lint-python: build tiktoken-cache
 ## dotnet build in the .NET SDK container (skips without podman)
 e2e-lint-csharp: build tiktoken-cache
 	scripts/e2e-cslint.sh
+
+## e2e-lint-js: the same proof for TypeScript/JavaScript, via real ESLint +
+## typescript-eslint SARIF from the node container (skips without podman)
+e2e-lint-js: build tiktoken-cache
+	scripts/e2e-jslint.sh
 
 ## e2e-garmr: pr-review reports evaluated in-process by garmr eval --policy-dir
 ## policies/garmr, no server (skips unless garmr is on PATH or GARMR_BIN_DIR is set)
