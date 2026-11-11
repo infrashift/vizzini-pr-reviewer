@@ -28,8 +28,6 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -80,8 +78,12 @@ type options struct {
 	// who can comment); maxCommands bounds the commands answered per run.
 	commandAuthors []string
 	maxCommands    int
-	timeout        time.Duration
-	attr           reviewer.Attribution
+	// suppressions is the rules file, read at the base revision; rules is
+	// what it held (nil: none).
+	suppressions string
+	rules        *reviewer.Suppressions
+	timeout      time.Duration
+	attr         reviewer.Attribution
 }
 
 func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*options, error) {
@@ -109,6 +111,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		o.commandAuthors = append(o.commandAuthors, parseAuthors(s)...)
 		return nil
 	})
+	fs.StringVar(&o.suppressions, "suppressions", ".vizzini/suppressions.yaml", "suppression rules file, read from the base revision (\"\" disables)")
 	fs.IntVar(&o.maxCommands, "max-commands", 5, "most /vizzini commands answered per run (0 answers none)")
 	fs.DurationVar(&o.timeout, "timeout", 15*time.Minute, "overall time limit")
 	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "this run's id (default: a generated UUIDv7)")
@@ -180,7 +183,7 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 	ctx = reviewer.WithAttribution(ctx, opts.attr)
 	res := &botResult{RunID: opts.attr.RunID, Head: opts.attr.Iteration,
 		ReviewedFiles: []string{}, AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}, Carried: []string{},
-		Answered: []string{}, CommandFailures: []string{}}
+		Answered: []string{}, CommandFailures: []string{}, Suppressed: []string{}, Suggested: []string{}}
 	err = botReview(ctx, opts, res, stdout, stderr, getenv)
 	if opts.dryRun {
 		return err
@@ -204,6 +207,11 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 		}
 		mine = botThreads(ctx, threads, opts.attr.Iteration, gitLineMapper(opts.repo))
 	}
+	rules, err := loadSuppressions(ctx, opts, stderr)
+	if err != nil {
+		return err
+	}
+	opts.rules = rules
 	engine, err := newEngine(opts, getenv)
 	if err != nil {
 		return err
@@ -211,16 +219,19 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 	if rerr := reviewAndPost(ctx, opts, engine, slug, mine, reviewedHeads(threads), res, stdout, stderr); rerr != nil || opts.dryRun {
 		return rerr
 	}
+	policy, err := filepath.Abs(opts.grantPolicy)
+	if err != nil {
+		return err
+	}
+	if serr := suggestSuppressions(ctx, opts, slug, policy, threads, res, stderr); serr != nil {
+		return serr
+	}
 	if opts.maxCommands <= 0 {
 		return nil
 	}
 	diff, gitErr, err := command(ctx, opts.repo, "git", "diff", "--no-color", "--no-ext-diff", opts.base+"..."+opts.attr.Iteration)
 	if err != nil {
 		return fmt.Errorf("git diff %s...%s: %w: %s", opts.base, opts.head, err, strings.TrimSpace(string(gitErr)))
-	}
-	policy, err := filepath.Abs(opts.grantPolicy)
-	if err != nil {
-		return err
 	}
 	return answerCommands(ctx, opts, slug, policy, diff, threads, engine, res, stderr)
 }
@@ -263,7 +274,11 @@ func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, 
 	}
 	comments := plan(review.Findings, opts.attr.RunID, opts.attr.Iteration)
 	res.Findings = len(comments)
-	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d findings, risk %d\n", len(comments), review.RiskScore)
+	for i := range review.Suppressed {
+		s := &review.Suppressed[i]
+		res.Suppressed = append(res.Suppressed, fmt.Sprintf("%s %s:%d", s.Rule, s.Finding.File, s.Finding.StartLine))
+	}
+	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d findings (%d suppressed), risk %d\n", len(comments), len(review.Suppressed), review.RiskScore)
 
 	if opts.dryRun {
 		enc := json.NewEncoder(stdout)
@@ -274,7 +289,7 @@ func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, 
 		}
 		return nil
 	}
-	return post(ctx, opts, slug, comments, mine, sc.scope(), res, stderr)
+	return post(ctx, opts, slug, append(comments, suppressedComments(review.Suppressed)...), mine, sc.scope(), res, stderr)
 }
 
 // botResult is what a run prints on stdout.
@@ -301,6 +316,10 @@ type botResult struct {
 	Since string `json:"since,omitempty"`
 	// ReviewedFiles lists the files an incremental review covered.
 	ReviewedFiles []string `json:"reviewed_files"`
+	// Suppressed lists findings a suppression rule matched ("RULE file:line");
+	// Suggested the dismissed threads that got a suggested rule this run.
+	Suppressed []string `json:"suppressed"`
+	Suggested  []string `json:"suggested"`
 	// Answered are the comment ids of /vizzini commands answered this run;
 	// CommandFailures those that could not be (the next run retries).
 	Answered        []string `json:"answered"`
@@ -321,7 +340,7 @@ func newEngine(opts *options, getenv func(string) string) (*reviewer.Engine, err
 
 // reviewDiff runs the Vizzini review and, with --out, writes its report.
 func reviewDiff(ctx context.Context, opts *options, engine *reviewer.Engine, diff []byte) (*reviewer.ReviewOutput, error) {
-	ropts := reviewer.ReviewOptions{Repo: os.DirFS(opts.repo)}
+	ropts := reviewer.ReviewOptions{Repo: os.DirFS(opts.repo), Suppressions: opts.rules}
 	if opts.knowledge != "" {
 		ropts.Knowledge = os.DirFS(opts.knowledge)
 	}
@@ -370,6 +389,9 @@ type comment struct {
 	EndLine     int    `json:"end_line"`
 	Fingerprint string `json:"fingerprint"`
 	Body        string `json:"body"`
+	// suppressed marks a finding a suppression rule matched: never posted,
+	// only matched against threads.
+	suppressed bool
 }
 
 // plan turns findings into comments, each carrying a hidden marker with its
@@ -379,7 +401,7 @@ func plan(findings []reviewer.Finding, runID, head string) []comment {
 	out := make([]comment, 0, len(findings))
 	for i := range findings {
 		f := &findings[i]
-		fp := fingerprint(f)
+		fp := reviewer.Fingerprint(f)
 		var b strings.Builder
 		fmt.Fprintf(&b, "**%s (%s): %s**\n\n%s", f.Severity, f.Category, f.Title, strings.TrimSpace(f.Body))
 		if s := strings.TrimSpace(f.Suggestion); s != "" {
@@ -394,15 +416,6 @@ func plan(findings []reviewer.Finding, runID, head string) []comment {
 			Fingerprint: fp, Body: b.String()})
 	}
 	return out
-}
-
-// fingerprint identifies a finding independently of its line numbers, so a
-// finding that moves when code above it changes keeps its identity: the
-// file, the category and the normalized title. "v1" versions the recipe.
-func fingerprint(f *reviewer.Finding) string {
-	title := strings.Join(strings.Fields(strings.ToLower(f.Title)), " ")
-	sum := sha256.Sum256([]byte(f.File + "\x00" + string(f.Category) + "\x00" + title))
-	return "v1:" + hex.EncodeToString(sum[:8])
 }
 
 // retryDelay is the wait before the n-th retry of a forge call. Tests set it

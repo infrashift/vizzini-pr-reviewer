@@ -17,7 +17,6 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 
 	"github.com/infrashift/vizzini-pr-reviewer/internal/llmtest"
-	"github.com/infrashift/vizzini-pr-reviewer/pkg/reviewer"
 )
 
 func TestMain(m *testing.M) { llmtest.RunOffline(m) }
@@ -281,29 +280,5 @@ func TestBot_GitFailureIsReported(t *testing.T) {
 	code, _, stderr := runBot(t, botEnv(t), "--repo", t.TempDir(), "--base", "main", "--dry-run")
 	if code != exitError || !strings.Contains(stderr, "--head HEAD") {
 		t.Errorf("exit %d: %s", code, stderr)
-	}
-}
-
-// A finding keeps its fingerprint when it moves; what it is about changes it.
-func TestFingerprint(t *testing.T) {
-	f := reviewer.Finding{File: "a.go", StartLine: 3, EndLine: 3, Category: "Security", Title: "SQL  Injection"}
-	moved := f
-	moved.StartLine, moved.EndLine, moved.Title = 40, 41, "sql injection"
-	if fingerprint(&f) != fingerprint(&moved) {
-		t.Error("a moved or re-cased finding changed fingerprint")
-	}
-	for _, change := range []func(*reviewer.Finding){
-		func(g *reviewer.Finding) { g.File = "b.go" },
-		func(g *reviewer.Finding) { g.Category = "Logic" },
-		func(g *reviewer.Finding) { g.Title = "Hardcoded secret" },
-	} {
-		g := f
-		change(&g)
-		if fingerprint(&g) == fingerprint(&f) {
-			t.Errorf("%+v shares a fingerprint with %+v", g, f)
-		}
-	}
-	if fp := fingerprint(&f); !strings.HasPrefix(fp, "v1:") || len(fp) != 19 {
-		t.Errorf("fingerprint %q", fp)
 	}
 }

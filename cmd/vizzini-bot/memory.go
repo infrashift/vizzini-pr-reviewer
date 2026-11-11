@@ -55,12 +55,15 @@ func parseMarker(body string) (marker, bool) {
 
 // remoteThread is the part of mrman's `review threads` output the bot reads.
 type remoteThread struct {
-	ID         string          `json:"id"`
-	Path       string          `json:"path"`
-	Line       *int            `json:"line"`
-	StartLine  *int            `json:"start_line"`
-	IsResolved bool            `json:"is_resolved"`
-	Comments   []remoteComment `json:"comments"`
+	ID         string `json:"id"`
+	Path       string `json:"path"`
+	Line       *int   `json:"line"`
+	StartLine  *int   `json:"start_line"`
+	IsResolved bool   `json:"is_resolved"`
+	// Disposition is how it was resolved, where the forge says (Azure
+	// DevOps: "resolved", "won't fix", "by design", "closed").
+	Disposition string          `json:"disposition"`
+	Comments    []remoteComment `json:"comments"`
 }
 
 type remoteComment struct {
@@ -166,9 +169,12 @@ func reconcile(comments []comment, threads []botThread, scope map[string]bool) r
 				matched[j], seen = true, true
 			}
 		}
-		if seen {
+		switch {
+		case c.suppressed:
+			// Never posted; its threads are left alone (matched above).
+		case seen:
 			r.AlreadyPosted = append(r.AlreadyPosted, c.Fingerprint)
-		} else {
+		default:
 			r.Post = append(r.Post, *c)
 		}
 	}
