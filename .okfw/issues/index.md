@@ -15,4 +15,5 @@
 * [ISSUE-009: Interactive PR slash commands](issue-009-interactive-pr-slash-commands--01a1c9b61586.md) - Parse /explain, /refactor and /docstrings with file:line-range targets and route each to a scoped template.
 * [ISSUE-010: Pre-code planning from issue payloads](issue-010-pre-code-planning-from-issue-payloads--01a1c9b6158d.md) - Turn an IssuePayload plus repo tree and OKF index into a CUE-validated #ImplementationPlan for coding agents.
 * [ISSUE-011: Integrate the policy gate with garmr](issue-011-integrate-the-policy-gate-with-garmr--01a1c9e416ce.md) - Make pr-review JSON a first-class garmr input and ship a vizzini policy pack, keeping the built-in #PolicyGate as the offline default.
+* [ISSUE-012: Multi-language lint input via SARIF](issue-012-multi-language-lint-input-via-sarif--01a1c9ed12c7.md) - Accept SARIF reports (ruff, Roslyn analyzers, Semgrep, CodeQL) alongside golangci-lint JSON so lint-aware reviews work beyond Go.
 
