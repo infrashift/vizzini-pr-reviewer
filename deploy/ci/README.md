@@ -4,7 +4,7 @@ These templates run [vizzini-bot](../../docs/src/content/docs/docs/guides/bot.md
 
 | Platform | Template | Posts as | Resolves threads, answers `/vizzini` |
 |---|---|---|---|
-| GitHub Actions | [`github/vizzini-bot.yml`](github/vizzini-bot.yml) | `github-actions[bot]` (`GITHUB_TOKEN`) | yes (mrman v0.1.6 on) |
+| GitHub Actions | [`github/vizzini-bot.yml`](github/vizzini-bot.yml) | `github-actions[bot]` (`GITHUB_TOKEN`) | answers commands: yes. Resolves: with the `contents: write` opt-in (see Setup) |
 | Azure Pipelines | [`azure-pipelines/vizzini-bot.yml`](azure-pipelines/vizzini-bot.yml) | `<Project> Build Service (<org>)` (`System.AccessToken`) | yes |
 | GitLab CI | [`gitlab/vizzini-bot.gitlab-ci.yml`](gitlab/vizzini-bot.gitlab-ci.yml) | a project access token's bot user | yes (mrman v0.1.6 on) |
 
@@ -26,6 +26,7 @@ With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answer
    - It ships with **no** identities, so nothing is posted until you add yours (step 4).
    - The bot reads the policy from the **base branch**, so only a reviewed, merged policy change takes effect. A pull request cannot loosen the policy it is judged by.
 2. **Add the template** for your platform and set its variables: the LiteLLM URL, the model, and a LiteLLM virtual key for the bot. Platform specifics:
+   - **GitHub Actions:** to let the bot resolve its fixed threads, change the workflow's `contents: read` to `contents: write`. GitHub allows `GITHUB_TOKEN` to resolve review threads only with it, and it also lets the token push. Without it, the bot reports resolving as refused and goes on.
    - **Azure Pipelines:** grant the build service *Contribute to pull requests*.
    - **GitLab:** create a project access token with role Reporter or higher and scope `api`, and save it as the masked CI/CD variable `VIZZINI_GITLAB_TOKEN`. On a self-managed instance, the job lists the instance in mrman's config itself; with a private CA, add `ca_file` to that entry.
 3. **Open a pull request.**

@@ -21,6 +21,11 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  # Opt-in: GitHub lets GITHUB_TOKEN resolve review threads only with
+  # contents: write, which also lets the token push to the repository. With
+  # contents: read (the default), the bot still posts and answers /vizzini
+  # commands, and reports resolving as refused. To let it resolve its fixed
+  # threads, replace "contents: read" above with "contents: write".
 
 # One run per pull request at a time; a newer push waits rather than cancels
 # a run that may be posting.
