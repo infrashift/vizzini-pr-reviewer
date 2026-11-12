@@ -17,6 +17,7 @@ description: "vizzini-bot ships GitHub Actions, Azure Pipelines and GitLab CI te
 
 **Status:** Accepted
 **Date:** 2026-11-11
+**Updated:** 2026-11-12 (GitLab CI verified live; self-managed instances)
 **Source:** follow-up to [ISSUE-024](/issues/issue-024-automation-mode-review-every-pr-incrementally-with-thread-memory--01a1cba3cab7.md) (published CI templates)
 **Related:** [ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md) (the policy is the grant), [ADR-0020](/decisions/adr-0020-suppression-rules-are-reviewed-repository-files-read-from-the-base-branch-and-applied-deterministically--01a1cca0ea51.md) (rules from the base branch)
 
@@ -33,6 +34,7 @@ vizzini-bot needs three binaries (itself, mrman, garmr) plus the tokenizer encod
 
   It sets `GOTOOLCHAIN=auto`, because garmr needs a newer Go than CI images ship with. The toolchain go fetches is verified against Go's checksum database.
 - **The grant policy is read from the base branch.** A relative `--grant-policy` is copied out of the base revision (`git ls-tree` / `git show`). Only a reviewed, merged policy change takes effect, and a policy missing from the base fails the run. An absolute path is the operator's own and is used as it is.
+- **Self-managed GitLab is handled by the template.** mrman sends a token only to hosts it knows and reads `GITLAB_TOKEN` for gitlab.com alone. So when `CI_SERVER_HOST` is not gitlab.com, the job appends a `[[forge.hosts]]` entry to mrman's config, with `CI_API_V4_URL` and the token as `"$GITLAB_TOKEN"`, which mrman expands when it runs. The token never lands in the file.
 - **No identity by default.** The starter policy (mrman's pack) allows no identity, so the first run is denied (exit 3), and its log names the identity the CI posts as. Allowing it is a reviewed change on the default branch.
 
 ## Consequences
@@ -45,5 +47,10 @@ vizzini-bot needs three binaries (itself, mrman, garmr) plus the tokenizer encod
   - the denied build naming `scratch Build Service (ryanscraig)`;
   - the allowed build posting threads, once the build service had *Contribute to pull requests* (without it: `TF401027 PullRequestContribute`, as the template's setup step warns);
   - an incremental build that answered a `/vizzini explain` command.
-- **Not run live:** GitLab CI, since no project was available. Its script passes shellcheck, its YAML parses, and the shared install step is verified.
+- **Verified live on GitLab CI** (vizzini-uat, `make uat-ci-gitlab`, 15/15, 2026-11-12), on a throwaway self-managed GitLab CE 19.5.1 and gitlab-runner (docker executor) in podman, with a Reporter project access token. The run covered:
+  - the denied job naming the token's bot user;
+  - the allowed job posting a discussion as that bot user;
+  - an incremental job in which a `/vizzini explain` command was reported unsupported (mrman has no GitLab reply yet), and the job went on.
+
+  The first complete run found that the template could not post on a self-managed instance: mrman reads `GITLAB_TOKEN` for gitlab.com only. The job now writes the `[[forge.hosts]]` entry (1dfff26). gitlab.com itself has not been run.
 - **Pin bumps:** the templates pin Vizzini, mrman and garmr. Bumping a pin is a reviewed change in the adopting repository.

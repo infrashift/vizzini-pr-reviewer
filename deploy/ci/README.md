@@ -27,7 +27,7 @@ On GitHub and GitLab, the bot reports resolving and replying as unsupported and 
    - The bot reads the policy from the **base branch**, so only a reviewed, merged policy change takes effect. A pull request cannot loosen the policy it is judged by.
 2. **Add the template** for your platform and set its variables: the LiteLLM URL, the model, and a LiteLLM virtual key for the bot. Platform specifics:
    - **Azure Pipelines:** grant the build service *Contribute to pull requests*.
-   - **GitLab:** create a project access token with role Reporter or higher and scope `api`.
+   - **GitLab:** create a project access token with role Reporter or higher and scope `api`, and save it as the masked CI/CD variable `VIZZINI_GITLAB_TOKEN`. On a self-managed instance, the job lists the instance in mrman's config itself; with a private CA, add `ca_file` to that entry.
 3. **Open a pull request.**
    - The bot reviews it and stops with exit code 3: *the grant policy denied posting; nothing was posted*.
    - The job log shows the denied decision, including the identity your CI posts as:
@@ -50,7 +50,11 @@ On GitHub and GitLab, the bot reports resolving and replying as unsupported and 
 - **Azure Pipelines template:** runs live in vizzini-uat (`make uat-ci-ado`), as PR build validation on a throwaway self-hosted agent.
   - It plays the same setup: the denied first build, the identity allowed, and threads posted. It also grants the build service *Contribute to pull requests*; without that grant, ADO refuses the post with `TF401027 PullRequestContribute`.
   - It then answers a `/vizzini explain` command on an incremental build.
-- **GitLab CI template:** not yet run on GitLab. Its script passes shellcheck and its YAML parses (`make ci-check`). It shares `install.sh`, which is verified on both GitHub's and Azure's agents.
+- **GitLab CI template:** runs live in vizzini-uat (`make uat-ci-gitlab`), on a throwaway self-managed GitLab CE and gitlab-runner (docker executor) in podman.
+  - It plays the same setup with a Reporter project access token: the denied first job naming the token's bot user, the identity allowed, and discussions posted as that bot user.
+  - It then runs an incremental job with a `/vizzini explain` command, which goes unanswered: mrman cannot reply on GitLab yet, and the bot reports that and carries on.
+  - gitlab.com itself is not run; there the job skips the mrman host entry and mrman reads `GITLAB_TOKEN`.
+- **Lint:** `make ci-check` shellchecks `install.sh` and the GitLab job's script, runs actionlint on the GitHub workflow, and parses the Azure and GitLab YAML.
 
 ## Security notes
 
