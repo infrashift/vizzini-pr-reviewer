@@ -261,9 +261,10 @@ Each template:
   - the tokenizer encodings, checked against pinned SHA-256 sums.
 - **Runs the bot.**
 
-Resolving threads and answering `/vizzini` commands need mrman driver
-support that only Azure DevOps has so far. On GitHub and GitLab the bot
-reviews, posts and deduplicates, and reports the rest as unsupported.
+Resolving threads and answering `/vizzini` commands work on Azure DevOps,
+GitHub and GitLab from mrman v0.1.6 on, which the templates pin. With an
+older mrman, GitHub and GitLab report them as unsupported, and the bot still
+reviews, posts and deduplicates.
 
 **The first run is denied, by design.** The starter policy lists no
 identities. The first pull request's job therefore fails with exit 3, and

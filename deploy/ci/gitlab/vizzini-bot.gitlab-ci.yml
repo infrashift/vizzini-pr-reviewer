@@ -5,9 +5,9 @@
 # In every merge request pipeline, vizzini-bot reviews what changed since its
 # last review and posts the findings as discussions through mrman, which
 # posts only when the grant policy committed on the target branch
-# (.vizzini/grant-policy) allows it. On GitLab, mrman cannot yet resolve
-# discussions or reply to /vizzini commands; the bot reports those as
-# unsupported and goes on.
+# (.vizzini/grant-policy) allows it. It also resolves its own discussions
+# whose finding is gone and answers /vizzini commands in their discussions
+# (mrman v0.1.6 on).
 #
 # CI/CD variables (Settings > CI/CD > Variables):
 #   VIZZINI_LITELLM_URL   your LiteLLM proxy, e.g. https://litellm.example.com/v1
@@ -34,7 +34,7 @@ vizzini-bot:
     # Pins: the Vizzini commit the bot is built from, the mrman release, the
     # garmr commit. Change them in a reviewed commit.
     VIZZINI_REF: 517e4344db8f2dfd1174c1473cd31c5e1add2f0b
-    MRMAN_VERSION: v0.1.5
+    MRMAN_VERSION: v0.1.6
     GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
   script:
     - set -euo pipefail

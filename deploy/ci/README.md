@@ -4,9 +4,9 @@ These templates run [vizzini-bot](../../docs/src/content/docs/docs/guides/bot.md
 
 | Platform | Template | Posts as | Resolves threads, answers `/vizzini` |
 |---|---|---|---|
-| GitHub Actions | [`github/vizzini-bot.yml`](github/vizzini-bot.yml) | `github-actions[bot]` (`GITHUB_TOKEN`) | not yet (mrman's GitHub driver) |
+| GitHub Actions | [`github/vizzini-bot.yml`](github/vizzini-bot.yml) | `github-actions[bot]` (`GITHUB_TOKEN`) | yes (mrman v0.1.6 on) |
 | Azure Pipelines | [`azure-pipelines/vizzini-bot.yml`](azure-pipelines/vizzini-bot.yml) | `<Project> Build Service (<org>)` (`System.AccessToken`) | yes |
-| GitLab CI | [`gitlab/vizzini-bot.gitlab-ci.yml`](gitlab/vizzini-bot.gitlab-ci.yml) | a project access token's bot user | not yet (mrman's GitLab driver) |
+| GitLab CI | [`gitlab/vizzini-bot.gitlab-ci.yml`](gitlab/vizzini-bot.gitlab-ci.yml) | a project access token's bot user | yes (mrman v0.1.6 on) |
 
 Every template does the same thing:
 1. **Check out** the pull request with full history.
@@ -17,7 +17,7 @@ Every template does the same thing:
    - the tokenizer encodings, checked against pinned SHA-256 sums.
 3. **Run `vizzini-bot`** against the pull request.
 
-On GitHub and GitLab, the bot reports resolving and replying as unsupported and carries on: it still reviews, posts and deduplicates.
+With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.6). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.
 
 ## Setup
 
