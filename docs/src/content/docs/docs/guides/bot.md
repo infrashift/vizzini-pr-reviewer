@@ -123,7 +123,9 @@ How the bot handles a command:
   the conversation.
 - **When it's answered:** the next bot run answers it in the thread, even
   if no review is needed. Each command is answered once: the reply carries
-  a hidden `reply-to` marker.
+  a hidden `reply-to` marker. On Azure DevOps, the optional
+  [webhook receiver](../webhook/) (experimental)
+  answers it as soon as it is written, with `--commands-only`.
 - **Problems:**
   - A command the bot cannot understand, or one whose target is outside
     the PR's diff, gets one reply explaining how to write it.

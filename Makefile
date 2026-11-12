@@ -34,9 +34,9 @@ build:
 	go build -o bin/pr-review ./cmd/pr-review
 	go build -o bin/vizzini-bot ./cmd/vizzini-bot
 
-## ci-check: lint the vizzini-bot CI templates (needs shellcheck, actionlint, cue)
+## ci-check: lint the vizzini-bot CI templates and the webhook kit (needs shellcheck, actionlint, cue)
 ci-check:
-	shellcheck deploy/ci/install.sh
+	shellcheck deploy/ci/install.sh deploy/webhook/ado-subscription.sh
 	$(GOBIN)/actionlint deploy/ci/github/vizzini-bot.yml
 	cue export --out json deploy/ci/azure-pipelines/vizzini-bot.yml >/dev/null
 	cue export --out json deploy/ci/gitlab/vizzini-bot.gitlab-ci.yml | \

@@ -45,6 +45,7 @@ export default defineConfig({
 						{ label: 'Cost Attribution', slug: 'docs/guides/cost-attribution' },
 						{ label: 'Unattended PR Review', slug: 'docs/guides/bot' },
 						{ label: 'Slash Commands', slug: 'docs/guides/commands' },
+						{ label: 'Webhook Receiver (Experimental)', slug: 'docs/guides/webhook' },
 						{ label: 'Pre-Code Planning', slug: 'docs/guides/planning' },
 						{ label: 'Policy with garmr', slug: 'docs/guides/garmr' },
 						{ label: 'Running Offline', slug: 'docs/guides/offline' },

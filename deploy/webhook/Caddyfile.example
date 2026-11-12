@@ -1,0 +1,15 @@
+# Caddy in front of vizzini-webhook (EXPERIMENTAL). Caddy gets and renews the
+# certificate itself. Azure DevOps reaches only public HTTPS endpoints.
+hooks.example.com {
+	# Only the hook and the health check are exposed.
+	@hook path /hooks/azure-devops /healthz
+	handle @hook {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8484
+	}
+	handle {
+		respond 404
+	}
+}

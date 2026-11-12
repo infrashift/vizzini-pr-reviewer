@@ -81,6 +81,9 @@ type options struct {
 	// who can comment); maxCommands bounds the commands answered per run.
 	commandAuthors []string
 	maxCommands    int
+	// commandsOnly answers pending commands and does nothing else: no
+	// review, no resolution, no suggestion (vizzini-webhook's mode).
+	commandsOnly bool
 	// suppressions is the rules file, read at the base revision; rules is
 	// what it held (nil: none).
 	suppressions string
@@ -116,6 +119,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	})
 	fs.StringVar(&o.suppressions, "suppressions", ".vizzini/suppressions.yaml", "suppression rules file, read from the base revision (\"\" disables)")
 	fs.IntVar(&o.maxCommands, "max-commands", 5, "most /vizzini commands answered per run (0 answers none)")
+	fs.BoolVar(&o.commandsOnly, "commands-only", false, "only answer pending /vizzini commands: no review, no resolution, no suggestion (for vizzini-webhook; experimental)")
 	fs.DurationVar(&o.timeout, "timeout", 15*time.Minute, "overall time limit")
 	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "this run's id (default: a generated UUIDv7)")
 	fs.StringVar(&o.attr.PRKey, "pr", getenv("VIZZINI_PR"), `attribution: the pull request key, e.g. "ado:dev.azure.com/org/project/repo#42"`)
@@ -133,6 +137,10 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 		return nil, errors.New("--pr-url is required")
 	case o.grantPolicy == "" && !o.dryRun:
 		return nil, errors.New("--grant-policy is required: posting is authorized only by a committed policy")
+	case o.commandsOnly && o.dryRun:
+		return nil, errors.New("--commands-only posts answers; it cannot be combined with --dry-run")
+	case o.commandsOnly && o.maxCommands <= 0:
+		return nil, errors.New("--commands-only needs --max-commands above 0")
 	}
 	o.attr.Agent = agentName
 	if o.attr.RunID == "" {
@@ -216,6 +224,14 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 		}
 		mine = botThreads(ctx, threads, opts.attr.Iteration, gitLineMapper(opts.repo))
 	}
+	if opts.commandsOnly {
+		res.Mode = modeCommands
+		engine, err := newEngine(opts, getenv)
+		if err != nil {
+			return err
+		}
+		return answerPending(ctx, opts, slug, opts.policyDir, threads, engine, res, stderr)
+	}
 	rules, err := loadSuppressions(ctx, opts, stderr)
 	if err != nil {
 		return err
@@ -232,6 +248,13 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 	if serr := suggestSuppressions(ctx, opts, slug, policy, threads, res, stderr); serr != nil {
 		return serr
 	}
+	return answerPending(ctx, opts, slug, policy, threads, engine, res, stderr)
+}
+
+// answerPending answers the pull request's pending /vizzini commands, with
+// its diff (base...head) as their context.
+func answerPending(ctx context.Context, opts *options, slug, policy string, threads []remoteThread,
+	engine *reviewer.Engine, res *botResult, stderr io.Writer) error {
 	if opts.maxCommands <= 0 {
 		return nil
 	}
@@ -316,8 +339,9 @@ type botResult struct {
 	// Carried are open threads on files this run did not review: left as
 	// they are, neither matched nor resolved.
 	Carried []string `json:"carried"`
-	// Mode is "full", "incremental" (only the files changed since Since) or
-	// "unchanged" (nothing changed since Since; no review was made).
+	// Mode is "full", "incremental" (only the files changed since Since),
+	// "unchanged" (nothing changed since Since; no review was made) or
+	// "commands" (--commands-only: commands answered, nothing reviewed).
 	Mode  string `json:"mode"`
 	Since string `json:"since,omitempty"`
 	// ReviewedFiles lists the files an incremental review covered.

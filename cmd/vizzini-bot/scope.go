@@ -33,6 +33,8 @@ const (
 	scopeFull        = "full"
 	scopeIncremental = "incremental"
 	scopeUnchanged   = "unchanged"
+	// modeCommands is a --commands-only run: no review scope at all.
+	modeCommands = "commands"
 )
 
 type reviewScopeT struct {

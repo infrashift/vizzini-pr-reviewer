@@ -1,0 +1,53 @@
+# vizzini-webhook (EXPERIMENTAL): answers /vizzini commands on Azure DevOps
+# pull requests as they are written. Runbook: deploy/webhook/README.md.
+#
+# Install: copy to /etc/systemd/system/, then
+#   systemctl daemon-reload && systemctl enable --now vizzini-webhook
+[Unit]
+Description=vizzini-webhook: answer /vizzini commands from Azure DevOps service hooks (experimental)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vizzini-webhook
+Group=vizzini-webhook
+# Non-secret settings (repositories, LiteLLM URL, model, paths).
+EnvironmentFile=/etc/vizzini-webhook/vizzini-webhook.env
+# Secrets: AZURE_DEVOPS_EXT_PAT and VIZZINI_API_KEY. Mode 0600, owned by root.
+EnvironmentFile=/etc/vizzini-webhook/secrets.env
+# The basic-auth password, handed to the service as a credential (the file
+# stays root-only; the service reads its private copy).
+LoadCredential=webhook.secret:/etc/vizzini-webhook/webhook.secret
+Environment=HOME=/var/lib/vizzini-webhook
+ExecStart=/opt/vizzini/bin/vizzini-webhook \
+    --listen ${WEBHOOK_LISTEN} \
+    --secret-file ${CREDENTIALS_DIRECTORY}/webhook.secret \
+    --work /var/lib/vizzini-webhook \
+    --bot /opt/vizzini/bin/vizzini-bot \
+    --repo ${WEBHOOK_REPO} \
+    --max-jobs ${WEBHOOK_MAX_JOBS} \
+    --max-commands ${WEBHOOK_MAX_COMMANDS}
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=11min
+
+StateDirectory=vizzini-webhook
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

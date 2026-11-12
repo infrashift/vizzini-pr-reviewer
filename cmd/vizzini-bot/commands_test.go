@@ -172,3 +172,53 @@ func TestBot_AnswersCommandsOnce(t *testing.T) {
 		t.Errorf("--max-commands 0: %s", stdout)
 	}
 }
+
+// --commands-only (vizzini-webhook's mode) answers the pending commands and
+// does nothing else: no review request, no submit, no resolution.
+func TestBot_CommandsOnly(t *testing.T) {
+	repo := gitRepo(t)
+	srv := llmtest.NewServer(t, func(_ int, req *openai.ChatCompletionRequest) llmtest.Reply {
+		if strings.Contains(llmtest.UserPrompt(req), "Is this safe?") {
+			return llmtest.Reply{Content: `{"answer":"No."}`}
+		}
+		return llmtest.Reply{Content: `{"summary":"s","risk_score":5,"findings":[` +
+			`{"file":"store.go","start_line":3,"end_line":3,"severity":"Critical","category":"Security","title":"t","body":"b"}]}`}
+	})
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	// The bot's thread is from an older head, so a normal run would review.
+	threads, _ := json.Marshal(map[string]any{"threads": []any{map[string]any{
+		"id": "77", "path": "store.go", "line": 3, "comments": []any{
+			map[string]any{"id": "1", "author": "bot", "body": "finding\n\n" +
+				(&marker{FP: "v1:x", Run: "r0", Head: strings.Repeat("ab", 20), Category: "Security", Start: 3, End: 3}).String()},
+			map[string]any{"id": "2", "author": "ana", "body": "/vizzini explain Is this safe?"},
+		}}}})
+	f := &fakeMrman{threadsOut: string(threads)}
+	f.install(t)
+
+	code, stdout, stderr := runBot(t, env, "--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p", "--commands-only")
+	var res botResult
+	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil {
+		t.Fatalf("exit %d, result %s: %s", code, stdout, stderr)
+	}
+	if res.Mode != modeCommands || !slices.Equal(res.Answered, []string{"2"}) || res.Findings != 0 || len(res.ReviewedFiles) != 0 {
+		t.Errorf("result %s", stdout)
+	}
+	for _, c := range f.calls {
+		if len(c) > 1 && (c[1] == "submit" || c[1] == "resolve" || c[1] == "add") {
+			t.Errorf("--commands-only called mrman %v", c)
+		}
+	}
+	for _, req := range srv.Requests() {
+		if !strings.Contains(llmtest.UserPrompt(&req), "Is this safe?") {
+			t.Errorf("--commands-only sent a non-command model request")
+		}
+	}
+
+	// It refuses combinations that would make it do nothing or post nothing.
+	for _, args := range [][]string{{"--dry-run"}, {"--max-commands", "0"}} {
+		a := append([]string{"--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p", "--commands-only"}, args...)
+		if code, _, stderr := runBot(t, env, a...); code != exitError || !strings.Contains(stderr, "--commands-only") {
+			t.Errorf("%v: exit %d, %s", args, code, stderr)
+		}
+	}
+}
