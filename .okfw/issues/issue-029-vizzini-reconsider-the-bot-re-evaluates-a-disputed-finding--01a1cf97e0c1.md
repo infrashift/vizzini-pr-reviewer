@@ -29,7 +29,7 @@ Guardrails that exist today:
 - mrman's `review resolve` closes **only threads the token's own identity started**. A developer agent with its own account therefore cannot resolve vizzini-bot's threads.
 - Unattended posting goes only through a base-branch garmr policy ([ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)), and mrman's interactive grant stays human-only.
 
-The vizzini-uat suite TS-WF tests the whole workflow.
+The vizzini-lab suite TS-WF tests the whole workflow.
 
 ## Goal
 A structured disagreement. The developer argues in the bot's thread and writes `/vizzini reconsider`. The bot re-evaluates **that finding** against the current code and the thread's conversation. The model's answer is checked against the CUE schema.
@@ -42,11 +42,11 @@ A structured disagreement. The developer argues in the bot's thread and writes `
 - [x] Answered once (the `reply-to` marker). The event is `resolve` or `reply` under the base-branch policy.
 - [x] Attributed like other commands (mode `command`, kind `reconsider`).
 - [x] The webhook receiver needs no change: a reconsider is a command.
-- [x] vizzini-uat TS-WF covers both verdicts with a deterministic stub.
+- [x] vizzini-lab TS-WF covers both verdicts with a deterministic stub.
 
 ## Progress (2026-11-12)
 - **Vizzini `0187f14`:** `/reconsider` (stubllm: `[stub:withdraw]`).
-- **Live:** vizzini-uat TS-WF, run 20261112T121641Z, passed 26/26 on ADO PR #47.
+- **Live:** vizzini-lab TS-WF, run 20261112T121641Z, passed 26/26 on ADO PR #47.
   - The stands verdict left the thread open.
   - The withdrawn verdict resolved the bot's own thread, and a later full review did not post the finding again.
 - **Still to do:** a live-model run with a real argument.

@@ -19,7 +19,7 @@ description: "A model sometimes reports one problem twice on the same lines, onc
 **Status:** closed · **Raised:** 2026-11-11, from the live TypeScript UAT ([ISSUE-018](/issues/issue-018-prove-sarif-lint-input-with-real-eslint-typescript-javascript-output--01a1cb1c9e84.md)) · **Touches:** [ADR-0007](/decisions/adr-0007-anchor-findings-to-the-diff-and-merge-chunk-results-deterministically--01a1c9d9c501.md) (deterministic merge)
 
 ## Problem
-In vizzini-uat run 20261111T150647Z (`ts-seeded`), Opus 5.5 reported **15 findings for 11 distinct problems**. Four problems were each reported twice on the same lines:
+In vizzini-lab run 20261111T150647Z (`ts-seeded`), Opus 5.5 reported **15 findings for 11 distinct problems**. Four problems were each reported twice on the same lines:
 
 | file:lines | first finding | duplicate |
 |---|---|---|
@@ -57,7 +57,7 @@ Which category should a merged finding keep? Keeping Security plus citations los
 - [x] Unit test showing that two distinct problems on the same span (e.g. `eval` + `no-unsafe-return`) do **not** merge
 - [x] Merge stays deterministic: the same inputs in any chunk order give the same output
 - [x] garmr policy pack and `garmr test` suites updated if VZ-002's trigger changes (not needed: the merged finding stays Architecture)
-- [x] vizzini-uat live rerun of `ts-seeded`: Opus reports one finding per problem (11, with 10/10 recall still met), and Sonnet's output is unchanged
+- [x] vizzini-lab live rerun of `ts-seeded`: Opus reports one finding per problem (11, with 10/10 recall still met), and Sonnet's output is unchanged
 
 ## Resolution (2026-11-11)
 Implemented as [ADR-0012](/decisions/adr-0012-fold-same-span-duplicate-findings-that-cite-the-same-knowledge-document--01a1cb3ca045.md), with the category rule decided as **Architecture**, so garmr VZ-002 is unchanged. Two parts:
@@ -68,7 +68,7 @@ Implemented as [ADR-0012](/decisions/adr-0012-fold-same-span-duplicate-findings-
 - `TestFoldDuplicates_*`: the four live pairs, seven look-alikes that must not fold, all 24 input orderings, and that the result still validates.
 - `TestReview_FoldsSameSpanDuplicates`: end to end through the mock LLM, including the prompt rule and the report field.
 
-**Live rerun** (vizzini-uat run 20261111T153406Z, `ts-seeded`, no forge leg):
+**Live rerun** (vizzini-lab run 20261111T153406Z, `ts-seeded`, no forge leg):
 
 | | before (20261111T150647Z) | after |
 |---|---|---|

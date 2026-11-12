@@ -31,12 +31,12 @@ Vizzini is a library and CLI. Nothing reviews a PR when it is opened or updated,
 
 ## Acceptance criteria
 - [x] Design ADR: where state lives (forge thread markers vs a store), forge abstraction (reuse mrman's drivers?), and the posting policy
-- [x] CI entry point posts a review on a test PR (ADO first, since vizzini-uat already has it): slice 1, 2026-11-11
-- [x] Incremental re-review on push, with no duplicate threads, verified in vizzini-uat: slices 2-3, 2026-11-11
+- [x] CI entry point posts a review on a test PR (ADO first, since vizzini-lab already has it): slice 1, 2026-11-11
+- [x] Incremental re-review on push, with no duplicate threads, verified in vizzini-lab: slices 2-3, 2026-11-11
 - [x] Thread resolution when fixed, and suppression from dismissal: slices 2 and 5, 2026-11-11
 
 ## Resolution (2026-11-11)
-All five slices shipped in a single day. Each was verified live on an Azure DevOps PR by vizzini-uat's `make uat-bot`, which now runs nine legs on one PR (47/47 with Claude Sonnet 5.5).
+All five slices shipped in a single day. Each was verified live on an Azure DevOps PR by vizzini-lab's `make uat-bot`, which now runs nine legs on one PR (47/47 with Claude Sonnet 5.5).
 - **Slice 1:** policy-authorized posting. mrman v0.1.2: `review submit --grant-policy` ([ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)).
 - **Slice 2:** thread memory and resolution. mrman v0.1.3: `review threads` / `review resolve` ([ADR-0017](/decisions/adr-0017-thread-memory-matches-by-fingerprint-or-mapped-anchor-and-resolves-only-when-the-code-changed--01a1cc2bd91a.md)).
 - **Slice 3:** incremental review ([ADR-0018](/decisions/adr-0018-incremental-review-by-file-since-the-last-reviewed-head-learned-from-thread-markers--01a1cc54bd32.md)).
@@ -64,7 +64,7 @@ All five slices shipped in a single day. Each was verified live on an Azure DevO
   - Submits through `--grant-policy`.
   - Exits 3 on a deny, retries mrman network errors, and has `--dry-run`.
   - Guide: [docs/guides/bot](https://infrashift.github.io/vizzini-pr-reviewer/docs/guides/bot/).
-- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #16:
+- **vizzini-lab** `make uat-bot`, live Sonnet 5.5 on ADO PR #16:
   - The committed default denied the PAT's identity (MRM-002), exit 3, nothing posted.
   - The pack listing the forge-verified identity allowed it: 9/9 findings posted as marked threads.
   - Cost $0.217 for two live runs, attributed per PR.
@@ -79,7 +79,7 @@ All five slices shipped in a single day. Each was verified live on an Azure DevO
   - Rules are read from the base revision.
   - A suppressed finding is not posted, and its thread is left alone.
   - A won't-fix or by-design dismissal gets one suggested rule.
-- **vizzini-uat** (PR #30, 47/47): a dismissed thread got a suggested rule. Merged into the base branch as suggested, the rule suppressed the finding on the next full review.
+- **vizzini-lab** (PR #30, 47/47): a dismissed thread got a suggested rule. Merged into the base branch as suggested, the rule suppressed the finding on the next full review.
 
 **Slice 4, in-thread commands (done 2026-11-11):** [ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md)
 - **mrman** `feature/thread-reply` (f13ff54):
@@ -91,7 +91,7 @@ All five slices shipped in a single day. Each was verified live on an Azure DevO
   - Usage replies for malformed commands; `--command-authors`, `--max-commands`.
   - Two fixes the UAT forced: every bot comment records the head it reviewed (ef1cbe5), and command requests are attributed (a820a35).
   - stubllm answers `/explain` (18ca3ba).
-- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #26, 37/37:
+- **vizzini-lab** `make uat-bot`, live Sonnet 5.5 on ADO PR #26, 37/37:
   - A real `/explain` got an on-point answer ($0.0139).
   - A malformed command got usage.
   - Nothing was answered twice, and the command request was attributed.
@@ -104,7 +104,7 @@ All five slices shipped in a single day. Each was verified live on an Azure DevO
   - Threads on other files are carried.
   - `--full` forces a full review.
   - The JSON result gains `mode`, `since`, `reviewed_files` and `carried`.
-- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #22, 27/27:
+- **vizzini-lab** `make uat-bot`, live Sonnet 5.5 on ADO PR #22, 27/27:
   - The idle leg made no review.
   - The `--full` rerun duplicated nothing.
   - The pushed fix was reviewed incrementally: one file, $0.0081 against about $0.057 for a full review. It resolved the MD5 thread and carried the 10 threads on other files.
@@ -121,7 +121,7 @@ All five slices shipped in a single day. Each was verified live on an Azure DevO
   - A finding is already posted when its fingerprint matches, or its file and category match on git-mapped lines.
   - A thread is resolved only when its finding is gone and its code changed; variance keeps it open.
   - stdout is a JSON result.
-- **vizzini-uat** `make uat-bot`, live Sonnet 5.5 on ADO PR #19, 21/21:
+- **vizzini-lab** `make uat-bot`, live Sonnet 5.5 on ADO PR #19, 21/21:
   - A same-head rerun duplicated nothing.
   - A pushed fix resolved exactly the MD5 thread, with a reply and status fixed, and kept one variance-only thread open.
   - Cost $0.22 for four reviews.

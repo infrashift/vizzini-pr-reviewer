@@ -44,7 +44,7 @@ description: "Knowledge documents' domain and tags match only Go package clauses
 - [x] `Match` tests: a C# namespace matches a single-segment domain; a qualified domain matches its namespace and nested ones but not siblings (`Shop.Repo` vs `Shop.Repositories`); `::`, backslash and `/` spellings of a domain work; tags follow the same rules at tag priority
 - [x] Existing grounding tests unchanged and passing
 - [x] Knowledge guide: the domain row and a per-language table
-- [x] vizzini-uat: the C# fixture's data-access ADR can use `domain: Shop.Repositories`-style grounding (stub run confirms the knowledge docs are selected)
+- [x] vizzini-lab: the C# fixture's data-access ADR can use `domain: Shop.Repositories`-style grounding (stub run confirms the knowledge docs are selected)
 
 ## Resolution (2026-11-11)
 Implemented in `internal/okf/grounder.go` (Vizzini `ffe8e03`). `TargetsFor` reads the first package or namespace declaration on a surviving hunk line for each language in the table above and normalizes it to dots. `namesAny` matches a single-name term against any namespace segment or directory, and a qualified term against that namespace, nested ones, or the same run of directories.

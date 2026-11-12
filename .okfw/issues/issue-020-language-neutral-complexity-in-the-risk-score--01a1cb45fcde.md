@@ -43,7 +43,7 @@ description: "The risk score's complexity term counts decision points only in Go
 - [x] The existing "non-Go files have no complexity" test becomes the new spec: Python counts, unsupported languages stay 0
 - [x] `pkg/risk` and a review report agree for C# and TypeScript diffs (`TestReview_BaseRiskMatchesPkgRisk`-style)
 - [x] ADR recording the rule, as an amendment to ADR-0008; risk guide and `FileRisk` docs updated
-- [x] vizzini-uat stub run: `complexity_delta` > 0 on the C# and TypeScript fixtures
+- [x] vizzini-lab stub run: `complexity_delta` > 0 on the C# and TypeScript fixtures
 - [x] Follow-up noted: mrman release bumping Vizzini, so its staleness check agrees
 
 ## Resolution (2026-11-11)
@@ -54,7 +54,7 @@ Implemented in `internal/analysis/decision.go` ([ADR-0013](/decisions/adr-0013-e
 - `TestReview_BaseRiskMatchesPkgRisk_CSharpAndTypeScript`.
 - The old "non-Go files have no complexity" test now asserts the new spec (Python 3, YAML 0); it was not deleted.
 
-**vizzini-uat stub run** (Vizzini `bc9104a`, 20/20 hard checks):
+**vizzini-lab stub run** (Vizzini `bc9104a`, 20/20 hard checks):
 
 | fixture | base_risk_score before → after | files with branching |
 |---|---|---|

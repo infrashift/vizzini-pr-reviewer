@@ -31,7 +31,7 @@ CROSS JOIN LATERAL (SELECT s.metadata -> 'spend_logs_metadata' AS m) md
 WHERE m ? 'vizzini.run_id';
 
 -- Facts a run knows and LiteLLM does not (from the review report), written
--- by whatever runs Vizzini (CI, a collector; vizzini-uat's record_runs.py);
+-- by whatever runs Vizzini (CI, a collector; vizzini-lab's record_runs.py);
 -- the source of truth stays the review report itself.
 CREATE TABLE IF NOT EXISTS vizzini_run_facts (
     run_id        text PRIMARY KEY,

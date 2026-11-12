@@ -38,4 +38,4 @@ A bot that reviews every push must not post the same finding twice, and should c
 ## Consequences
 - **Duplicates by construction:** a finding on lines that already carry a thread of the same category is never posted again. Two genuinely different findings of the same category on the same lines share one thread.
 - **Conservative resolution:** a fix that changes code elsewhere, such as a caller, leaves the thread open for a person. Resolution needs a full-history checkout: CI must fetch the earlier heads (`fetch-depth: 0`), or anchors stay unknown and nothing is resolved.
-- **Verified live:** vizzini-uat ADR-0005, 21/21 on an ADO PR with Sonnet 5.5. The rerun had no duplicates. The pushed fix resolved exactly the MD5 thread and kept one variance-only thread open.
+- **Verified live:** vizzini-lab ADR-0005, 21/21 on an ADO PR with Sonnet 5.5. The rerun had no duplicates. The pushed fix resolved exactly the MD5 thread and kept one variance-only thread open.

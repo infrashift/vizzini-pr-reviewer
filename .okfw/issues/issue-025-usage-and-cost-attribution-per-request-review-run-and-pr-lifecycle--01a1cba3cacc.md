@@ -67,13 +67,13 @@ and roll up by repository, team, requester, agent and model.
 
 ## Acceptance criteria
 - [x] ADR on correlation IDs, metadata keys and where run facts live (decide the open question above)
-- [x] Vizzini sends per-request metadata through LiteLLM, verified in LiteLLM's spend log rows in vizzini-uat (proxy with Postgres)
+- [x] Vizzini sends per-request metadata through LiteLLM, verified in LiteLLM's spend log rows in vizzini-lab (proxy with Postgres)
 - [x] Report `usage` block, populated from responses
 - [x] Prices configured for the 5.5 models in the UAT proxy; a run's cost is reported per run and per PR
 - [x] A rollup query or view per PR lifecycle, documented
 
 ## Resolution (2026-11-11)
-Implemented as [ADR-0015](/decisions/adr-0015-cost-attribution-through-litellm-spend-logs-correlated-by-run-and-pull-request--01a1cbc7d120.md). Vizzini: `12beaae` (attribution, meter, usage, CLI) and `3843b53` (LiteLLM headers); views in `deploy/litellm/views.sql`; guide at Guides → Cost Attribution. vizzini-uat runs LiteLLM with Postgres 17 in a podman pod, with prices for the 5.5 models.
+Implemented as [ADR-0015](/decisions/adr-0015-cost-attribution-through-litellm-spend-logs-correlated-by-run-and-pull-request--01a1cbc7d120.md). Vizzini: `12beaae` (attribution, meter, usage, CLI) and `3843b53` (LiteLLM headers); views in `deploy/litellm/views.sql`; guide at Guides → Cost Attribution. vizzini-lab runs LiteLLM with Postgres 17 in a podman pod, with prices for the 5.5 models.
 
 **Found on the way:** LiteLLM v1.99.4 persists custom metadata only from the `x-litellm-spend-logs-metadata` header. The body `metadata` was silently dropped. A live probe caught it and the fix is tested.
 
@@ -87,7 +87,7 @@ Implemented as [ADR-0015](/decisions/adr-0015-cost-attribution-through-litellm-s
 ## Follow-ups closed (2026-11-11)
 - **Usage in every report kind** (Vizzini `cc3f080`): every engine call hands a `RunInfo` (attribution, mode, usage) to a `RunRecorder` on the context. `MarshalReportWithRun` adds the run ID, attribution and `usage` to describe, improve, plan and command reports, and `#Report` types them. The CLI does this for every `--format json` report.
 - **Real PR key and requester:**
-  - **vizzini-uat** opens the ADO PR *before* the reviews, so every request carries `ado:dev.azure.com/<org>/<project>/<repo>#<id>`, and the requester is the PAT owner's ADO identity (`uat/ado.sh whoami`). The guide has Azure Pipelines and GitHub Actions examples.
+  - **vizzini-lab** opens the ADO PR *before* the reviews, so every request carries `ado:dev.azure.com/<org>/<project>/<repo>#<id>`, and the requester is the PAT owner's ADO identity (`uat/ado.sh whoami`). The guide has Azure Pipelines and GitHub Actions examples.
   - **mrman** runs no models by design (it reads reports), so there is nothing for it to attribute.
 - **Settling wait:** every report now counts its requests, so `uat/costs.sh` (now a standalone, rerunnable script) waits for exactly that many rows.
 - **Harness bug found:** the forge leg *exported* `XDG_DATA_HOME` for mrman, which moved rootless podman's storage for the rest of the run. Fixture builds silently re-pulled images, and the cost step could not reach the database. It is now scoped to mrman's own calls.

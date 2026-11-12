@@ -17,7 +17,7 @@ description: "Implement mrman's ThreadReplier and ThreadResolver for GitHub (Gra
 
 # ISSUE-028: mrman reply and resolve on GitHub and GitLab
 
-**Status:** open (released in mrman v0.1.6; GitLab resolve not yet verified live) · **Raised:** 2026-11-12 · **Related:** [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md); vizzini-uat ISSUE-002
+**Status:** open (released in mrman v0.1.6; GitLab resolve not yet verified live) · **Raised:** 2026-11-12 · **Related:** [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md); vizzini-lab ISSUE-002
 
 ## Context: the developer-agent workflow
 These three issues come from one workflow: Vizzini reviews, and a developer, a person or an agent, either fixes or argues back. Any disagreement still goes to a person to decide. What already works:
@@ -30,7 +30,7 @@ Guardrails that exist today:
 - mrman's `review resolve` closes **only threads the token's own identity started**. A developer agent with its own account therefore cannot resolve vizzini-bot's threads.
 - Unattended posting goes only through a base-branch garmr policy ([ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)), and mrman's interactive grant stays human-only.
 
-The vizzini-uat suite TS-WF tests the whole workflow.
+The vizzini-lab suite TS-WF tests the whole workflow.
 
 ## Goal
 Only the Azure DevOps driver implements mrman's optional `ThreadReplier` and `ThreadResolver`. On GitHub and GitLab, vizzini-bot cannot resolve fixed findings or answer `/vizzini` commands, and a developer cannot defend a finding through mrman.
@@ -45,7 +45,7 @@ Only the Azure DevOps driver implements mrman's optional `ThreadReplier` and `Th
   - resolve with `resolved=true` on the discussion, with the same own-thread rule and idempotence.
 - [x] `mrman review reply` and `review resolve` work on both forges, under the human grant and under `--grant-policy`.
 - [x] Tests with recorded responses for each driver; `make check`, including the 85% coverage gate.
-- [x] Live: vizzini-uat's GitHub and GitLab CI template tests answer a `/vizzini` command and resolve a fixed finding. GitHub does both. GitLab answers; a GitLab resolve is still to be added to its test.
+- [x] Live: vizzini-lab's GitHub and GitLab CI template tests answer a `/vizzini` command and resolve a fixed finding. GitHub does both. GitLab answers; a GitLab resolve is still to be added to its test.
 
 ## Progress (2026-11-12)
 - **mrman, branch `feature/github-gitlab-reply-resolve`:**
@@ -56,11 +56,11 @@ Only the Azure DevOps driver implements mrman's optional `ThreadReplier` and `Th
   - whether a GitHub reply lands in a pending review;
   - the `[bot]` login suffix for GitHub App tokens;
   - GraphQL permission messages as GitHub really sends them.
-- **What closes it:** a mrman release pinned in the CI templates, then vizzini-uat's GitHub and GitLab tests.
+- **What closes it:** a mrman release pinned in the CI templates, then vizzini-lab's GitHub and GitLab tests.
 
 ## Released and verified (2026-11-12)
 - **Release:** mrman v0.1.6 (PRs #16 and #17), pinned in every CI template (Vizzini `9e706bc`).
-- **Live results** (vizzini-uat `results/2026-11-12-live-mrman-v016.md`):
+- **Live results** (vizzini-lab `results/2026-11-12-live-mrman-v016.md`):
   - **GitHub, 15/15:** a `/vizzini` command was answered in its thread as `github-actions[bot]`, and the bot resolved its own thread.
   - **GitLab, 15/15:** the command was answered by the bot user.
   - **Azure Pipelines, 13/13.**

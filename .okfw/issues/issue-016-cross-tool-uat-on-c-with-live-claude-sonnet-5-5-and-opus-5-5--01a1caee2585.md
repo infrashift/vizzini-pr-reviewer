@@ -14,12 +14,12 @@ tags:
   - "closed"
 created: "2026-11-11T08:06:07-06:00"
 timestamp: "2026-11-11T08:06:07-06:00"
-description: "Validate Vizzini against C# with live claude-sonnet-5-5 and claude-opus-5-5 through a podman LiteLLM proxy, together with garmr, okf-wiki and mrman on Azure DevOps; the harness lives in the vizzini-uat repository."
+description: "Validate Vizzini against C# with live claude-sonnet-5-5 and claude-opus-5-5 through a podman LiteLLM proxy, together with garmr, okf-wiki and mrman on Azure DevOps; the harness lives in the vizzini-lab repository."
 ---
 
 # ISSUE-016: Cross-tool UAT on C# with live Claude Sonnet 5.5 and Opus 5.5
 
-**Status:** closed · **Raised:** 2026-11-11 · **Harness:** the `infrashift/vizzini-uat` repository (sibling checkout `../vizzini-uat`) · **Follows:** [ISSUE-014](/issues/issue-014-prove-sarif-lint-input-with-real-ruff-python-and-roslyn-c-output--01a1ca11ff98.md) (Roslyn SARIF, stub model only)
+**Status:** closed · **Raised:** 2026-11-11 · **Harness:** the `infrashift/vizzini-lab` repository (sibling checkout `../vizzini-lab`) · **Follows:** [ISSUE-014](/issues/issue-014-prove-sarif-lint-input-with-real-ruff-python-and-roslyn-c-output--01a1ca11ff98.md) (Roslyn SARIF, stub model only)
 
 ## Why
 Every end-to-end proof so far ran against `stubllm`. That proves the plumbing, not how real models behave behind ADR-0004's transport (JSON mode through LiteLLM, the CUE boundary, the repair loop), and it never ran Vizzini together with the tools that consume it.
@@ -32,7 +32,7 @@ Every end-to-end proof so far ran against `stubllm`. That proves the plumbing, n
 - **garmr** local evaluation with `policies/garmr`. **mrman** shows the findings ([ISSUE-017](/issues/issue-017-typed-review-findings-in-pkg-risk-for-mrman--01a1caee2572.md)) and posts them to an Azure DevOps PR after a human grant.
 
 ## Acceptance criteria
-- [x] Harness committed in vizzini-uat. `make uat-stub` passes every hard check without tokens
+- [x] Harness committed in vizzini-lab. `make uat-stub` passes every hard check without tokens
 - [x] [ISSUE-017](/issues/issue-017-typed-review-findings-in-pkg-risk-for-mrman--01a1caee2572.md): typed findings in `pkg/risk`
 - [x] mrman `--vizzini-report`: findings in the TUI and in headless JSON (mrman `feature/vizzini-findings` 836f5b3)
 - [x] `litellm.sh smoke` passes for both models
@@ -43,7 +43,7 @@ Every end-to-end proof so far ran against `stubllm`. That proves the plumbing, n
 - Knowledge grounding detects only Go `package` clauses, so C# namespaces never match a `domain`. The fixture uses `x.paths` globs instead.
 
 ## Resolution (2026-11-11, run 20261111T142959Z)
-**86/86 hard checks passed** for `claude-sonnet-5-5` and `claude-opus-5-5` through LiteLLM v1.99.4 in podman. The forge leg ran on Azure DevOps (`scratch/vizzini-scratch`, PRs #4 and #5): mrman's headless session carried every finding, a person granted submit in the TUI, and every finding was posted as an inline thread. The full summary is in vizzini-uat `results/2026-11-11-live-sonnet-opus-5-5.md`.
+**86/86 hard checks passed** for `claude-sonnet-5-5` and `claude-opus-5-5` through LiteLLM v1.99.4 in podman. The forge leg ran on Azure DevOps (`scratch/vizzini-scratch`, PRs #4 and #5): mrman's headless session carried every finding, a person granted submit in the TUI, and every finding was posted as an inline thread. The full summary is in vizzini-lab `results/2026-11-11-live-sonnet-opus-5-5.md`.
 
 | | Sonnet 5.5 | Opus 5.5 |
 |---|---|---|

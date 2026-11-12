@@ -43,7 +43,7 @@ Vizzini sees only the diff, plus lint output and knowledge documents. A model th
 - [x] Definition and caller retrieval tests on a small multi-language fixture repo, including exclusion of shown regions, skipped directories and determinism
 - [x] Budget and ordering tests, and an engine test that the `<context>` block reaches the prompt and findings stay anchored to the diff
 - [x] CLI `--repo`, docs, an ADR
-- [x] vizzini-uat passes `--repo`; the C# fixture's controller sees `OrderRepository.FindByCustomerAsync`
+- [x] vizzini-lab passes `--repo`; the C# fixture's controller sees `OrderRepository.FindByCustomerAsync`
 
 ## Resolution (2026-11-11)
 Implemented as [ADR-0014](/decisions/adr-0014-repository-context-from-definitions-and-callers-by-pattern-within-a-budget--01a1cba8c1c8.md): `internal/repoctx` (extraction and scan) and `pkg/reviewer/context.go` (per-chunk selection), with `ReviewOptions.Repo`, `--repo`, `Config.MaxContextTokens` and the report field `context_snippets`. The guide is at Guides → Repository Context.
@@ -54,13 +54,13 @@ Implemented as [ADR-0014](/decisions/adr-0014-repository-context-from-definition
 - Engine tests: the `<context>` block reaches the prompt with a definition and a caller, shown regions are excluded, a finding on a context line is repaired, and the budget and the no-repo case behave.
 - A CLI `--repo` test.
 
-**vizzini-uat stub run** (Vizzini `f1703d2`, `--repo .`, 20/20):
+**vizzini-lab stub run** (Vizzini `f1703d2`, `--repo .`, 20/20):
 - The C# controller's chunk receives `src/Repositories/OrderRepository.cs:8-24`, the full `FindByCustomerAsync` with its parameterized query.
 - The TypeScript chunk receives `saveAudit` from `src/audit.ts:9-12`.
 
 Whether this improves real reviews is for [ISSUE-022](/issues/issue-022-head-to-head-review-benchmark-against-pr-agent-and-kodus--01a1cba3ca8f.md)'s benchmark to measure.
 
-## Live run with `--repo` (2026-11-11, vizzini-uat run 20261111T173847Z, no forge)
+## Live run with `--repo` (2026-11-11, vizzini-lab run 20261111T173847Z, no forge)
 **72/72 hard checks; recall 100% for both models on both fixtures.** Each fixture chunk received one snippet: `OrderRepository.FindByCustomerAsync` for C#, `saveAudit` for TypeScript.
 
 - **Consistent with use:** both models' C# fixes copy the repository's shape. They propose `OrderRepository.CountByCustomerPrefixAsync` (a sibling of `FindByCustomerAsync`) with an `@prefix` `DbParameter`, mirroring its `@customer`.

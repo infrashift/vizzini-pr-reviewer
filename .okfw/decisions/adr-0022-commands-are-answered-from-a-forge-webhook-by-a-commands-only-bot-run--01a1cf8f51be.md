@@ -35,7 +35,7 @@ Commands are answered by the next vizzini-bot run, and a comment starts no CI ru
 - **Experimental.** It starts with a warning, and its flags and files may change. It leaves experimental only through a recorded decision ([ISSUE-026](/issues/issue-026-webhook-receiver-answers-vizzini-commands-immediately-experimental--01a1cf8f51ab.md)).
 
 ## Consequences
-- **Commands answered without a push.** The vizzini-uat suite TS-HOOK shows this on a real ADO PR, with the receiver delivered to locally.
+- **Commands answered without a push.** The vizzini-lab suite TS-HOOK shows this on a real ADO PR, with the receiver delivered to locally.
 - **A new public endpoint to run.** It needs HTTPS, a secret and a token, and an admin follows `deploy/webhook/README.md` to deploy it.
 - **Rare double answers** if a CI run and a receiver job overlap; accepted for the experiment.
 - **Comment authors can spend model calls.** `--command-authors`, `--max-commands` and the LiteLLM key's budget bound it.

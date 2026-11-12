@@ -31,7 +31,7 @@ A `/vizzini` command is answered by the next bot run ([ADR-0019](/decisions/adr-
 - [x] A policy denial logs the identity to allow.
 - [x] Unit tests against Azure DevOps' own sample event (from its test-notification API).
 - [x] Admin runbook and deployment kit: `deploy/webhook/` (README runbook, hardened systemd unit, env templates, Caddy example, `ado-subscription.sh`). Docs site guide *Webhook Receiver (Experimental)*.
-- [x] Live UAT in vizzini-uat (suite TS-HOOK): a real ADO PR, the receiver on this machine, a delivery in the service hook's shape built from the real comment and PR, and a reply in the thread with no push.
+- [x] Live UAT in vizzini-lab (suite TS-HOOK): a real ADO PR, the receiver on this machine, a delivery in the service hook's shape built from the real comment and PR, and a reply in the thread with no push.
 - [ ] A live delivery **by Azure DevOps itself** to a public endpoint. This needs a public HTTPS host; not done.
 - [ ] GitHub (`issue_comment`, HMAC signature) and GitLab (note hook, `X-Gitlab-Token`): blocked until mrman can reply on those forges.
 - [ ] Leave experimental: run it in real use; decide on the double-answer race (below).

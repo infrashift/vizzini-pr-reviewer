@@ -16,7 +16,7 @@ description: "Turn 'better than open-source alternatives' into numbers: run PR-A
 
 # ISSUE-022: Head-to-head review benchmark against PR-Agent and Kodus
 
-**Status:** open · **Raised:** 2026-11-11 · **Harness:** vizzini-uat ([ISSUE-016](/issues/issue-016-cross-tool-uat-on-c-with-live-claude-sonnet-5-5-and-opus-5-5--01a1caee2585.md))
+**Status:** open · **Raised:** 2026-11-11 · **Harness:** vizzini-lab ([ISSUE-016](/issues/issue-016-cross-tool-uat-on-c-with-live-claude-sonnet-5-5-and-opus-5-5--01a1caee2585.md))
 
 ## Why
 The live UATs measure **recall** on planted, fairly textbook defects. Both models score 100%. Nothing measures **precision** (false positives) on real PRs, and nothing compares Vizzini with the open-source tools people would otherwise deploy. Third-party write-ups note there are no independent accuracy benchmarks for these tools, so a published, reproducible comparison is itself valuable.
@@ -37,7 +37,7 @@ The live UATs measure **recall** on planted, fairly textbook defects. Both model
 - **Judging:** an unmatched finding is labelled by hand once, then reused across runs. Optional LLM-as-judge runs only as a second opinion.
 
 ## Acceptance criteria
-- [ ] PR-Agent runs in vizzini-uat against the same proxy, with output normalized to (file, lines, severity, text)
+- [ ] PR-Agent runs in vizzini-lab against the same proxy, with output normalized to (file, lines, severity, text)
 - [ ] Labelled real-PR set with provenance (repo, commits, license) checked in as pins, not code
 - [ ] `score.py` reports precision and recall per tool, model and fixture, plus a comparison table
 - [ ] First published comparison recorded here, with methodology and caveats

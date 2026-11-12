@@ -29,7 +29,7 @@ Guardrails that exist today:
 - mrman's `review resolve` closes **only threads the token's own identity started**. A developer agent with its own account therefore cannot resolve vizzini-bot's threads.
 - Unattended posting goes only through a base-branch garmr policy ([ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)), and mrman's interactive grant stays human-only.
 
-The vizzini-uat suite TS-WF tests the whole workflow.
+The vizzini-lab suite TS-WF tests the whole workflow.
 
 ## Goal
 A developer agent needs the findings, not prose. Today it would have to regex the hidden `<!-- vizzini:fp=… -->` marker out of comment bodies, and that format belongs to vizzini-bot.
@@ -38,9 +38,9 @@ A developer agent needs the findings, not prose. Today it would have to regex th
 - [x] Vizzini owns the marker format in a public package, `pkg/marker`: parse and format, versioned, tested. vizzini-bot uses it instead of its private copy.
 - [x] `mrman review threads --findings` prints one JSON object for each thread that carries a Vizzini marker: thread id, status (open or resolved), file, start and end lines, category, fingerprint, run, head, title, body, the suggested fix if any, and the replies after the finding.
 - [x] Threads without a marker are left out, and malformed markers are reported, not fatal.
-- [x] Unit tests in both repositories. The vizzini-uat workflow suite reads findings only through this view.
+- [x] Unit tests in both repositories. The vizzini-lab workflow suite reads findings only through this view.
 
 ## Progress (2026-11-12)
 - **Vizzini `0187f14`:** `pkg/marker`.
 - **mrman, branch `feature/review-threads-findings`:** `review threads --findings`, behind `internal/risk`. mrman's architecture test now admits `pkg/marker` beside `pkg/risk`.
-- **Live:** the vizzini-uat suite TS-WF passes 26/26. Its developer agent reads the findings only through this view.
+- **Live:** the vizzini-lab suite TS-WF passes 26/26. Its developer agent reads the findings only through this view.

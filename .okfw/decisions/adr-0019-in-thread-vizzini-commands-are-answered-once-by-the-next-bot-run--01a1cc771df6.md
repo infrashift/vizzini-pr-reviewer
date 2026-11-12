@@ -36,6 +36,6 @@ ISSUE-009 gave Vizzini `/explain`, `/refactor` and `/docstrings`, but only from 
 ## Consequences
 - **Spend:** a command costs one or two model calls (about $0.014 for a Sonnet 5.5 `/explain` on the UAT fixture). Anyone who can comment can trigger one, so `--command-authors` exists for repositories where that matters, and `--max-commands` caps a run.
 - **Untrusted input:** thread text is untrusted, and it reaches the model only as conversation. The answer is schema-validated before it is posted, and it is posted only as a reply.
-- **Verified in vizzini-uat** (ADR-0005, PR #26, 37/37):
+- **Verified in vizzini-lab** (ADR-0005, PR #26, 37/37):
   - A real `/explain` got an on-point answer about the SQL injection, a malformed command got usage, and nothing was answered twice.
   - The same UAT caught two bugs, both fixed: command requests went unattributed, and resolve-only runs left no head marker.

@@ -291,7 +291,7 @@ vizzini-bot --base origin/main --dry-run
 
 ## Proven end to end
 
-The project's UAT harness (vizzini-uat) runs `make uat-bot`
+The project's UAT harness (vizzini-lab) runs `make uat-bot`
 against a real Azure DevOps PR, with no person involved:
 
 - **Deny leg:** the committed default policy denies the PAT's identity, and

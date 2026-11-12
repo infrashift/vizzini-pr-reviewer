@@ -38,16 +38,16 @@ vizzini-bot needs three binaries (itself, mrman, garmr) plus the tokenizer encod
 - **No identity by default.** The starter policy (mrman's pack) allows no identity, so the first run is denied (exit 3), and its log names the identity the CI posts as. Allowing it is a reviewed change on the default branch.
 
 ## Consequences
-- **Verified live on GitHub** (vizzini-uat, `make uat-ci-github`, 13/13), with stubllm as the model in the job:
+- **Verified live on GitHub** (vizzini-lab, `make uat-ci-github`, 13/13), with stubllm as the model in the job:
   - the onboarding sequence: denied run, identity, allowed re-run posting comments as `github-actions[bot]`;
   - an incremental second run with no duplicates.
 
   The first attempt found the Go toolchain problem that `GOTOOLCHAIN=auto` fixes.
-- **Verified live on Azure Pipelines** (vizzini-uat, `make uat-ci-ado`, 13/13, 2026-11-12). It ran as PR build validation on a throwaway self-hosted agent; the organization has no hosted parallelism for private projects. The run covered:
+- **Verified live on Azure Pipelines** (vizzini-lab, `make uat-ci-ado`, 13/13, 2026-11-12). It ran as PR build validation on a throwaway self-hosted agent; the organization has no hosted parallelism for private projects. The run covered:
   - the denied build naming `scratch Build Service (ryanscraig)`;
   - the allowed build posting threads, once the build service had *Contribute to pull requests* (without it: `TF401027 PullRequestContribute`, as the template's setup step warns);
   - an incremental build that answered a `/vizzini explain` command.
-- **Verified live on GitLab CI** (vizzini-uat, `make uat-ci-gitlab`, 15/15, 2026-11-12), on a throwaway self-managed GitLab CE 19.5.1 and gitlab-runner (docker executor) in podman, with a Reporter project access token. The run covered:
+- **Verified live on GitLab CI** (vizzini-lab, `make uat-ci-gitlab`, 15/15, 2026-11-12), on a throwaway self-managed GitLab CE 19.5.1 and gitlab-runner (docker executor) in podman, with a Reporter project access token. The run covered:
   - the denied job naming the token's bot user;
   - the allowed job posting a discussion as that bot user;
   - an incremental job in which a `/vizzini explain` command was reported unsupported (mrman has no GitLab reply yet), and the job went on.

@@ -37,7 +37,7 @@ Before this change, every push re-reviewed the whole pull request. That was cost
   - `--full` is passed.
 
 ## Consequences
-- **Measured on vizzini-uat (ADO PR #22, Sonnet 5.5):**
+- **Measured on vizzini-lab (ADO PR #22, Sonnet 5.5):**
   - An incremental review of a one-file push cost $0.0081 (1,994 input tokens), against $0.051–$0.059 for a full review.
   - It took 16s instead of 43–50s.
   - An unchanged head cost nothing.

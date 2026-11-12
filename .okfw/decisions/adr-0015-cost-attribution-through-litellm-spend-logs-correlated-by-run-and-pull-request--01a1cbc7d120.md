@@ -32,7 +32,7 @@ The organization needs to know what AI review costs and for what: per request, p
   - Body `metadata` is kept, for other OpenAI-compatible proxies.
 - **Per run:** the review report's `usage` block (closed `#Usage`) holds requests, retries, repairs, input, output and cached tokens, and `cost_usd` summed from LiteLLM's `x-litellm-response-cost` header. Its values match the spend logs exactly.
 - **The library stays stateless:** no database driver in `pkg/reviewer`.
-- **Run facts** LiteLLM doesn't have (findings, blocking, gate exit, risk) live in a `vizzini_run_facts` table, filled from the review reports by whatever runs Vizzini (CI, a collector; vizzini-uat's `record_runs.py`). This resolves ISSUE-025's open question: the report is the source of truth, and the table is a copy for joins.
+- **Run facts** LiteLLM doesn't have (findings, blocking, gate exit, risk) live in a `vizzini_run_facts` table, filled from the review reports by whatever runs Vizzini (CI, a collector; vizzini-lab's `record_runs.py`). This resolves ISSUE-025's open question: the report is the source of truth, and the table is a copy for joins.
 - **`deploy/litellm/views.sql`:** `vizzini_requests` (one row per request), `vizzini_runs` (cost, repair and retry waste, cost per finding) and `vizzini_pr_costs` (lifecycle totals).
 
 ## Consequences

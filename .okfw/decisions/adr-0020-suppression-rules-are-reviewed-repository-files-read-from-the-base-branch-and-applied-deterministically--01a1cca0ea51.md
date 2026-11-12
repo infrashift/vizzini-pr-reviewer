@@ -41,4 +41,4 @@ ADR-0017 already keeps a dismissal within one pull request: a thread a person re
 
 ## Consequences
 - **Breadth versus robustness.** A suggested `paths` plus `categories` rule is broad (every finding of that category in that file), but it survives a model rewording the title. The fingerprint or title forms are narrower but more fragile; the suggestion says so.
-- **Verified in vizzini-uat** (ADR-0005, PR #30, 47/47). The bot suggested a rule for a dismissed thread. Merged into the base branch exactly as suggested, the rule suppressed the finding on the next full review: nothing was posted, and no second suggestion was made.
+- **Verified in vizzini-lab** (ADR-0005, PR #30, 47/47). The bot suggested a rule for a dismissed thread. Merged into the base branch exactly as suggested, the rule suppressed the finding on the next full review: nothing was posted, and no second suggestion was made.

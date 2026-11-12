@@ -47,11 +47,11 @@ With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answer
 
 ## Verification
 
-- **GitHub Actions template:** runs live in vizzini-uat (`make uat-ci-github`). It plays out the setup above on a throwaway pull request: the denied first run, the identity allowed, comments posted, then an incremental second push with no duplicates. stubllm in the job stands in for the model.
-- **Azure Pipelines template:** runs live in vizzini-uat (`make uat-ci-ado`), as PR build validation on a throwaway self-hosted agent.
+- **GitHub Actions template:** runs live in vizzini-lab (`make uat-ci-github`). It plays out the setup above on a throwaway pull request: the denied first run, the identity allowed, comments posted, then an incremental second push with no duplicates. stubllm in the job stands in for the model.
+- **Azure Pipelines template:** runs live in vizzini-lab (`make uat-ci-ado`), as PR build validation on a throwaway self-hosted agent.
   - It plays the same setup: the denied first build, the identity allowed, and threads posted. It also grants the build service *Contribute to pull requests*; without that grant, ADO refuses the post with `TF401027 PullRequestContribute`.
   - It then answers a `/vizzini explain` command on an incremental build.
-- **GitLab CI template:** runs live in vizzini-uat (`make uat-ci-gitlab`), on a throwaway self-managed GitLab CE and gitlab-runner (docker executor) in podman.
+- **GitLab CI template:** runs live in vizzini-lab (`make uat-ci-gitlab`), on a throwaway self-managed GitLab CE and gitlab-runner (docker executor) in podman.
   - It plays the same setup with a Reporter project access token: the denied first job naming the token's bot user, the identity allowed, and discussions posted as that bot user.
   - It then runs an incremental job with a `/vizzini explain` command, which goes unanswered: mrman cannot reply on GitLab yet, and the bot reports that and carries on.
   - gitlab.com itself is not run; there the job skips the mrman host entry and mrman reads `GITLAB_TOKEN`.
