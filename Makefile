@@ -39,7 +39,9 @@ ci-check:
 	shellcheck deploy/ci/install.sh
 	$(GOBIN)/actionlint deploy/ci/github/vizzini-bot.yml
 	cue export --out json deploy/ci/azure-pipelines/vizzini-bot.yml >/dev/null
-	cue export --out json deploy/ci/gitlab/vizzini-bot.gitlab-ci.yml >/dev/null
+	cue export --out json deploy/ci/gitlab/vizzini-bot.gitlab-ci.yml | \
+		python3 -I -c 'import json,sys; print("#!/usr/bin/env bash"); print("\n".join(json.load(sys.stdin)["vizzini-bot"]["script"]))' | \
+		shellcheck -
 
 ## tiktoken-cache: download and checksum-verify the BPE encodings
 tiktoken-cache:

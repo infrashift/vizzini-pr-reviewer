@@ -16,8 +16,13 @@
 #   VIZZINI_GITLAB_TOKEN  a project access token, role Reporter or higher, scope
 #                         api (masked): CI_JOB_TOKEN cannot post merge request
 #                         discussions. Its bot user is the identity your grant
-#                         policy must list. mrman reads it for gitlab.com; for a
-#                         self-managed host, list the host in mrman's config.
+#                         policy must list.
+#
+# On a self-managed GitLab, the job lists your instance in mrman's config
+# ([[forge.hosts]]: CI_SERVER_HOST, CI_API_V4_URL, and the token as
+# "$GITLAB_TOKEN", which mrman reads from the environment when it runs).
+# mrman sends tokens only to hosts it knows; gitlab.com needs no entry. If
+# your instance uses a private CA, add ca_file = "<PEM bundle>" to that entry.
 
 vizzini-bot:
   stage: test
@@ -38,6 +43,15 @@ vizzini-bot:
     - git -C "$tools-src" checkout --quiet "$VIZZINI_REF"
     - '"$tools-src/deploy/ci/install.sh" "$tools"'
     - export PATH="$tools/bin:$PATH" TIKTOKEN_CACHE_DIR="$tools/tiktoken"
+    # A self-managed instance: list it in mrman's config (see above).
+    - |
+      if [ "$CI_SERVER_HOST" != gitlab.com ]; then
+        mrman_config="${XDG_CONFIG_HOME:-$HOME/.config}/mrman"
+        mkdir -p "$mrman_config"
+        # shellcheck disable=SC2016 # mrman expands $GITLAB_TOKEN when it runs
+        printf '[[forge.hosts]]\nhost = "%s"\nforge = "gitlab"\napi_base = "%s"\ntoken = "$GITLAB_TOKEN"\n' \
+          "$CI_SERVER_HOST" "$CI_API_V4_URL" >>"$mrman_config/config.toml"
+      fi
     # The target branch, as origin/<branch>, for base...head.
     - git fetch --quiet origin "+refs/heads/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME:refs/remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     - |
