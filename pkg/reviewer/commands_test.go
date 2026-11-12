@@ -236,3 +236,50 @@ func TestFormatCommandResult(t *testing.T) {
 		t.Errorf("empty:\n%s", none)
 	}
 }
+
+// /reconsider (ISSUE-029): the model re-evaluates the disputed finding,
+// shown to it with the thread, and its verdict is schema-validated.
+func TestRunCommand_Reconsider(t *testing.T) {
+	srv := llmtest.NewServer(t, func(n int, _ *openai.ChatCompletionRequest) llmtest.Reply {
+		if n == 1 {
+			return llmtest.Reply{Content: `{"verdict":"maybe","explanation":"x"}`} // not a verdict: repaired
+		}
+		return llmtest.Reply{Content: `{"verdict":"withdrawn","explanation":"The name is bound as a parameter on line 46."}`}
+	})
+	cmd := mustParse(t, "/reconsider internal/store/users.go:45-46 it is bound upstream")
+	cmd.Finding = "Major (Security): SQL injection\n\nThe name is concatenated."
+	thread := []ThreadMessage{{Author: "vizzini-bot", Body: "finding"}, {Author: "dev", Body: "It is bound upstream."}}
+	res, err := newEngine(t, srv).RunCommand(context.Background(), strings.NewReader(twoHunks), cmd, thread)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Verdict != VerdictWithdrawn || !strings.Contains(res.Answer, "bound as a parameter") {
+		t.Errorf("result %+v", res)
+	}
+	req := srv.Requests()[0]
+	sys, user := req.Messages[0].Content, llmtest.UserPrompt(&req)
+	if !strings.Contains(sys, "a\ndeveloper disputes it") && !strings.Contains(sys, "developer disputes it") {
+		t.Error("reconsider did not use the reconsider template")
+	}
+	for _, want := range []string{"/reconsider internal/store/users.go:45-46: it is bound upstream", "<finding>\nMajor (Security): SQL injection",
+		"dev: It is bound upstream."} {
+		if !strings.Contains(user, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, user)
+		}
+	}
+	md := FormatCommandResult(res)
+	if !strings.Contains(md, "**Withdrawn.**") || !strings.Contains(md, "bound as a parameter") {
+		t.Errorf("markdown:\n%s", md)
+	}
+	res.Verdict = VerdictStands
+	if md := FormatCommandResult(res); !strings.Contains(md, "**The finding stands.**") || !strings.Contains(md, "a person decides") {
+		t.Errorf("stands markdown:\n%s", md)
+	}
+
+	// Without the finding there is nothing to reconsider, and no request.
+	n := len(srv.Requests())
+	_, err = newEngine(t, srv).RunCommand(context.Background(), strings.NewReader(twoHunks), mustParse(t, "/reconsider internal/store/users.go:45"), nil)
+	if !errors.Is(err, ErrBadCommand) || len(srv.Requests()) != n {
+		t.Errorf("no finding: %v, %d requests", err, len(srv.Requests())-n)
+	}
+}

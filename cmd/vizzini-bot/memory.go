@@ -1,10 +1,11 @@
 package main
 
 import (
+	vmarker "github.com/infrashift/vizzini-pr-reviewer/pkg/marker"
+
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,29 +30,11 @@ import (
 //     deterministic) keeps its thread open;
 //   - posts the rest.
 
-// markerRE parses a marker; head, lines and cat are absent from slice 1's.
-var markerRE = regexp.MustCompile(`<!-- vizzini:fp=(\S+) run=(\S+)(?: head=([0-9a-f]{7,64}))?(?: lines=(\d+)-(\d+))?(?: cat=(\S+))? -->`)
+// marker is what a posted comment remembers. Its format is pkg/marker's,
+// which other tools (mrman's findings view) decode too.
+type marker = vmarker.Marker
 
-// marker is what a posted comment remembers.
-type marker struct {
-	FP, Run, Head, Category string
-	Start, End              int
-}
-
-func (m *marker) String() string {
-	return fmt.Sprintf("<!-- vizzini:fp=%s run=%s head=%s lines=%d-%d cat=%s -->", m.FP, m.Run, m.Head, m.Start, m.End, m.Category)
-}
-
-func parseMarker(body string) (marker, bool) {
-	sub := markerRE.FindStringSubmatch(body)
-	if sub == nil {
-		return marker{}, false
-	}
-	m := marker{FP: sub[1], Run: sub[2], Head: sub[3], Category: sub[6]}
-	m.Start, _ = strconv.Atoi(sub[4])
-	m.End, _ = strconv.Atoi(sub[5])
-	return m, true
-}
+func parseMarker(body string) (marker, bool) { return vmarker.Parse(body) }
 
 // remoteThread is the part of mrman's `review threads` output the bot reads.
 type remoteThread struct {

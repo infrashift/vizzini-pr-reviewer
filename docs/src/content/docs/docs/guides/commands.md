@@ -1,6 +1,6 @@
 ---
 title: Slash Commands
-description: /explain, /refactor and /docstrings, scoped to a selection inside a review thread.
+description: /explain, /refactor, /docstrings and /reconsider, scoped to a selection inside a review thread.
 ---
 
 Inside a review thread, ask Vizzini about specific lines. Each command sends
@@ -12,6 +12,7 @@ from the diff.
 | `/explain FILE:START-END [question]` | a line or range | A Markdown explanation of what the lines do and why they changed |
 | `/refactor FILE:START-END [goal]` | a line or range | Replacement code that stays **inside** the selection |
 | `/docstrings FILE [note]` | a file | Documentation comments for changed declarations, comments only |
+| `/reconsider FILE:START-END [argument]` | the lines of a disputed finding | A verdict, *withdrawn* or *stands*, with the reasons (only in vizzini-bot's finding threads) |
 
 Line ranges use new-file numbers. `a.go:44`, `a.go:44-45` and GitHub-style
 `a.go:L44-L45` all work.
@@ -41,8 +42,9 @@ git diff main...HEAD | pr-review --mode command \
 
 - **Scoped.** If the file isn't in the diff, or the range has no changed
   lines, the command fails before any request is made.
-- **Validated.** `/explain` answers must match `#Explanation`, and
-  `/refactor` and `/docstrings` must match `#ImproveOutput`.
+- **Validated.** `/explain` answers must match `#Explanation`,
+  `/refactor` and `/docstrings` must match `#ImproveOutput`, and
+  `/reconsider` must match `#Reconsideration`.
 - **Anchored.** Suggestions must sit in the scoped hunks, and a `/refactor`
   suggestion that reaches outside the selection is sent back for repair.
 - **Bounded.** Only the newest thread messages that fit 1500 tokens are

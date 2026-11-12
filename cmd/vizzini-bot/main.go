@@ -25,6 +25,8 @@
 package main
 
 import (
+	vmarker "github.com/infrashift/vizzini-pr-reviewer/pkg/marker"
+
 	"bytes"
 	"cmp"
 	"context"
@@ -194,7 +196,7 @@ func botRun(ctx context.Context, opts *options, stdout, stderr io.Writer, getenv
 	ctx = reviewer.WithAttribution(ctx, opts.attr)
 	res := &botResult{RunID: opts.attr.RunID, Head: opts.attr.Iteration,
 		ReviewedFiles: []string{}, AlreadyPosted: []string{}, Resolved: []string{}, KeptOpen: []string{}, Carried: []string{},
-		Answered: []string{}, CommandFailures: []string{}, Suppressed: []string{}, Suggested: []string{}}
+		Answered: []string{}, CommandFailures: []string{}, Withdrawn: []string{}, Suppressed: []string{}, Suggested: []string{}}
 	err = botReview(ctx, opts, res, stdout, stderr, getenv)
 	if opts.dryRun {
 		return err
@@ -354,6 +356,9 @@ type botResult struct {
 	// CommandFailures those that could not be (the next run retries).
 	Answered        []string `json:"answered"`
 	CommandFailures []string `json:"command_failures"`
+	// Withdrawn are the threads /reconsider resolved: their finding was
+	// withdrawn on reconsideration (ISSUE-029).
+	Withdrawn []string `json:"withdrawn"`
 	// Submit and Resolve are mrman's own JSON answers, when it was called.
 	Submit  json.RawMessage `json:"submit,omitempty"`
 	Resolve json.RawMessage `json:"resolve,omitempty"`
@@ -432,18 +437,11 @@ func plan(findings []reviewer.Finding, runID, head string) []comment {
 	for i := range findings {
 		f := &findings[i]
 		fp := reviewer.Fingerprint(f)
-		var b strings.Builder
-		fmt.Fprintf(&b, "**%s (%s): %s**\n\n%s", f.Severity, f.Category, f.Title, strings.TrimSpace(f.Body))
-		if s := strings.TrimSpace(f.Suggestion); s != "" {
-			fmt.Fprintf(&b, "\n\nSuggestion:\n```\n%s\n```", s)
-		}
-		if len(f.Citations) > 0 {
-			fmt.Fprintf(&b, "\n\nSee: %s", strings.Join(f.Citations, ", "))
-		}
-		m := marker{FP: fp, Run: runID, Head: head, Category: string(f.Category), Start: f.StartLine, End: f.EndLine}
-		fmt.Fprintf(&b, "\n\n_Posted by %s._\n\n%s", agentName, m.String())
+		c := vmarker.Comment{Severity: string(f.Severity), Category: string(f.Category), Title: f.Title, Body: f.Body,
+			Suggestion: f.Suggestion, Citations: f.Citations, Agent: agentName,
+			Marker: marker{FP: fp, Run: runID, Head: head, Category: string(f.Category), Start: f.StartLine, End: f.EndLine}}
 		out = append(out, comment{File: f.File, Category: string(f.Category), StartLine: f.StartLine, EndLine: f.EndLine,
-			Fingerprint: fp, Body: b.String()})
+			Fingerprint: fp, Body: c.Render()})
 	}
 	return out
 }

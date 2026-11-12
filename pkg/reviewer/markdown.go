@@ -189,6 +189,16 @@ func FormatCommandResult(r *CommandResult) string {
 		fmt.Fprintf(&b, ": %s", r.Command.Question)
 	}
 	b.WriteString("\n\n")
+	if r.Command.Kind == CommandReconsider {
+		if r.Verdict == VerdictWithdrawn {
+			b.WriteString("**Withdrawn.** On reconsideration, this finding does not hold, and I resolve the thread.\n\n")
+		} else {
+			b.WriteString("**The finding stands.** I leave the thread open: a person decides.\n\n")
+		}
+		b.WriteString(strings.TrimSpace(r.Answer))
+		b.WriteString("\n")
+		return b.String()
+	}
 	if r.Command.Kind == CommandExplain {
 		b.WriteString(strings.TrimSpace(r.Answer))
 		b.WriteString("\n")

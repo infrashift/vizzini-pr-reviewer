@@ -190,6 +190,22 @@ func (v *Validator) ValidateDescription(data []byte) (*PRDescription, error) {
 	return &out, nil
 }
 
+// Reconsideration mirrors #Reconsideration.
+type Reconsideration struct {
+	Verdict     string `json:"verdict"`
+	Explanation string `json:"explanation"`
+}
+
+// ValidateReconsideration validates raw JSON against #Reconsideration and
+// decodes it.
+func (v *Validator) ValidateReconsideration(data []byte) (*Reconsideration, error) {
+	var out Reconsideration
+	if err := v.Validate("#Reconsideration", data, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ValidateExplanation validates raw JSON against #Explanation and decodes it.
 func (v *Validator) ValidateExplanation(data []byte) (*Explanation, error) {
 	var out Explanation

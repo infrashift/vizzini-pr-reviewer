@@ -1,6 +1,8 @@
 package main
 
 import (
+	vmarker "github.com/infrashift/vizzini-pr-reviewer/pkg/marker"
+
 	"bytes"
 	"context"
 	"errors"
@@ -98,8 +100,26 @@ func threadCommand(text string, t *remoteThread) (*reviewer.Command, error) {
 		}
 		rest = append([]string{target}, rest...)
 	}
-	return reviewer.ParseCommand("/" + kind + " " + strings.Join(rest, " "))
+	cmd, err := reviewer.ParseCommand("/" + kind + " " + strings.Join(rest, " "))
+	if err != nil || cmd.Kind != reviewer.CommandReconsider {
+		return cmd, err
+	}
+	// /reconsider is about the finding this thread holds.
+	if len(t.Comments) == 0 {
+		return nil, errNotAFinding
+	}
+	fc, ok := vmarker.ParseComment(t.Comments[0].Body)
+	if !ok {
+		return nil, errNotAFinding
+	}
+	cmd.Finding = fmt.Sprintf("%s (%s): %s\n\n%s", fc.Severity, fc.Category, fc.Title, fc.Body)
+	if fc.Suggestion != "" {
+		cmd.Finding += "\n\nSuggested fix:\n" + fc.Suggestion
+	}
+	return cmd, nil
 }
+
+var errNotAFinding = fmt.Errorf("%w: /vizzini reconsider works only in a thread vizzini-bot opened for a finding", reviewer.ErrBadCommand)
 
 // commandUsage is the reply to a command that could not be understood.
 func commandUsage(err error) string {
@@ -107,7 +127,7 @@ func commandUsage(err error) string {
 	return "I could not run that: " + msg + "\n\n" +
 		"Write one of these on a line of its own; without a target it is about this thread's lines:\n\n" +
 		"```\n/vizzini explain [FILE:START-END] [question]\n/vizzini refactor [FILE:START-END] [what to change]\n" +
-		"/vizzini docstrings [FILE] [note]\n```"
+		"/vizzini docstrings [FILE] [note]\n/vizzini reconsider [why the finding is wrong]   (in a finding's thread)\n```"
 }
 
 // answerCommands runs and answers up to opts.maxCommands pending commands.
@@ -126,9 +146,9 @@ func answerCommands(ctx context.Context, opts *options, slug, policy string, dif
 	for i := range pending {
 		p := &pending[i]
 		var body string
+		var out *reviewer.CommandResult
 		cmd, err := threadCommand(p.Text, p.Thread)
 		if err == nil {
-			var out *reviewer.CommandResult
 			out, err = engine.RunCommand(ctx, bytes.NewReader(diff), cmd, p.History)
 			if err == nil {
 				body = reviewer.FormatCommandResult(out)
@@ -144,7 +164,12 @@ func answerCommands(ctx context.Context, opts *options, slug, policy string, dif
 		}
 		body += fmt.Sprintf("\n\n_Answered by %s._\n\n<!-- vizzini:reply-to=%s run=%s head=%s -->",
 			agentName, p.Comment.ID, opts.attr.RunID, opts.attr.Iteration)
-		if err := reply(ctx, opts, slug, policy, p.Thread.ID, p.Comment.ID, body, stderr); err != nil {
+		post := reply
+		if err == nil && out != nil && out.Command.Kind == reviewer.CommandReconsider && out.Verdict == reviewer.VerdictWithdrawn {
+			// A withdrawn finding: the answer goes in as the resolution's reply.
+			post = withdraw
+		}
+		if err := post(ctx, opts, slug, policy, p.Thread.ID, p.Comment.ID, body, stderr); err != nil {
 			if errors.Is(err, errDenied) {
 				return err
 			}
@@ -153,6 +178,9 @@ func answerCommands(ctx context.Context, opts *options, slug, policy string, dif
 			continue
 		}
 		res.Answered = append(res.Answered, p.Comment.ID)
+		if out != nil && out.Verdict == reviewer.VerdictWithdrawn {
+			res.Withdrawn = append(res.Withdrawn, p.Thread.ID)
+		}
 	}
 	_, _ = fmt.Fprintf(stderr, "vizzini-bot: answered %d of %d commands\n", len(res.Answered), len(pending))
 	return nil
@@ -179,6 +207,23 @@ func reply(ctx context.Context, opts *options, slug, policy, thread, parent, bod
 			return errDenied
 		}
 		return fmt.Errorf("mrman review reply: %w: %s", err, strings.TrimSpace(string(errOut)))
+	}
+	return nil
+}
+
+// withdraw resolves the bot's own thread with body as the resolution's
+// reply: /reconsider withdrew its finding (ISSUE-029). mrman resolves only
+// threads the bot's identity started, under event "resolve" of the policy.
+func withdraw(ctx context.Context, opts *options, slug, policy, thread, _, body string, stderr io.Writer) error {
+	out, errOut, err := mrman(ctx, opts, stderr, "review", "resolve", "--session", slug, "--thread", thread,
+		"--reply="+body, "--grant-policy", policy, "--garmr", opts.garmr,
+		"--run-id", opts.attr.RunID, "--agent", agentName)
+	_, _ = stderr.Write(errOut)
+	if err != nil {
+		if policyDenied(out) {
+			return errDenied
+		}
+		return fmt.Errorf("mrman review resolve: %w: %s", err, strings.TrimSpace(string(errOut)))
 	}
 	return nil
 }

@@ -384,7 +384,7 @@ func TestRenderReview_Knowledge(t *testing.T) {
 
 func TestRenderCommands(t *testing.T) {
 	data := CommandData{Target: "a.go:3-4", Question: "why?", Diff: "DIFF", Thread: []ThreadMessage{{Author: "alice", Body: "hm"}}}
-	for _, name := range []string{"explain", "refactor", "docstrings"} {
+	for _, name := range []string{"explain", "refactor", "docstrings", "reconsider"} {
 		p, err := Render(name, data)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)

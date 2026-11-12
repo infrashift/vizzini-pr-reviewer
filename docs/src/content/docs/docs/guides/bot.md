@@ -114,7 +114,18 @@ including the bot's own:
 /vizzini explain [FILE:START-END] [question]
 /vizzini refactor [FILE:START-END] [what to change]
 /vizzini docstrings [FILE] [note]
+/vizzini reconsider [why the finding is wrong]
 ```
+
+`/vizzini reconsider` is a structured disagreement, valid only in a thread
+the bot opened for a finding. The bot re-evaluates **that finding** against
+the code and the thread's arguments:
+- **Withdrawn:** the bot resolves its own thread, with its reasons as the
+  resolution's reply. A later run at the same code does not post the
+  finding again.
+- **Stands:** the bot replies with its reasons and leaves the thread open,
+  so a person decides. An argument without evidence does not withdraw a
+  finding, and the model never settles a dispute alone.
 
 How the bot handles a command:
 - **Target:** without one, the command is about the thread's own lines (or

@@ -89,7 +89,7 @@ type DescribeData struct {
 // ImproveData feeds the "improve" template.
 type ImproveData = ReviewData
 
-// CommandData feeds the "explain", "refactor" and "docstrings" templates.
+// CommandData feeds the "explain", "refactor", "docstrings" and "reconsider" templates.
 type CommandData struct {
 	// Target is "file:start-end" (or just "file" for docstrings).
 	Target string
@@ -99,6 +99,8 @@ type CommandData struct {
 	Diff string
 	// Thread is the review-thread history, oldest first.
 	Thread []ThreadMessage
+	// Finding is the disputed finding (title and body), for "reconsider".
+	Finding string
 }
 
 // PlanData feeds the "plan" template.

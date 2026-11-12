@@ -6,7 +6,8 @@
 // that diagnostic travelled lint JSON -> changed-line filter -> prompt ->
 // schema validation -> anchoring. An /explain command gets a canned answer
 // naming the selection it was given, so command plumbing can be exercised
-// without a model. With -finding-per-file it also reports one Logic finding
+// without a model; a /reconsider gets "withdrawn" when the argument holds
+// "[stub:withdraw]" and "stands" otherwise. With -finding-per-file it also reports one Logic finding
 // on the first added line of each file in the prompt, so a pipeline with no
 // linter still has something to post (vizzini-bot's CI templates). Every
 // user prompt is appended to -log.
@@ -85,6 +86,17 @@ func main() {
 			mu.Unlock()
 		}
 
+		if strings.Contains(system, "developer disputes it") {
+			// /reconsider: deterministic for tests. The argument "[stub:withdraw]"
+			// withdraws the finding; anything else lets it stand.
+			verdict := "stands"
+			if strings.Contains(user, "[stub:withdraw]") {
+				verdict = "withdrawn"
+			}
+			reply(w, req.Model, map[string]any{"verdict": verdict, "explanation": "stubllm reconsidered the finding (" +
+				verdict + "). A real model would weigh the developer's argument against the code shown."})
+			return
+		}
 		if strings.Contains(system, "answering a reviewer's /explain command") {
 			target, _, _ := strings.Cut(strings.TrimSpace(user), "\n")
 			reply(w, req.Model, map[string]any{"answer": "stubllm explains the selection it was given (" +

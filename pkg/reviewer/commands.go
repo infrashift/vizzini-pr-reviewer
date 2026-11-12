@@ -22,6 +22,15 @@ const (
 	CommandExplain    CommandKind = "explain"
 	CommandRefactor   CommandKind = "refactor"
 	CommandDocstrings CommandKind = "docstrings"
+	// CommandReconsider re-evaluates a disputed finding (ISSUE-029). It is
+	// only meaningful in a thread that holds one: the caller sets Finding.
+	CommandReconsider CommandKind = "reconsider"
+)
+
+// Verdicts of /reconsider.
+const (
+	VerdictWithdrawn = "withdrawn"
+	VerdictStands    = "stands"
 )
 
 // Command is a parsed slash command.
@@ -33,6 +42,8 @@ type Command struct {
 	StartLine, EndLine int
 	// Question is any free text after the target.
 	Question string
+	// Finding is the disputed finding's title and body (/reconsider).
+	Finding string
 }
 
 // ThreadMessage is one earlier comment in the review thread.
@@ -46,6 +57,9 @@ type CommandResult struct {
 	// Suggestions are anchored to the command's selection (/refactor,
 	// /docstrings).
 	Suggestions []CodeSuggestion `json:"suggestions,omitempty"`
+	// Verdict is VerdictWithdrawn or VerdictStands (/reconsider); Answer
+	// then holds the explanation.
+	Verdict string `json:"verdict,omitempty"`
 }
 
 // ErrBadCommand marks input that is not a valid slash command.
@@ -61,13 +75,13 @@ const maxThreadTokens = 1500
 func ParseCommand(s string) (*Command, error) {
 	fields := strings.Fields(strings.TrimSpace(s))
 	if len(fields) == 0 || !strings.HasPrefix(fields[0], "/") {
-		return nil, fmt.Errorf("%w: commands start with /explain, /refactor or /docstrings", ErrBadCommand)
+		return nil, fmt.Errorf("%w: commands start with /explain, /refactor, /docstrings or /reconsider", ErrBadCommand)
 	}
 	cmd := &Command{Kind: CommandKind(strings.ToLower(strings.TrimPrefix(fields[0], "/")))}
 	switch cmd.Kind {
-	case CommandExplain, CommandRefactor, CommandDocstrings:
+	case CommandExplain, CommandRefactor, CommandDocstrings, CommandReconsider:
 	default:
-		return nil, fmt.Errorf("%w: unknown command %s (use /explain, /refactor or /docstrings)", ErrBadCommand, fields[0])
+		return nil, fmt.Errorf("%w: unknown command %s (use /explain, /refactor, /docstrings or /reconsider)", ErrBadCommand, fields[0])
 	}
 	if len(fields) < 2 {
 		return nil, fmt.Errorf("%w: /%s needs a target", ErrBadCommand, cmd.Kind)
@@ -161,14 +175,28 @@ func (e *Engine) RunCommand(ctx context.Context, patch io.Reader, cmd *Command, 
 	if err != nil {
 		return nil, err
 	}
+	if cmd.Kind == CommandReconsider && strings.TrimSpace(cmd.Finding) == "" {
+		return nil, fmt.Errorf("%w: /reconsider works only in a thread that holds a Vizzini finding", ErrBadCommand)
+	}
 	p, err := llm.Render(string(cmd.Kind), llm.CommandData{
 		Target: cmd.String(), Question: cmd.Question, Diff: scope.Render(), Thread: e.recentThread(thread),
+		Finding: cmd.Finding,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	res := &CommandResult{Command: *cmd}
+	if cmd.Kind == CommandReconsider {
+		_, err = e.llm.CompleteJSON(ctx, p, func(b []byte) error {
+			x, verr := e.validator.ValidateReconsideration(b)
+			if verr == nil {
+				res.Verdict, res.Answer = x.Verdict, x.Explanation
+			}
+			return verr
+		})
+		return res, err
+	}
 	if cmd.Kind == CommandExplain {
 		_, err = e.llm.CompleteJSON(ctx, p, func(b []byte) error {
 			x, verr := e.validator.ValidateExplanation(b)

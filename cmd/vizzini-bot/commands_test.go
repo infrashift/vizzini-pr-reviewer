@@ -1,6 +1,8 @@
 package main
 
 import (
+	vmarker "github.com/infrashift/vizzini-pr-reviewer/pkg/marker"
+
 	"encoding/json"
 	"errors"
 	"slices"
@@ -219,6 +221,88 @@ func TestBot_CommandsOnly(t *testing.T) {
 		a := append([]string{"--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p", "--commands-only"}, args...)
 		if code, _, stderr := runBot(t, env, a...); code != exitError || !strings.Contains(stderr, "--commands-only") {
 			t.Errorf("%v: exit %d, %s", args, code, stderr)
+		}
+	}
+}
+
+// /vizzini reconsider (ISSUE-029): a withdrawn finding resolves the bot's
+// thread with the explanation; a finding that stands gets a reply and its
+// thread stays open; outside a finding's thread it gets usage.
+func TestBot_Reconsider(t *testing.T) {
+	repo := gitRepo(t)
+	verdict := "withdrawn"
+	srv := llmtest.NewServer(t, func(_ int, req *openai.ChatCompletionRequest) llmtest.Reply {
+		if strings.Contains(llmtest.UserPrompt(req), "/reconsider") {
+			return llmtest.Reply{Content: `{"verdict":"` + verdict + `","explanation":"Checked against line 3."}`}
+		}
+		return llmtest.Reply{Content: `{"summary":"s","risk_score":5,"findings":[]}`}
+	})
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	finding := (&vmarker.Comment{Severity: "Major", Category: "Security", Title: "SQL injection", Body: "Concatenated.", Agent: "vizzini-bot",
+		Marker: marker{FP: "v1:x", Run: "r0", Head: strings.Repeat("ab", 20), Category: "Security", Start: 3, End: 3}}).Render()
+	threads := func(first string) string {
+		b, _ := json.Marshal(map[string]any{"threads": []any{map[string]any{"id": "77", "path": "store.go", "line": 3, "comments": []any{
+			map[string]any{"id": "1", "author": "bot", "body": first},
+			map[string]any{"id": "2", "author": "dev", "body": "/vizzini reconsider The input is validated upstream."},
+		}}}})
+		return string(b)
+	}
+	args := []string{"--repo", repo, "--base", "main", "--pr-url", "u", "--grant-policy", "/p", "--commands-only"}
+	calls := func(f *fakeMrman, verb string) [][]string {
+		var out [][]string
+		for _, c := range f.calls {
+			if len(c) > 1 && c[1] == verb {
+				out = append(out, c)
+			}
+		}
+		return out
+	}
+
+	f := &fakeMrman{threadsOut: threads(finding), resolveOut: `{"resolved":["77"]}`}
+	f.install(t)
+	code, stdout, stderr := runBot(t, env, args...)
+	var res botResult
+	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil {
+		t.Fatalf("exit %d: %s %s", code, stdout, stderr)
+	}
+	resolves := calls(f, "resolve")
+	if len(resolves) != 1 || len(calls(f, "reply")) != 0 || !slices.Equal(res.Withdrawn, []string{"77"}) || !slices.Equal(res.Answered, []string{"2"}) {
+		t.Fatalf("withdrawn: resolves %v, result %s", resolves, stdout)
+	}
+	joined := strings.Join(resolves[0], " ")
+	for _, want := range []string{"--thread 77", "**Withdrawn.**", "Checked against line 3.", "<!-- vizzini:reply-to=2 run="} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("resolve call lacks %q: %s", want, joined)
+		}
+	}
+	for _, req := range srv.Requests() {
+		if u := llmtest.UserPrompt(&req); strings.Contains(u, "/reconsider") && !strings.Contains(u, "<finding>\nMajor (Security): SQL injection\n\nConcatenated.") {
+			t.Errorf("the finding was not given to the model:\n%s", u)
+		}
+	}
+
+	verdict = "stands"
+	f = &fakeMrman{threadsOut: threads(finding)}
+	f.install(t)
+	_, stdout, _ = runBot(t, env, args...)
+	if err := json.Unmarshal([]byte(stdout), &res); err != nil || len(calls(f, "resolve")) != 0 || len(calls(f, "reply")) != 1 || len(res.Withdrawn) != 0 {
+		t.Errorf("stands: %s", stdout)
+	}
+
+	// Not a finding's thread: one usage reply, no model call for it.
+	n := len(srv.Requests())
+	f = &fakeMrman{threadsOut: threads("a person's question")}
+	f.install(t)
+	_, stdout, _ = runBot(t, env, args...)
+	replies := calls(f, "reply")
+	if len(replies) != 1 || len(srv.Requests()) != n {
+		t.Fatalf("not a finding: replies %v, %d model calls: %s", replies, len(srv.Requests())-n, stdout)
+	}
+	for i, a := range replies[0] {
+		if a == "--input" {
+			if body := f.inputs[strings.TrimPrefix(replies[0][i+1], "@")]; !strings.Contains(body, "only in a thread vizzini-bot opened") {
+				t.Errorf("usage reply: %s", body)
+			}
 		}
 	}
 }

@@ -106,9 +106,18 @@ package review
 #RiskBand: "low" | "medium" | "high"
 
 // Slash commands (Milestone 4.6). /explain answers with #Explanation;
-// /refactor and /docstrings answer with #ImproveOutput.
+// /refactor and /docstrings answer with #ImproveOutput; /reconsider with
+// #Reconsideration.
 #Explanation: {
 	answer: string & !=""
+}
+
+// /reconsider (ISSUE-029): the bot re-evaluates its own finding after a
+// developer disputes it. "withdrawn" resolves the bot's thread; "stands"
+// answers and leaves the thread open for a person to decide.
+#Reconsideration: {
+	verdict:     "withdrawn" | "stands"
+	explanation: string & !=""
 }
 
 // Pre-code planning (Milestone 4.7): a plan a coding agent can execute.
