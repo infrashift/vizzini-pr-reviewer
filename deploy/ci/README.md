@@ -17,7 +17,7 @@ Every template does the same thing:
    - the tokenizer encodings, checked against pinned SHA-256 sums.
 3. **Run `vizzini-bot`** against the pull request.
 
-With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.6). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.
+With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.7). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.
 
 ## Setup
 

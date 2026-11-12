@@ -262,7 +262,7 @@ Each template:
 - **Runs the bot.**
 
 Resolving threads and answering `/vizzini` commands work on Azure DevOps,
-GitHub and GitLab from mrman v0.1.6 on, which the templates pin. On GitHub
+GitHub and GitLab from mrman v0.1.6 on (the templates pin v0.1.7). On GitHub
 Actions, resolving needs `contents: write` for `GITHUB_TOKEN`, an opt-in,
 because it also lets the token push. Without it, the bot reports resolving
 as refused. With an older mrman, GitHub and GitLab report both as
