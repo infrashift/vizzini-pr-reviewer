@@ -8,7 +8,7 @@ tags:
   - "mrman"
   - "github"
   - "reliability"
-  - "open"
+  - "closed"
 created: "2026-11-12T09:31:09-06:00"
 timestamp: "2026-11-12T09:31:09-06:00"
 description: "One 503 from GitHub's API on a read failed a whole mrman command (and a vizzini-bot CI run); mrman's GitLab driver retries reads, its GitHub driver did not."
@@ -16,7 +16,7 @@ description: "One 503 from GitHub's API on a read failed a whole mrman command (
 
 # ISSUE-031: mrman's GitHub driver does not retry a failed read
 
-**Status:** open (fixed on mrman branch `fix/github-read-retry`, not yet merged) · **Raised:** 2026-11-12 · **Related:** [ISSUE-030](/issues/issue-030-mrman-reports-a-failed-identity-lookup-as-a-policy-denial--01a1d033165c.md)
+**Status:** closed (released in mrman v0.1.9) · **Raised:** 2026-11-12 · **Related:** [ISSUE-030](/issues/issue-030-mrman-reports-a-failed-identity-lookup-as-a-policy-denial--01a1d033165c.md)
 
 ## Problem
 mrman's GitHub driver sent every request once. A transient 5xx from GitHub's API failed the whole command. vizzini-bot retries only mrman failures that say "network error", so a 503 ended the CI run.
@@ -40,5 +40,7 @@ Both GitHub clients, REST and GraphQL, go through a transport that resends only 
 ## Acceptance criteria
 - [x] The fix and the tests; mrman `make check` passes (87.5% coverage).
 - [x] The forge capabilities reference says which requests are resent.
-- [ ] Merged and released in mrman, pinned in the CI templates and vizzini-lab.
-- [ ] The vizzini-lab GitHub suites pass on the release.
+- [x] Merged (mrman PR #20) and released in v0.1.9, pinned in the CI templates (Vizzini `b002fad`) and vizzini-lab.
+- [x] The vizzini-lab GitHub suites pass on v0.1.9, both modes, first time (15/15 each; results/2026-11-12-live-mrman-v019.md).
+
+**Related (2026-11-12):** GitHub's macOS runner loss, which held up PR #20's check and the v0.1.9 release, is handled by mrman PR #21's `retry-runner-loss.yml`, which re-runs only jobs that never got a runner.
