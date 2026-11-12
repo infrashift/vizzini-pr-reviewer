@@ -27,7 +27,7 @@ variables:
   # Pins: the Vizzini commit the bot is built from, the mrman release, the
   # garmr commit, and the Go version Vizzini's go.mod requires. Change them in
   # a reviewed commit.
-  VIZZINI_REF: 517e4344db8f2dfd1174c1473cd31c5e1add2f0b
+  VIZZINI_REF: b7f55f95d0dfea3a3caf99ec0402b77ecec25f2f
   MRMAN_VERSION: v0.1.6
   GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
   GO_VERSION: 1.25.4
