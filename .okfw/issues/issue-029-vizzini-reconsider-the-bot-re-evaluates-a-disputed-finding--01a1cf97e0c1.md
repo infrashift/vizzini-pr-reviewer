@@ -16,7 +16,7 @@ description: "A structured disagreement: a developer argues in the bot's thread 
 
 # ISSUE-029: /vizzini reconsider: the bot re-evaluates a disputed finding
 
-**Status:** open (implemented; live check pending) · **Decision:** [ADR-0023](/decisions/adr-0023-disputed-findings-the-bot-may-withdraw-its-own-finding-anything-else-goes-to-a-person--01a1cf9d793e.md) · **Raised:** 2026-11-12 · **Related:** [ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md) (commands), [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-028](/issues/issue-028-mrman-reply-and-resolve-on-github-and-gitlab--01a1cf97e0b0.md), [ISSUE-026](/issues/issue-026-webhook-receiver-answers-vizzini-commands-immediately-experimental--01a1cf8f51ab.md)
+**Status:** open (verified live on Azure DevOps) · **Decision:** [ADR-0023](/decisions/adr-0023-disputed-findings-the-bot-may-withdraw-its-own-finding-anything-else-goes-to-a-person--01a1cf9d793e.md) · **Raised:** 2026-11-12 · **Related:** [ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md) (commands), [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-028](/issues/issue-028-mrman-reply-and-resolve-on-github-and-gitlab--01a1cf97e0b0.md), [ISSUE-026](/issues/issue-026-webhook-receiver-answers-vizzini-commands-immediately-experimental--01a1cf8f51ab.md)
 
 ## Context: the developer-agent workflow
 These three issues come from one workflow: Vizzini reviews, and a developer, a person or an agent, either fixes or argues back. Any disagreement still goes to a person to decide. What already works:
@@ -42,4 +42,11 @@ A structured disagreement. The developer argues in the bot's thread and writes `
 - [x] Answered once (the `reply-to` marker). The event is `resolve` or `reply` under the base-branch policy.
 - [x] Attributed like other commands (mode `command`, kind `reconsider`).
 - [x] The webhook receiver needs no change: a reconsider is a command.
-- [ ] vizzini-uat TS-WF covers both verdicts with a deterministic stub.
+- [x] vizzini-uat TS-WF covers both verdicts with a deterministic stub.
+
+## Progress (2026-11-12)
+- **Vizzini `0187f14`:** `/reconsider` (stubllm: `[stub:withdraw]`).
+- **Live:** vizzini-uat TS-WF, run 20261112T121641Z, passed 26/26 on ADO PR #47.
+  - The stands verdict left the thread open.
+  - The withdrawn verdict resolved the bot's own thread, and a later full review did not post the finding again.
+- **Still to do:** a live-model run with a real argument.

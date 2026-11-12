@@ -17,7 +17,7 @@ description: "Implement mrman's ThreadReplier and ThreadResolver for GitHub (Gra
 
 # ISSUE-028: mrman reply and resolve on GitHub and GitLab
 
-**Status:** open · **Raised:** 2026-11-12 · **Related:** [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md); vizzini-uat ISSUE-002
+**Status:** open (implemented; live check on GitHub and GitLab pending a mrman release) · **Raised:** 2026-11-12 · **Related:** [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md); vizzini-uat ISSUE-002
 
 ## Context: the developer-agent workflow
 These three issues come from one workflow: Vizzini reviews, and a developer, a person or an agent, either fixes or argues back. Any disagreement still goes to a person to decide. What already works:
@@ -36,13 +36,24 @@ The vizzini-uat suite TS-WF tests the whole workflow.
 Only the Azure DevOps driver implements mrman's optional `ThreadReplier` and `ThreadResolver`. On GitHub and GitLab, vizzini-bot cannot resolve fixed findings or answer `/vizzini` commands, and a developer cannot defend a finding through mrman.
 
 ## Acceptance criteria
-- [ ] **GitHub:**
+- [x] **GitHub:**
   - reply through GraphQL `addPullRequestReviewThreadReply`;
   - resolve through `resolveReviewThread`, only when the thread's first comment was written by the viewer (`ErrorForbidden` otherwise);
   - an already-resolved thread is left untouched.
-- [ ] **GitLab:**
+- [x] **GitLab:**
   - reply with a note in the discussion;
   - resolve with `resolved=true` on the discussion, with the same own-thread rule and idempotence.
-- [ ] `mrman review reply` and `review resolve` work on both forges, under the human grant and under `--grant-policy`.
-- [ ] Tests with recorded responses for each driver; `make check`, including the 85% coverage gate.
+- [x] `mrman review reply` and `review resolve` work on both forges, under the human grant and under `--grant-policy`.
+- [x] Tests with recorded responses for each driver; `make check`, including the 85% coverage gate.
 - [ ] Live: vizzini-uat's GitHub and GitLab CI template tests answer a `/vizzini` command and resolve a fixed finding.
+
+## Progress (2026-11-12)
+- **mrman, branch `feature/github-gitlab-reply-resolve`:**
+  - GitHub: reply through GraphQL `addPullRequestReviewThreadReply`, resolve through `resolveReviewThread`, with the own-thread rule. A thread from another PR is refused, because GitHub thread ids are global.
+  - GitLab: a discussion note, and a discussion PUT with `resolved`.
+  - `make check` passes (87.5% coverage).
+- **Not yet verified live:**
+  - whether a GitHub reply lands in a pending review;
+  - the `[bot]` login suffix for GitHub App tokens;
+  - GraphQL permission messages as GitHub really sends them.
+- **What closes it:** a mrman release pinned in the CI templates, then vizzini-uat's GitHub and GitLab tests.
