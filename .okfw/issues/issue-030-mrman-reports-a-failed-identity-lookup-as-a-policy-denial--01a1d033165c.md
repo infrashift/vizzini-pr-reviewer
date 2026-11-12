@@ -7,7 +7,7 @@ tags:
   - "issue"
   - "mrman"
   - "reliability"
-  - "open"
+  - "closed"
 created: "2026-11-12T08:39:31-06:00"
 timestamp: "2026-11-12T08:39:31-06:00"
 description: "When mrman cannot ask the forge who its token is, it evaluated the grant policy with an empty identity and reported a policy denial that nothing retries; it should return the forge's (retryable) error and evaluate nothing."
@@ -15,7 +15,7 @@ description: "When mrman cannot ask the forge who its token is, it evaluated the
 
 # ISSUE-030: mrman reports a failed identity lookup as a policy denial
 
-**Status:** open (fixed on mrman branch `fix/identity-lookup`, not yet merged) · **Raised:** 2026-11-12 · **Related:** [ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md), [ISSUE-026](/issues/issue-026-webhook-receiver-answers-vizzini-commands-immediately-experimental--01a1cf8f51ab.md)
+**Status:** closed (released in mrman v0.1.8) · **Raised:** 2026-11-12 · **Related:** [ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md), [ISSUE-026](/issues/issue-026-webhook-receiver-answers-vizzini-commands-immediately-experimental--01a1cf8f51ab.md)
 
 ## Problem
 Before an unattended submit, resolve or reply, mrman asks the forge who the token is, and garmr then evaluates the grant policy for that identity. In `authorizeAction`, a failure of that call was swallowed. The policy was evaluated with an **empty identity**, so it denied with MRM-002.
@@ -35,5 +35,5 @@ Before an unattended submit, resolve or reply, mrman asks the forge who the toke
 ## Acceptance criteria
 - [x] The fix and the test; mrman `make check` passes (87.5% coverage).
 - [x] The agents guide says what happens.
-- [ ] Merged and released in mrman, pinned in the CI templates and vizzini-lab.
-- [ ] The vizzini-lab webhook and workflow suites, re-run on the release.
+- [x] Merged (mrman PR #19) and released in v0.1.8, pinned in the CI templates (Vizzini `1ce20a9`) and vizzini-lab.
+- [x] The vizzini-lab webhook (30/30) and workflow (26/26) suites passed on v0.1.8, with the rest of the batch (results/2026-11-12-live-mrman-v018.md).
