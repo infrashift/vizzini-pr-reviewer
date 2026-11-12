@@ -32,7 +32,7 @@ env:
   # Pins: the Vizzini commit the bot is built from, the mrman release, the
   # garmr commit. Change them in a reviewed commit.
   VIZZINI_REF: 517e4344db8f2dfd1174c1473cd31c5e1add2f0b
-  MRMAN_VERSION: v0.1.4
+  MRMAN_VERSION: v0.1.5
   GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
 
 jobs:
