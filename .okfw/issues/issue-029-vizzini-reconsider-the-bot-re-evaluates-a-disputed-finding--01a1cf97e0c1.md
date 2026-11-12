@@ -8,7 +8,7 @@ tags:
   - "automation"
   - "commands"
   - "agents"
-  - "open"
+  - "closed"
 created: "2026-11-12T05:49:59-06:00"
 timestamp: "2026-11-12T05:49:59-06:00"
 description: "A structured disagreement: a developer argues in the bot's thread and writes /vizzini reconsider; the bot re-evaluates the finding against the code and the argument, then withdraws it (resolving its own thread) or explains why it stands, leaving the dispute to a person."
@@ -16,7 +16,7 @@ description: "A structured disagreement: a developer argues in the bot's thread 
 
 # ISSUE-029: /vizzini reconsider: the bot re-evaluates a disputed finding
 
-**Status:** open (verified live on Azure DevOps) · **Decision:** [ADR-0023](/decisions/adr-0023-disputed-findings-the-bot-may-withdraw-its-own-finding-anything-else-goes-to-a-person--01a1cf9d793e.md) · **Raised:** 2026-11-12 · **Related:** [ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md) (commands), [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-028](/issues/issue-028-mrman-reply-and-resolve-on-github-and-gitlab--01a1cf97e0b0.md), [ISSUE-026](/issues/issue-026-webhook-receiver-answers-vizzini-commands-immediately-experimental--01a1cf8f51ab.md)
+**Status:** closed (verified live on Azure DevOps, with live models) · **Decision:** [ADR-0023](/decisions/adr-0023-disputed-findings-the-bot-may-withdraw-its-own-finding-anything-else-goes-to-a-person--01a1cf9d793e.md) · **Raised:** 2026-11-12 · **Related:** [ADR-0019](/decisions/adr-0019-in-thread-vizzini-commands-are-answered-once-by-the-next-bot-run--01a1cc771df6.md) (commands), [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-028](/issues/issue-028-mrman-reply-and-resolve-on-github-and-gitlab--01a1cf97e0b0.md), [ISSUE-026](/issues/issue-026-webhook-receiver-answers-vizzini-commands-immediately-experimental--01a1cf8f51ab.md)
 
 ## Context: the developer-agent workflow
 These three issues come from one workflow: Vizzini reviews, and a developer, a person or an agent, either fixes or argues back. Any disagreement still goes to a person to decide. What already works:
@@ -49,4 +49,11 @@ A structured disagreement. The developer argues in the bot's thread and writes `
 - **Live:** vizzini-lab TS-WF, run 20261112T121641Z, passed 26/26 on ADO PR #47.
   - The stands verdict left the thread open.
   - The withdrawn verdict resolved the bot's own thread, and a later full review did not post the finding again.
-- **Still to do:** a live-model run with a real argument.
+- **Live models (2026-11-12):** vizzini-lab UAT-WF-020 (`make uat-reconsider`, lab `4d2a86b`), on Vizzini `b002fad` and mrman v0.1.9. stubllm posts two findings, the developer agent disputes both through mrman, and the bot answers with a live model. Claude Sonnet 5.5 (ADO PR #68) and Opus 5.5 (PR #69) each passed 8/8 hard checks and reached 2/2 expected verdicts.
+  - A G101 false positive (a form field's name) was **withdrawn** on a real argument, and the bot resolved its own thread.
+  - MD5 password storage, defended only by assertion, **stands**. Each model answered the claims point by point and said what evidence would change its mind.
+
+## Resolution
+Done. Every acceptance criterion holds, on the stub and on both live models. The lab's results: `results/2026-11-12-live-reconsider.md`.
+
+Observation, not a defect: the reconsider prompt carries the PR's diff, not the whole tree. A helper on the base branch (`weakHash`) is therefore invisible to the model. Sonnet said so and relied on the developer's word that it is MD5. Widening the context is a possible follow-up, if disputes often turn on code outside the diff.
