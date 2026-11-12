@@ -66,6 +66,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Roadmap', slug: 'docs/project/roadmap' },
 						{ label: 'Design Decisions', slug: 'docs/project/decisions' },
+						{ label: 'Benchmark vs PR-Agent', slug: 'docs/project/benchmark' },
 						{ label: 'Contributing', slug: 'docs/project/contributing' },
 					],
 				},
