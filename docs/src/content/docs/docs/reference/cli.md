@@ -40,6 +40,7 @@ git diff main...HEAD | pr-review --mode risk   # no model or proxy needed
 | `--risk-policy` | | JSON risk policy (`#RiskPolicy`): path weights, threshold, sensitivity. See [Risk & Auto-Approve](../../guides/risk/) |
 | `--lint-json` | | Review mode, repeatable: a linter report, either golangci-lint JSON or SARIF, whose diagnostics on changed lines the model should explain. See [Lint-Aware Reviews](../../guides/lint/) |
 | `--fail-on` | `Critical,Major` | Review mode: comma-separated severities that make `pr-review` exit `2`, or `none` |
+| `--all-findings` | off | Review mode: report every finding. By default the noise floor moves Trivial findings, and Minor Performance findings, to the JSON report's `filtered` list. See [The noise floor](#the-noise-floor) |
 
 ## Environment
 
@@ -93,5 +94,26 @@ pr-review --fail-on none                # report, never block
 
 An unknown severity such as `--fail-on High` is rejected before any request
 is made.
+
+## The noise floor
+
+Some kinds of finding are rarely worth a reviewer's time. In Vizzini's
+[benchmark](../../project/benchmark/), 6% of Trivial findings and about a
+fifth of Minor Performance findings were real problems, against 81% of Major
+ones. By default, `pr-review` leaves these out. Minor Maintainability findings
+were as noisy, but models sometimes file a real bug under Maintainability, so
+the default keeps them:
+
+- **Where they go:** they are not shown in Markdown or text output. The JSON
+  report keeps them in a `filtered` list, so nothing is lost.
+- **What still sees them:** the floor decides what is shown, never what
+  blocks. `--fail-on` still applies to filtered findings, and so does
+  auto-approval. When a filtered finding fails the gate, `pr-review` says so.
+- **The bot:** `vizzini-bot` does not post filtered findings. A thread it
+  posted earlier for such a finding is left open, not resolved as fixed.
+
+The rules live in `#NoiseFloor` in `schema/review.cue`. `--all-findings` turns
+the floor off for one run. Embedders set `Config.NoiseFloor`, where
+`{"rules": []}` turns it off, or use `ReviewOptions.AllFindings`.
 
 Interrupting with Ctrl-C or SIGTERM cancels in-flight requests.

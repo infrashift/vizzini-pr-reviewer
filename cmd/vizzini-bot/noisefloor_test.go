@@ -14,11 +14,11 @@ import (
 // being resolved as fixed.
 func TestBot_FilteredFindingIsNotPostedAndItsThreadIsLeftAlone(t *testing.T) {
 	dir := suppressRepo(t, "suppressions: []\n")
-	srv := mockFindings(t, `{"file":"a.go","start_line":3,"end_line":3,"severity":"Minor","category":"Maintainability","title":"Extract A","body":"b"},`+
+	srv := mockFindings(t, `{"file":"a.go","start_line":3,"end_line":3,"severity":"Minor","category":"Performance","title":"Extract A","body":"b"},`+
 		`{"file":"b.go","start_line":3,"end_line":3,"severity":"Minor","category":"Logic","title":"Bad B","body":"b"}`)
 	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
-	fp := reviewer.Fingerprint(&reviewer.Finding{File: "a.go", Category: "Maintainability", Title: "Extract A"})
-	m := marker{FP: fp, Run: "r0", Head: strings.Repeat("ab", 20), Category: "Maintainability", Start: 3, End: 3}
+	fp := reviewer.Fingerprint(&reviewer.Finding{File: "a.go", Category: "Performance", Title: "Extract A"})
+	m := marker{FP: fp, Run: "r0", Head: strings.Repeat("ab", 20), Category: "Performance", Start: 3, End: 3}
 	threads, _ := json.Marshal(map[string]any{"threads": []any{map[string]any{
 		"id": "31", "path": "a.go", "comments": []any{map[string]any{"id": "1", "body": "x\n\n" + m.String()}}}}})
 	f := &fakeMrman{submitOut: `{}`, threadsOut: string(threads)}

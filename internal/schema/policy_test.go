@@ -131,7 +131,7 @@ func TestNoiseFloor_DefaultComesFromSchema(t *testing.T) {
 	}
 	want := []NoiseRule{
 		{Severity: SeverityTrivial},
-		{Severity: SeverityMinor, Categories: []Category{CategoryMaintainability, CategoryPerformance}},
+		{Severity: SeverityMinor, Categories: []Category{CategoryPerformance}},
 	}
 	if !reflect.DeepEqual(n.Rules, want) {
 		t.Errorf("default rules %+v, want %+v", n.Rules, want)
@@ -150,7 +150,7 @@ func TestNoiseFloor_DefaultMatches(t *testing.T) {
 	}{
 		{SeverityTrivial, CategoryLogic, true},
 		{SeverityTrivial, CategorySecurity, true},
-		{SeverityMinor, CategoryMaintainability, true},
+		{SeverityMinor, CategoryMaintainability, false},
 		{SeverityMinor, CategoryPerformance, true},
 		{SeverityMinor, CategoryLogic, false},
 		{SeverityMinor, CategorySecurity, false},

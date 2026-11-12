@@ -68,9 +68,10 @@ package review
 // Noise floor (ISSUE-032, ADR-0024): kinds of finding that the review
 // benchmark found are rarely worth a reviewer's time. On 26 real pull
 // requests, judged blind, 6% of Trivial findings and about a fifth of Minor
-// Maintainability and Performance findings were real problems, against 81%
-// of Major ones. A finding a rule matches leaves findings for filtered:
-// reported, never posted, never gated on.
+// Performance findings were real problems, against 81% of Major ones. Minor
+// Maintainability findings were as noisy, but models sometimes file a real
+// bug there, so the default keeps them. A finding a rule matches leaves
+// findings for filtered: reported, never posted, never gated on.
 #NoiseRule: {
 	severity: #Severity
 	// Categories; any may match. Omitted: every category.
@@ -80,7 +81,7 @@ package review
 #NoiseFloor: {
 	rules: [...#NoiseRule] | *[
 		{severity: "Trivial"},
-		{severity: "Minor", categories: ["Maintainability", "Performance"]},
+		{severity: "Minor", categories: ["Performance"]},
 	]
 }
 

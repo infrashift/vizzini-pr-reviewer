@@ -22,7 +22,7 @@ func noisyReview(_ int, req *openai.ChatCompletionRequest) llmtest.Reply {
 		{"file":"internal/store/users.go","start_line":44,"end_line":45,"severity":"Critical","category":"Security","title":"SQL injection","body":"name is concatenated into SQL."},
 		{"file":"internal/api/handler.go","start_line":4,"end_line":4,"severity":"Minor","category":"Logic","title":"Form parse error ignored","body":"ParseForm can fail."},
 		{"file":"internal/store/users.go","start_line":45,"end_line":45,"severity":"Trivial","category":"Logic","title":"Name the query variable","body":"q is terse."},
-		{"file":"internal/store/users.go","start_line":44,"end_line":44,"severity":"Minor","category":"Maintainability","title":"Extract a helper","body":"The query could live in a helper."}]}`}
+		{"file":"internal/store/users.go","start_line":44,"end_line":44,"severity":"Minor","category":"Performance","title":"Extract a helper","body":"The query is rebuilt on every call."}]}`}
 }
 
 func floorTitles(fs []Finding) []string {
@@ -43,7 +43,7 @@ func TestReview_NoiseFloorDefault(t *testing.T) {
 		t.Errorf("findings %q: the Critical and the Minor Logic finding must stay", got)
 	}
 	if got := strings.Join(floorTitles(out.Filtered), "|"); got != "Extract a helper|Name the query variable" {
-		t.Errorf("filtered %q: the Minor Maintainability and the Trivial finding must be filtered, most severe first", got)
+		t.Errorf("filtered %q: the Minor Performance and the Trivial finding must be filtered, most severe first", got)
 	}
 
 	report, err := MarshalReport(out)

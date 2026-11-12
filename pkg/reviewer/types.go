@@ -201,8 +201,8 @@ type Config struct {
 	// NoiseFloor is a JSON document validated against #NoiseFloor: the
 	// kinds of finding (severity, optionally narrowed to categories) moved
 	// from ReviewOutput.Findings to ReviewOutput.Filtered. Nil selects the
-	// schema default, which filters Trivial findings and Minor
-	// Maintainability and Performance ones (ISSUE-032, ADR-0024);
+	// schema default, which filters Trivial findings and Minor Performance
+	// ones (ISSUE-032, ADR-0024);
 	// {"rules": []} filters nothing.
 	NoiseFloor []byte
 }

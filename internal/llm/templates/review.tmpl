@@ -33,6 +33,13 @@ Rules:
 - Severity: Critical = exploitable or data-losing; Major = wrong behavior that
   will hit users; Minor = edge-case bug or meaningful debt; Trivial = small
   cleanup worth doing.
+- Category, by what happens when the code runs: Logic = it behaves wrongly
+  (a wrong result, a crash, a hang, a lost or leaked value, a missed case),
+  whatever the cause; Security = an attacker can exploit it; Performance = it
+  is correct but too slow or uses too much; Maintainability = it behaves
+  correctly today but is hard to read or change. A behaviour bug is never
+  Maintainability, even when its cause looks structural (duplication, a
+  wrapper, a refactor).
 - "Architecture" is only for a change that violates a document in the
   <knowledge> block, and such a finding MUST list that document's id in
   "citations". Cite only ids shown in <knowledge>. With no <knowledge>

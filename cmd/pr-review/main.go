@@ -372,7 +372,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "overall deadline")
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
 	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
-	fs.BoolVar(&o.allFindings, "all-findings", false, "review mode: report every finding; by default Trivial findings and Minor Maintainability and Performance findings are moved to the report's filtered list (ISSUE-032)")
+	fs.BoolVar(&o.allFindings, "all-findings", false, "review mode: report every finding; by default Trivial findings and Minor Performance findings are moved to the report's filtered list (ISSUE-032)")
 	fs.StringVar(&o.suppressions, "suppressions", "", "review mode: suppression rules (YAML or JSON, e.g. .vizzini/suppressions.yaml); matching findings are reported as suppressed, not as findings")
 	fs.StringVar(&o.knowledge, "knowledge", "", "review mode: OKF knowledge-base directory (e.g. .okfw) whose relevant documents the model may cite")
 	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "attribution: this run's id (default: a generated UUIDv7); sent with every request")
