@@ -170,3 +170,61 @@ func TestReviewScope_AResolutionRecordsTheHead(t *testing.T) {
 		t.Errorf("result %s, %d requests: %s", stdout, len(srv.Requests()), stderr)
 	}
 }
+
+// A file the push removes from the pull request (deleted, or reverted to the
+// base) has nothing to review, but its thread is reconciled: its code
+// changed and its finding is gone, so the thread is resolved, not carried.
+func TestReviewScope_AFileThatLeftThePRIsReconciled(t *testing.T) {
+	dir, git, write := scopeRepo(t)
+	srv := llmtest.NewServer(t, func(_ int, _ *openai.ChatCompletionRequest) llmtest.Reply {
+		return llmtest.Reply{Content: `{"summary":"s","risk_score":5,"findings":[]}`}
+	})
+	env := map[string]string{"VIZZINI_LITELLM_URL": srv.BaseURL(), "VIZZINI_MODEL": "m"}
+	args := []string{"--repo", dir, "--base", "main", "--pr-url", "u", "--grant-policy", "/p"}
+	first := git("rev-parse", "HEAD")
+	threads := func(head string) string {
+		all := make([]any, 0, 2)
+		for _, f := range []string{"a.go", "b.go"} {
+			var one struct{ Threads []any }
+			_ = json.Unmarshal([]byte(botThreadOn(strings.TrimSuffix(f, ".go"), f, head)), &one)
+			all = append(all, one.Threads...)
+		}
+		b, _ := json.Marshal(map[string]any{"threads": all})
+		return string(b)
+	}
+
+	// b.go reverted to the base, a.go changed again: a.go is reviewed, and
+	// b.go's thread is resolved.
+	write("a.go", "package x\n\nvar A = 3\n")
+	write("b.go", "package x\n\nvar B = 1\n")
+	git("commit", "-q", "-am", "revert b, touch a")
+	f := &fakeMrman{threadsOut: threads(first), resolveOut: `{"resolved":["b"]}`}
+	f.install(t)
+	code, stdout, stderr := runBot(t, env, args...)
+	var res botResult
+	if err := json.Unmarshal([]byte(stdout), &res); code != exitOK || err != nil || res.Mode != "incremental" ||
+		!slices.Equal(res.ReviewedFiles, []string{"a.go"}) || !slices.Equal(res.Resolved, []string{"b"}) || len(res.Carried) != 0 {
+		t.Fatalf("exit %d, result %s: %s", code, stdout, stderr)
+	}
+	if !strings.Contains(stderr, "1 file(s) with threads left the pull request") {
+		t.Errorf("stderr: %s", stderr)
+	}
+
+	// Only the deletion of a file the PR itself added (not on the base):
+	// nothing in the PR's diff changed, so no review at all, and the file's
+	// thread is resolved.
+	write("e.go", "package x\n\nvar E = 1\n")
+	git("add", "e.go")
+	git("commit", "-q", "-m", "add e")
+	head := git("rev-parse", "HEAD")
+	git("rm", "-q", "e.go")
+	git("commit", "-q", "-m", "drop e")
+	before := len(srv.Requests())
+	f = &fakeMrman{threadsOut: botThreadOn("e", "e.go", head), resolveOut: `{"resolved":["e"]}`}
+	f.install(t)
+	_, stdout, stderr = runBot(t, env, args...)
+	if err := json.Unmarshal([]byte(stdout), &res); err != nil || res.Mode != "incremental" || len(res.ReviewedFiles) != 0 ||
+		!slices.Equal(res.Resolved, []string{"e"}) || len(srv.Requests()) != before {
+		t.Errorf("deletion only: result %s, %d model requests: %s", stdout, len(srv.Requests())-before, stderr)
+	}
+}

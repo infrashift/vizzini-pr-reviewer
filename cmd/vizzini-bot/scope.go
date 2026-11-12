@@ -19,7 +19,10 @@ import (
 // restricted to the files that changed since that head. Changes merged in
 // from the base branch are not in base...head and are never reviewed; a
 // head that did not move is not reviewed at all. Threads on files left out
-// are carried as they are.
+// are carried as they are, except on a file the push took out of the pull
+// request (deleted, or reverted to the base): with nothing to review there,
+// its threads are still reconciled, and resolved, since their code changed
+// and their finding is gone.
 //
 // A run that posts nothing at all (no finding, no resolution, no answer)
 // leaves no trace, so the next run reviews from the last head that did:
@@ -40,16 +43,27 @@ const (
 type reviewScopeT struct {
 	mode  string
 	since string
+	// files are reviewed: changed since the last reviewed head and still in
+	// the pull request's diff.
 	files []string
+	// left are files the push changed that are no longer in the pull
+	// request's diff (deleted, or reverted to the base) and hold one of the
+	// bot's threads: nothing to review, but their threads are reconciled,
+	// so a finding whose file left the pull request is resolved.
+	left []string
 }
 
-// scope returns the reviewed files as a set, or nil for a full review.
+// scope returns the files whose threads this run reconciles (reviewed or
+// left), or nil for a full review.
 func (s *reviewScopeT) scope() map[string]bool {
 	if s.mode != scopeIncremental {
 		return nil
 	}
-	m := make(map[string]bool, len(s.files))
+	m := make(map[string]bool, len(s.files)+len(s.left))
 	for _, f := range s.files {
+		m[f] = true
+	}
+	for _, f := range s.left {
 		m[f] = true
 	}
 	return m
@@ -73,7 +87,7 @@ func reviewedHeads(threads []remoteThread) []string {
 	return heads
 }
 
-func reviewScope(ctx context.Context, opts *options, heads []string) (*reviewScopeT, error) {
+func reviewScope(ctx context.Context, opts *options, heads []string, mine []botThread) (*reviewScopeT, error) {
 	full := &reviewScopeT{mode: scopeFull}
 	if opts.full || len(heads) == 0 {
 		return full, nil
@@ -94,12 +108,15 @@ func reviewScope(ctx context.Context, opts *options, heads []string) (*reviewSco
 		return nil, err
 	}
 	sc := &reviewScopeT{mode: scopeIncremental, since: since}
-	for _, f := range inPR {
-		if slices.Contains(changed, f) {
+	for _, f := range changed {
+		switch {
+		case slices.Contains(inPR, f):
 			sc.files = append(sc.files, f)
+		case slices.ContainsFunc(mine, func(t botThread) bool { return t.Path == f && !t.Resolved }):
+			sc.left = append(sc.left, f)
 		}
 	}
-	if len(sc.files) == 0 {
+	if len(sc.files) == 0 && len(sc.left) == 0 {
 		// The push changed nothing the pull request changes (say, a merge
 		// from the base branch).
 		sc.mode = scopeUnchanged

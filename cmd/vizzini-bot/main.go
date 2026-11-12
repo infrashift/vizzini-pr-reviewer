@@ -271,7 +271,7 @@ func answerPending(ctx context.Context, opts *options, slug, policy string, thre
 // everything) and posts and resolves.
 func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, slug string, mine []botThread,
 	heads []string, res *botResult, stdout, stderr io.Writer) error {
-	sc, err := reviewScope(ctx, opts, heads)
+	sc, err := reviewScope(ctx, opts, heads, mine)
 	if err != nil {
 		return err
 	}
@@ -281,6 +281,16 @@ func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, 
 		return nil
 	}
 
+	if sc.mode == scopeIncremental && len(sc.files) == 0 {
+		// Only files that left the pull request: nothing to review, but
+		// their threads are reconciled (resolved: their code changed).
+		_, _ = fmt.Fprintf(stderr, "vizzini-bot: run %s reviewing 0 files; %d file(s) with threads left the pull request since %.12s\n",
+			opts.attr.RunID, len(sc.left), sc.since)
+		if opts.dryRun {
+			return nil
+		}
+		return post(ctx, opts, slug, nil, mine, sc.scope(), res, stderr)
+	}
 	args := []string{"diff", "--no-color", "--no-ext-diff", opts.base + "..." + opts.attr.Iteration}
 	if sc.mode == scopeIncremental {
 		args = append(args, "--")
@@ -295,6 +305,9 @@ func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, 
 	if sc.mode == scopeIncremental {
 		_, _ = fmt.Fprintf(stderr, "vizzini-bot: run %s reviewing %d file(s) changed since %.12s (of %s...%.12s)\n",
 			opts.attr.RunID, len(sc.files), sc.since, opts.base, opts.attr.Iteration)
+		if len(sc.left) > 0 {
+			_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d file(s) with threads left the pull request; their threads are reconciled\n", len(sc.left))
+		}
 	} else {
 		_, _ = fmt.Fprintf(stderr, "vizzini-bot: run %s reviewing %s...%.12s\n", opts.attr.RunID, opts.base, opts.attr.Iteration)
 	}
