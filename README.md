@@ -82,6 +82,44 @@ git diff main...HEAD | ./bin/pr-review --mode review
 git diff main...HEAD | ./bin/pr-review --mode describe --format json
 ```
 
+## Try it in a local lab
+
+[**vizzini-lab**](https://github.com/infrashift/vizzini-lab) is a ready-made lab that runs Vizzini end to end on your machine. It also runs [mrman](https://github.com/infrashift/mrman), [garmr](https://github.com/infrashift/garmr) and [okf-wiki](https://github.com/infrashift/okf-wiki).
+
+**What it runs:**
+- **Seeded C# and TypeScript pull requests** with known defects, scored against ground truth.
+- **The unattended bot** on a real pull request: fixes, `/vizzini` commands, suppression rules.
+- **The full review workflow:** a developer agent fixes, argues and disputes, and a person settles.
+- **The CI templates,** live on GitHub Actions, Azure Pipelines, and a throwaway GitLab CE in podman.
+
+Every tool is built from a pinned commit, and most suites need no model tokens: they use Vizzini's stub model.
+
+The lab builds the tools from sibling checkouts, so clone them side by side under these names:
+
+```sh
+mkdir infrashift && cd infrashift
+git clone https://github.com/infrashift/vizzini-lab
+git clone https://github.com/infrashift/vizzini-pr-reviewer
+git clone https://github.com/infrashift/mrman
+git clone https://github.com/infrashift/garmr garmr-policy-agent
+git clone https://github.com/infrashift/okf-wiki
+cd vizzini-lab
+make build           # the four tools at the commits pinned in versions.env
+make uat-stub        # token-free: seeded fixtures, Roslyn/ESLint SARIF, garmr, scoring
+make uat-ci-gitlab   # token-free: the GitLab CI template on a local GitLab CE (podman)
+```
+
+**Live models and real forges:**
+- **Live models** need an Anthropic key, kept as a podman secret, and the lab's LiteLLM proxy (`make litellm-up`).
+- **Azure DevOps suites** (`make uat`, `uat-bot`, `uat-workflow`, `uat-ci-ado`) need a PAT for a scratch project.
+- **The GitHub Actions suite** needs `gh`.
+
+**Where to start reading:**
+- the lab's [README](https://github.com/infrashift/vizzini-lab#readme);
+- its [first-time setup runbook](https://github.com/infrashift/vizzini-lab/tree/main/.okfw/runbooks);
+- the [UAT test plan](https://github.com/infrashift/vizzini-lab/tree/main/.okfw/test-suites), with step-by-step test cases;
+- [published results](https://github.com/infrashift/vizzini-lab/tree/main/results) from live runs.
+
 ## Contributing
 
 Work proceeds one phase at a time (see [`PLAN.md`](PLAN.md)). Each change must
