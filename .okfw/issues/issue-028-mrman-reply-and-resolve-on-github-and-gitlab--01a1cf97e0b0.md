@@ -9,7 +9,7 @@ tags:
   - "github"
   - "gitlab"
   - "automation"
-  - "open"
+  - "closed"
 created: "2026-11-12T05:49:59-06:00"
 timestamp: "2026-11-12T05:49:59-06:00"
 description: "Implement mrman's ThreadReplier and ThreadResolver for GitHub (GraphQL reviewThreads) and GitLab (discussions), with the same own-thread-only resolve rule as Azure DevOps, so vizzini-bot resolves fixed findings and answers commands on every forge."
@@ -17,7 +17,7 @@ description: "Implement mrman's ThreadReplier and ThreadResolver for GitHub (Gra
 
 # ISSUE-028: mrman reply and resolve on GitHub and GitLab
 
-**Status:** open (released in mrman v0.1.6; GitLab resolve not yet verified live) · **Raised:** 2026-11-12 · **Related:** [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md); vizzini-lab ISSUE-002
+**Status:** closed (released in mrman v0.1.6; verified live on GitHub, GitLab and Azure DevOps) · **Raised:** 2026-11-12 · **Related:** [ISSUE-027](/issues/issue-027-mrman-findings-view-for-agents-review-threads-findings--01a1cf97e098.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md); vizzini-lab ISSUE-002
 
 ## Context: the developer-agent workflow
 These three issues come from one workflow: Vizzini reviews, and a developer, a person or an agent, either fixes or argues back. Any disagreement still goes to a person to decide. What already works:
@@ -45,7 +45,7 @@ Only the Azure DevOps driver implements mrman's optional `ThreadReplier` and `Th
   - resolve with `resolved=true` on the discussion, with the same own-thread rule and idempotence.
 - [x] `mrman review reply` and `review resolve` work on both forges, under the human grant and under `--grant-policy`.
 - [x] Tests with recorded responses for each driver; `make check`, including the 85% coverage gate.
-- [x] Live: vizzini-lab's GitHub and GitLab CI template tests answer a `/vizzini` command and resolve a fixed finding. GitHub does both. GitLab answers; a GitLab resolve is still to be added to its test.
+- [x] Live: vizzini-lab's GitHub and GitLab CI template tests answer a `/vizzini` command and resolve a fixed finding. Both forges do both: GitHub (resolving with the `contents: write` opt-in) and GitLab (vizzini-lab run 20261112T134151Z, 16/16: the bot user answered the command and resolved its own discussion on a file the push removed).
 
 ## Progress (2026-11-12)
 - **mrman, branch `feature/github-gitlab-reply-resolve`:**
@@ -66,4 +66,4 @@ Only the Azure DevOps driver implements mrman's optional `ThreadReplier` and `Th
   - **Azure Pipelines, 13/13.**
 - **GitHub's token permission:** `resolveReviewThread` with `GITHUB_TOKEN` needs `contents: write` (refused without it: "Resource not accessible by integration"). That permission also lets the token push, so the template keeps `contents: read` and documents the opt-in.
 - **Found and fixed:** the GitHub test exposed a bot bug. Threads on files a push took out of the PR were carried, not resolved. Fixed in Vizzini `b7f55f9`.
-- **Still open:** a GitLab resolve in the GitLab test, and a mrman hint that names `contents: write` when GitHub refuses a resolve.
+- **Closed (2026-11-12):** the GitLab test now resolves a discussion live (16/16), and mrman v0.1.7 names `contents: write` when GitHub refuses a resolve (PR #18).
