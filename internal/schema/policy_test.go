@@ -123,3 +123,80 @@ func TestRiskPolicy_BandAndSensitivity(t *testing.T) {
 		t.Error("high_threshold below auto_approve_threshold accepted")
 	}
 }
+
+func TestNoiseFloor_DefaultComesFromSchema(t *testing.T) {
+	n, err := newValidator(t).NoiseFloor(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []NoiseRule{
+		{Severity: SeverityTrivial},
+		{Severity: SeverityMinor, Categories: []Category{CategoryMaintainability, CategoryPerformance}},
+	}
+	if !reflect.DeepEqual(n.Rules, want) {
+		t.Errorf("default rules %+v, want %+v", n.Rules, want)
+	}
+}
+
+func TestNoiseFloor_DefaultMatches(t *testing.T) {
+	n, err := newValidator(t).NoiseFloor(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		s    Severity
+		c    Category
+		want bool
+	}{
+		{SeverityTrivial, CategoryLogic, true},
+		{SeverityTrivial, CategorySecurity, true},
+		{SeverityMinor, CategoryMaintainability, true},
+		{SeverityMinor, CategoryPerformance, true},
+		{SeverityMinor, CategoryLogic, false},
+		{SeverityMinor, CategorySecurity, false},
+		{SeverityMinor, CategoryArchitecture, false},
+		{SeverityMajor, CategoryMaintainability, false},
+		{SeverityCritical, CategoryPerformance, false},
+	} {
+		if got := n.Matches(tc.s, tc.c); got != tc.want {
+			t.Errorf("Matches(%s, %s) = %v, want %v", tc.s, tc.c, got, tc.want)
+		}
+	}
+}
+
+func TestNoiseFloor_ExplicitAndEmpty(t *testing.T) {
+	v := newValidator(t)
+	n, err := v.NoiseFloor([]byte(`{"rules": [{"severity": "Minor"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !n.Matches(SeverityMinor, CategoryLogic) || n.Matches(SeverityTrivial, CategoryLogic) {
+		t.Errorf("explicit rules %+v", n.Rules)
+	}
+	none, err := v.NoiseFloor([]byte(`{"rules": []}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if none.Matches(SeverityTrivial, CategoryMaintainability) {
+		t.Error("an empty floor must filter nothing")
+	}
+	var nilFloor *NoiseFloor
+	if nilFloor.Matches(SeverityTrivial, CategoryLogic) {
+		t.Error("a nil floor must filter nothing")
+	}
+}
+
+func TestNoiseFloor_RejectsInvalid(t *testing.T) {
+	v := newValidator(t)
+	for _, in := range []string{
+		`{"rules": [{"severity": "Low"}]}`,
+		`{"rules": [{"severity": "Minor", "categories": ["Style"]}]}`,
+		`{"rules": [{"severity": "Minor", "categories": []}]}`,
+		`{"rules": [{"category": "Logic"}]}`,
+		`{"rules": [], "extra": true}`,
+	} {
+		if _, err := v.NoiseFloor([]byte(in)); err == nil {
+			t.Errorf("NoiseFloor(%s) accepted", in)
+		}
+	}
+}

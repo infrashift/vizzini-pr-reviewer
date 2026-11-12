@@ -36,6 +36,7 @@ type Engine struct {
 	validator   *schema.Validator
 	chunker     *chunker.Chunker
 	risk        *schema.RiskPolicy
+	floor       *schema.NoiseFloor
 	exclude     []string
 	concurrency int
 	maxKnowTok  int
@@ -77,8 +78,12 @@ func New(cfg Config) (*Engine, error) { //nolint:gocritic // hugeParam: one-shot
 	if err != nil {
 		return nil, fmt.Errorf("risk policy: %w", err)
 	}
-	if err := analysis.ValidateRiskPatterns(risk); err != nil {
-		return nil, fmt.Errorf("risk policy: %w", err)
+	if verr := analysis.ValidateRiskPatterns(risk); verr != nil {
+		return nil, fmt.Errorf("risk policy: %w", verr)
+	}
+	floor, err := v.NoiseFloor(cfg.NoiseFloor)
+	if err != nil {
+		return nil, fmt.Errorf("noise floor: %w", err)
 	}
 	conc := cfg.Concurrency
 	if conc <= 0 {
@@ -92,7 +97,7 @@ func New(cfg Config) (*Engine, error) { //nolint:gocritic // hugeParam: one-shot
 	if ctxTok <= 0 {
 		ctxTok = defaultMaxContextTokens
 	}
-	return &Engine{llm: client, validator: v, chunker: ch, risk: risk, exclude: cfg.Exclude, concurrency: conc, maxKnowTok: know, maxCtxTok: ctxTok}, nil
+	return &Engine{llm: client, validator: v, chunker: ch, risk: risk, floor: floor, exclude: cfg.Exclude, concurrency: conc, maxKnowTok: know, maxCtxTok: ctxTok}, nil
 }
 
 // Policy returns a severity gate validated by the #PolicyGate schema. A nil
@@ -199,19 +204,41 @@ func (e *Engine) Review(ctx context.Context, patch io.Reader, opts ReviewOptions
 	out.Summary = strings.Join(summaries, "\n\n")
 	out.RiskScore = max(out.BaseRiskScore, out.ModelRiskScore)
 	out.Findings, out.MergedFindings = foldDuplicates(out.Findings)
-	// Auto-approval sees every finding, suppressed or not: a suppression
-	// rule decides what is posted, never that a human may be skipped.
+	// Auto-approval sees every finding, suppressed or filtered or not: a
+	// suppression rule or the noise floor decides what is posted, never that
+	// a human may be skipped.
 	out.AutoApprove = e.autoApprove(out)
 	out.Findings, out.Suppressed = opts.Suppressions.Apply(out.Findings, time.Now())
-	slices.SortStableFunc(out.Findings, func(a, b Finding) int {
-		return cmp.Or(
-			cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)),
-			cmp.Compare(a.File, b.File),
-			cmp.Compare(a.StartLine, b.StartLine),
-			cmp.Compare(a.Title, b.Title),
-		)
-	})
+	if !opts.AllFindings {
+		out.Findings, out.Filtered = e.belowFloor(out.Findings)
+	}
+	slices.SortStableFunc(out.Findings, func(a, b Finding) int { return compareFindings(&a, &b) })
+	slices.SortStableFunc(out.Filtered, func(a, b Finding) int { return compareFindings(&a, &b) })
 	return out, nil
+}
+
+// compareFindings orders findings most severe first, then by place.
+func compareFindings(a, b *Finding) int {
+	return cmp.Or(
+		cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)),
+		cmp.Compare(a.File, b.File),
+		cmp.Compare(a.StartLine, b.StartLine),
+		cmp.Compare(a.Title, b.Title),
+	)
+}
+
+// belowFloor splits findings into those the noise floor keeps and those it
+// filters (ISSUE-032).
+func (e *Engine) belowFloor(findings []Finding) (kept, filtered []Finding) {
+	kept = make([]Finding, 0, len(findings))
+	for i := range findings {
+		if e.floor.Matches(findings[i].Severity, findings[i].Category) {
+			filtered = append(filtered, findings[i])
+		} else {
+			kept = append(kept, findings[i])
+		}
+	}
+	return kept, filtered
 }
 
 // autoApprove applies the Milestone 4.4 rule. It is deliberately strict: a

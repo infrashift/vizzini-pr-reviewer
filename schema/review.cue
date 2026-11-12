@@ -65,6 +65,25 @@ package review
 	fail_on: [...#Severity] | *["Critical", "Major"]
 }
 
+// Noise floor (ISSUE-032, ADR-0024): kinds of finding that the review
+// benchmark found are rarely worth a reviewer's time. On 26 real pull
+// requests, judged blind, 6% of Trivial findings and about a fifth of Minor
+// Maintainability and Performance findings were real problems, against 81%
+// of Major ones. A finding a rule matches leaves findings for filtered:
+// reported, never posted, never gated on.
+#NoiseRule: {
+	severity: #Severity
+	// Categories; any may match. Omitted: every category.
+	categories?: [#Category, ...#Category]
+}
+
+#NoiseFloor: {
+	rules: [...#NoiseRule] | *[
+		{severity: "Trivial"},
+		{severity: "Minor", categories: ["Maintainability", "Performance"]},
+	]
+}
+
 // Risk scoring (Milestone 4.4). Each changed file's points are its weight
 // times (changed lines + 5 x added cyclomatic complexity). The score is
 // 100 x (1 - e^(-total/scale)), so it rises quickly at first and never
@@ -213,6 +232,9 @@ package review
 	// posted (ISSUE-024 slice 5). Added by Vizzini after the model answered;
 	// the model's #ReviewOutput cannot carry them.
 	suppressed?: [...#SuppressedFinding]
+	// Findings below the noise floor (ISSUE-032, ADR-0024): reported here,
+	// never posted or gated on. Added by Vizzini after the model answered.
+	filtered?: [...#Finding]
 	// Attribution and usage (ISSUE-025, ADR-0015): run_id joins the
 	// proxy's spend logs, pr_key and iteration place the run in its pull
 	// request's lifecycle.

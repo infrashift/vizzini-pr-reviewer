@@ -53,6 +53,9 @@ func FormatReview(r *ReviewOutput) string {
 				s.Finding.Severity, s.Finding.Title, s.Rule)
 		}
 	}
+	if len(r.Filtered) > 0 {
+		fmt.Fprintf(&b, "\n_%d lower-priority finding(s) below the noise floor are not shown; they are in the JSON report's `filtered` list (`--all-findings` shows them here)._\n", len(r.Filtered))
+	}
 	if len(r.Excluded) > 0 {
 		fmt.Fprintf(&b, "\n_Not reviewed (generated or vendored): %s_\n", codeList(r.Excluded))
 	}

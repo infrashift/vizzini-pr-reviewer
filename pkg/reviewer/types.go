@@ -117,6 +117,11 @@ type ReviewOutput struct {
 	// not in Findings, so not posted and not gated on, but counted against
 	// AutoApprove (ISSUE-024 slice 5).
 	Suppressed []SuppressedFinding `json:"suppressed,omitempty"`
+	// Filtered are findings below the engine's noise floor (see
+	// Config.NoiseFloor): not in Findings, so not posted and not gated on,
+	// but counted against AutoApprove like Suppressed. Empty when
+	// ReviewOptions.AllFindings is set.
+	Filtered []Finding `json:"filtered,omitempty"`
 }
 
 // ReviewOptions tunes a single Review call.
@@ -124,6 +129,9 @@ type ReviewOptions struct {
 	// Suppressions, if set, are the repository's rules for findings it
 	// decided not to be told about again (see ParseSuppressions).
 	Suppressions *Suppressions
+	// AllFindings turns the noise floor off for this review: every finding
+	// stays in ReviewOutput.Findings.
+	AllFindings bool
 	// SkipOversized leaves out any hunk larger than the token budget instead
 	// of sending it in a chunk of its own. Skipped files are reported in
 	// ReviewOutput.Skipped.
@@ -190,4 +198,11 @@ type Config struct {
 	// schema/review.cue (path weights, scale, auto_approve_threshold).
 	// Omitted fields, or a nil RiskPolicy, take the schema defaults.
 	RiskPolicy []byte
+	// NoiseFloor is a JSON document validated against #NoiseFloor: the
+	// kinds of finding (severity, optionally narrowed to categories) moved
+	// from ReviewOutput.Findings to ReviewOutput.Filtered. Nil selects the
+	// schema default, which filters Trivial findings and Minor
+	// Maintainability and Performance ones (ISSUE-032, ADR-0024);
+	// {"rules": []} filters nothing.
+	NoiseFloor []byte
 }

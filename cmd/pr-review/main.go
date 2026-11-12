@@ -80,13 +80,15 @@ type options struct {
 	knowledge  string
 	// suppressions is a repository suppression-rules file (YAML or JSON).
 	suppressions string
-	repo         string
-	attr         reviewer.Attribution
-	command      string
-	thread       string
-	issue        string
-	tree         string
-	okfIndex     string
+	// allFindings turns the noise floor off (ISSUE-032).
+	allFindings bool
+	repo        string
+	attr        reviewer.Attribution
+	command     string
+	thread      string
+	issue       string
+	tree        string
+	okfIndex    string
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -96,8 +98,9 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	}
 	var blocking []reviewer.Finding
 	var gate *reviewer.PolicyGate
+	var hidden int
 	if err == nil {
-		blocking, gate, err = execute(ctx, opts, stdin, stdout, getenv)
+		blocking, hidden, gate, err = execute(ctx, opts, stdin, stdout, getenv)
 	}
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "pr-review:", err)
@@ -105,6 +108,9 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	}
 	if len(blocking) > 0 {
 		_, _ = fmt.Fprintf(stderr, "pr-review: policy gate failed: %d finding(s) at %s\n", len(blocking), joinSeverities(gate.FailOn))
+		if hidden > 0 {
+			_, _ = fmt.Fprintf(stderr, "pr-review: %d of them are below the noise floor and not shown; --all-findings shows them\n", hidden)
+		}
 		return exitPolicy
 	}
 	return exitOK
@@ -119,18 +125,19 @@ func joinSeverities(s []reviewer.Severity) string {
 }
 
 // execute runs the mode and writes its output. In review mode it returns the
-// findings that fail the policy gate, and the gate itself.
-func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writer, getenv func(string) string) ([]reviewer.Finding, *reviewer.PolicyGate, error) {
+// findings that fail the policy gate (those below the noise floor last, and
+// how many they are), and the gate itself.
+func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writer, getenv func(string) string) ([]reviewer.Finding, int, *reviewer.PolicyGate, error) {
 	var riskPolicy []byte
 	if opts.riskPolicy != "" {
 		data, rerr := os.ReadFile(opts.riskPolicy) //nolint:gosec // G703: reading the user-named policy file is the point
 		if rerr != nil {
-			return nil, nil, fmt.Errorf("--risk-policy: %w", rerr)
+			return nil, 0, nil, fmt.Errorf("--risk-policy: %w", rerr)
 		}
 		riskPolicy = data
 	}
 	if opts.mode == "risk" {
-		return nil, nil, assess(opts, riskPolicy, stdin, stdout)
+		return nil, 0, nil, assess(opts, riskPolicy, stdin, stdout)
 	}
 	apiKey := getenv("VIZZINI_API_KEY")
 	if apiKey == "" {
@@ -145,14 +152,14 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		Concurrency:    opts.concurrency,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, 0, nil, err
 	}
 
 	// Validate the gate before spending tokens on a review.
 	var gate *reviewer.PolicyGate
 	if opts.mode == "review" {
 		if gate, err = engine.Policy(opts.failOn); err != nil {
-			return nil, nil, fmt.Errorf("--fail-on: %w", err)
+			return nil, 0, nil, fmt.Errorf("--fail-on: %w", err)
 		}
 	}
 
@@ -160,7 +167,7 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 	if opts.mode != "plan" { // a plan starts from an issue, not a diff
 		p, closePatch, perr := openPatch(opts.patchFile, stdin)
 		if perr != nil {
-			return nil, nil, perr
+			return nil, 0, nil, perr
 		}
 		defer closePatch()
 		patch = p
@@ -174,7 +181,7 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 
 	result, text, err := dispatch(ctx, engine, opts, patch)
 	if err != nil {
-		return nil, nil, err
+		return nil, 0, nil, err
 	}
 	if opts.format == "json" {
 		// A schema-validated report with apiVersion/kind (ADR-0010), so
@@ -186,20 +193,22 @@ func execute(ctx context.Context, opts *options, stdin io.Reader, stdout io.Writ
 		}
 		report, rerr := reviewer.MarshalReportWithRun(result, run)
 		if rerr != nil {
-			return nil, nil, rerr
+			return nil, 0, nil, rerr
 		}
 		_, err = stdout.Write(report)
 	} else {
 		_, err = io.WriteString(stdout, text)
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("write output: %w", err)
+		return nil, 0, nil, fmt.Errorf("write output: %w", err)
 	}
 	if r, ok := result.(*reviewer.ReviewOutput); ok && gate != nil {
-		blocking := gate.Blocking(r.Findings)
-		return blocking, gate, nil
+		// The noise floor decides what is shown, never what blocks: a
+		// severity the gate lists blocks even when the floor filtered it.
+		hidden := gate.Blocking(r.Filtered)
+		return append(gate.Blocking(r.Findings), hidden...), len(hidden), gate, nil
 	}
-	return nil, nil, nil
+	return nil, 0, nil, nil
 }
 
 // assess runs risk mode: the deterministic score alone, with no engine, so it
@@ -278,7 +287,7 @@ func dispatch(ctx context.Context, engine *reviewer.Engine, opts *options, patch
 		}
 		return s, reviewer.FormatSuggestions(s), nil
 	default: // "review"; parseFlags rejects anything else
-		ropts := reviewer.ReviewOptions{SkipOversized: opts.skipOversized}
+		ropts := reviewer.ReviewOptions{SkipOversized: opts.skipOversized, AllFindings: opts.allFindings}
 		if opts.suppressions != "" {
 			data, rerr := os.ReadFile(opts.suppressions) //nolint:gosec // G703: reading the user-named rules file is the point
 			if rerr != nil {
@@ -363,6 +372,7 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "overall deadline")
 	fs.BoolVar(&o.skipOversized, "skip-oversized", false, "review mode: skip hunks larger than the token budget")
 	fs.StringVar(&o.riskPolicy, "risk-policy", "", "JSON risk policy (#RiskPolicy in schema/review.cue): path weights, scale, auto_approve_threshold")
+	fs.BoolVar(&o.allFindings, "all-findings", false, "review mode: report every finding; by default Trivial findings and Minor Maintainability and Performance findings are moved to the report's filtered list (ISSUE-032)")
 	fs.StringVar(&o.suppressions, "suppressions", "", "review mode: suppression rules (YAML or JSON, e.g. .vizzini/suppressions.yaml); matching findings are reported as suppressed, not as findings")
 	fs.StringVar(&o.knowledge, "knowledge", "", "review mode: OKF knowledge-base directory (e.g. .okfw) whose relevant documents the model may cite")
 	fs.StringVar(&o.attr.RunID, "run-id", getenv("VIZZINI_RUN_ID"), "attribution: this run's id (default: a generated UUIDv7); sent with every request")
@@ -419,6 +429,9 @@ func parseFlags(args []string, stderr io.Writer, getenv func(string) string) (*o
 	}
 	if o.knowledge != "" && o.mode != "review" {
 		return nil, errors.New("--knowledge applies only to --mode review")
+	}
+	if o.allFindings && o.mode != "review" {
+		return nil, errors.New("--all-findings applies only to --mode review")
 	}
 	if o.suppressions != "" && o.mode != "review" {
 		return nil, errors.New("--suppressions applies only to --mode review")

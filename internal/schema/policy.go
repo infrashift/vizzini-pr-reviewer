@@ -93,6 +93,43 @@ func (v *Validator) RiskPolicy(data []byte) (*RiskPolicy, error) {
 	return &p, nil
 }
 
+// NoiseRule mirrors #NoiseRule.
+type NoiseRule struct {
+	Severity   Severity   `json:"severity"`
+	Categories []Category `json:"categories,omitempty"`
+}
+
+// NoiseFloor mirrors #NoiseFloor: the kinds of finding that are filtered
+// out of a review's findings (ISSUE-032, ADR-0024).
+type NoiseFloor struct {
+	Rules []NoiseRule `json:"rules"`
+}
+
+// NoiseFloor validates a JSON noise floor against #NoiseFloor. Nil or empty
+// data selects the schema's default rules; {"rules": []} filters nothing.
+func (v *Validator) NoiseFloor(data []byte) (*NoiseFloor, error) {
+	if len(data) == 0 {
+		data = []byte("{}")
+	}
+	var n NoiseFloor
+	if err := v.Validate("#NoiseFloor", data, &n); err != nil {
+		return nil, err
+	}
+	return &n, nil
+}
+
+// Matches reports whether a finding of this severity and category is below
+// the floor: some rule names its severity and, if the rule lists
+// categories, its category. A nil floor matches nothing.
+func (n *NoiseFloor) Matches(s Severity, c Category) bool {
+	if n == nil {
+		return false
+	}
+	return slices.ContainsFunc(n.Rules, func(r NoiseRule) bool {
+		return r.Severity == s && (len(r.Categories) == 0 || slices.Contains(r.Categories, c))
+	})
+}
+
 // Blocks reports whether findings of severity s fail the gate.
 func (p *PolicyGate) Blocks(s Severity) bool {
 	return slices.Contains(p.FailOn, s)

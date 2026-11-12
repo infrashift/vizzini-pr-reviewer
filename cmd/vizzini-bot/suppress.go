@@ -61,6 +61,20 @@ func suppressedComments(suppressed []reviewer.SuppressedFinding) []comment {
 	return out
 }
 
+// filteredComments are findings below the noise floor (ISSUE-032), held
+// back like suppressed ones: a finding the bot posted before, and still
+// sees, must not have its thread resolved as fixed because the floor now
+// keeps it from being posted.
+func filteredComments(filtered []reviewer.Finding) []comment {
+	out := make([]comment, 0, len(filtered))
+	for i := range filtered {
+		f := &filtered[i]
+		out = append(out, comment{File: f.File, Category: string(f.Category), StartLine: f.StartLine, EndLine: f.EndLine,
+			Fingerprint: reviewer.Fingerprint(f), suppressed: true})
+	}
+	return out
+}
+
 var (
 	suggestionMarkerRE = regexp.MustCompile(`<!-- vizzini:suggested-suppression `)
 	findingHeadingRE   = regexp.MustCompile(`^\*\*\w+ \((\w+)\): (.+)\*\*`)

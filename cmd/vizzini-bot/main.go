@@ -322,7 +322,9 @@ func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, 
 		s := &review.Suppressed[i]
 		res.Suppressed = append(res.Suppressed, fmt.Sprintf("%s %s:%d", s.Rule, s.Finding.File, s.Finding.StartLine))
 	}
-	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d findings (%d suppressed), risk %d\n", len(comments), len(review.Suppressed), review.RiskScore)
+	res.Filtered = len(review.Filtered)
+	_, _ = fmt.Fprintf(stderr, "vizzini-bot: %d findings (%d suppressed, %d below the noise floor), risk %d\n",
+		len(comments), len(review.Suppressed), len(review.Filtered), review.RiskScore)
 
 	if opts.dryRun {
 		enc := json.NewEncoder(stdout)
@@ -333,7 +335,8 @@ func reviewAndPost(ctx context.Context, opts *options, engine *reviewer.Engine, 
 		}
 		return nil
 	}
-	return post(ctx, opts, slug, append(comments, suppressedComments(review.Suppressed)...), mine, sc.scope(), res, stderr)
+	held := append(suppressedComments(review.Suppressed), filteredComments(review.Filtered)...)
+	return post(ctx, opts, slug, append(comments, held...), mine, sc.scope(), res, stderr)
 }
 
 // botResult is what a run prints on stdout.
@@ -364,7 +367,10 @@ type botResult struct {
 	// Suppressed lists findings a suppression rule matched ("RULE file:line");
 	// Suggested the dismissed threads that got a suggested rule this run.
 	Suppressed []string `json:"suppressed"`
-	Suggested  []string `json:"suggested"`
+	// Filtered counts findings below the noise floor (ISSUE-032): not
+	// posted, but matched against the bot's threads like suppressed ones.
+	Filtered  int      `json:"filtered"`
+	Suggested []string `json:"suggested"`
 	// Answered are the comment ids of /vizzini commands answered this run;
 	// CommandFailures those that could not be (the next run retries).
 	Answered        []string `json:"answered"`
@@ -437,8 +443,9 @@ type comment struct {
 	EndLine     int    `json:"end_line"`
 	Fingerprint string `json:"fingerprint"`
 	Body        string `json:"body"`
-	// suppressed marks a finding a suppression rule matched: never posted,
-	// only matched against threads.
+	// suppressed marks a finding a suppression rule matched or the noise
+	// floor filtered: never posted, only matched against threads, so the
+	// thread that raised it earlier is not resolved as fixed.
 	suppressed bool
 }
 
