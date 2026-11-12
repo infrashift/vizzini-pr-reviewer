@@ -28,7 +28,7 @@ variables:
   # garmr commit, and the Go version Vizzini's go.mod requires. Change them in
   # a reviewed commit.
   VIZZINI_REF: b7f55f95d0dfea3a3caf99ec0402b77ecec25f2f
-  MRMAN_VERSION: v0.1.7
+  MRMAN_VERSION: v0.1.8
   GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
   GO_VERSION: 1.25.4
 
