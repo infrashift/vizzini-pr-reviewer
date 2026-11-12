@@ -41,9 +41,9 @@ vizzini-bot needs three binaries (itself, mrman, garmr) plus the tokenizer encod
   - an incremental second run with no duplicates.
 
   The first attempt found the Go toolchain problem that `GOTOOLCHAIN=auto` fixes.
-- **Not run live:**
-  - Azure Pipelines: the test organization has no hosted parallelism for private projects; a self-hosted agent would do.
-  - GitLab CI: no project was available.
-
-  Their scripts pass shellcheck and their YAML parses, and the shared install step is verified.
+- **Verified live on Azure Pipelines** (vizzini-uat, `make uat-ci-ado`, 13/13, 2026-11-12). It ran as PR build validation on a throwaway self-hosted agent; the organization has no hosted parallelism for private projects. The run covered:
+  - the denied build naming `scratch Build Service (ryanscraig)`;
+  - the allowed build posting threads, once the build service had *Contribute to pull requests* (without it: `TF401027 PullRequestContribute`, as the template's setup step warns);
+  - an incremental build that answered a `/vizzini explain` command.
+- **Not run live:** GitLab CI, since no project was available. Its script passes shellcheck, its YAML parses, and the shared install step is verified.
 - **Pin bumps:** the templates pin Vizzini, mrman and garmr. Bumping a pin is a reviewed change in the adopting repository.

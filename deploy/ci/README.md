@@ -47,7 +47,10 @@ On GitHub and GitLab, the bot reports resolving and replying as unsupported and 
 ## Verification
 
 - **GitHub Actions template:** runs live in vizzini-uat (`make uat-ci-github`). It plays out the setup above on a throwaway pull request: the denied first run, the identity allowed, comments posted, then an incremental second push with no duplicates. stubllm in the job stands in for the model.
-- **Azure Pipelines and GitLab CI templates:** not yet run on their platforms. Their scripts pass shellcheck and their YAML parses (`make ci-check`). They share `install.sh`, which is verified on GitHub's runner and in `golang:1.25.4`.
+- **Azure Pipelines template:** runs live in vizzini-uat (`make uat-ci-ado`), as PR build validation on a throwaway self-hosted agent.
+  - It plays the same setup: the denied first build, the identity allowed, and threads posted. It also grants the build service *Contribute to pull requests*; without that grant, ADO refuses the post with `TF401027 PullRequestContribute`.
+  - It then answers a `/vizzini explain` command on an incremental build.
+- **GitLab CI template:** not yet run on GitLab. Its script passes shellcheck and its YAML parses (`make ci-check`). It shares `install.sh`, which is verified on both GitHub's and Azure's agents.
 
 ## Security notes
 

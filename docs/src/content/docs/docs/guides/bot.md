@@ -296,12 +296,13 @@ Finally, a person dismisses one of the bot's threads. The bot must suggest a
 rule; merged into the base branch as suggested, that rule must suppress the
 finding on the next full review.
 
-The GitHub Actions template runs for real in the same harness
-(`make uat-ci-github`): a throwaway pull request in a private repository,
+The GitHub Actions and Azure Pipelines templates run for real in the same
+harness (`make uat-ci-github`, `make uat-ci-ado`): throwaway pull requests,
 with stubllm in the job as the model.
 - The first run is denied and names the identity.
 - With the identity allowed on the base branch, the re-run posts its review
   comments.
 - A second push is reviewed incrementally, with no duplicates.
+- On Azure DevOps, a `/vizzini explain` command is answered as well.
 
 Design: ADR-0016 to ADR-0021 (ISSUE-024).
