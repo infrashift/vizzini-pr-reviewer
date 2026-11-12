@@ -19,7 +19,7 @@
 # requires are fetched), curl, tar and sha256sum.
 set -euo pipefail
 
-MRMAN_VERSION="${MRMAN_VERSION:-v0.1.8}"
+MRMAN_VERSION="${MRMAN_VERSION:-v0.1.9}"
 GARMR_REF="${GARMR_REF:-bf96753b9123fc9ac667afed84eba1610d896c53}"
 
 die() { printf 'install: %s\n' "$*" >&2; exit 1; }
