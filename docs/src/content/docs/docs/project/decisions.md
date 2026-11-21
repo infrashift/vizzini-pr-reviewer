@@ -106,3 +106,12 @@ languages (C#, Java, TypeScript/JavaScript, C/C++, Kotlin, Swift, Rust, PHP,
 …), Python and Ruby. A small lexer drops strings and comments, then counts
 whole-word keywords and `&&`/`||`. Go keeps its exact count, and other files
 count 0. See [Risk & Auto-Approve](../../guides/risk/).
+
+## ADR-0025: Release archives for Linux amd64 and arm64
+
+A `v*` tag builds one archive for each Linux architecture, amd64 and arm64.
+Each archive holds `pr-review`, `vizzini-bot` and `vizzini-webhook`. The
+binaries show the version, commit and build date with `--version`. The release
+workflow runs each archive on its own architecture before it publishes. The
+release has `SHA256SUMS` and a SLSA build provenance attestation. macOS and
+Windows users build from source. See [Getting Started](../../getting-started/).

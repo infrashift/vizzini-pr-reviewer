@@ -1,4 +1,5 @@
 /bin/
+/dist/
 # go build ./cmd/... at the root
 /pr-review
 /vizzini-bot

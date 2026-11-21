@@ -1,8 +1,16 @@
-.PHONY: all test vet-cue lint build ci-check tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-lint-python e2e-lint-csharp e2e-lint-js e2e-garmr clean
+.PHONY: all test vet-cue lint build dist release ci-check tiktoken-cache wiki docs-dev docs-build e2e-lint e2e-lint-python e2e-lint-csharp e2e-lint-js e2e-garmr clean
 
 GOBIN    := $(shell go env GOPATH)/bin
 GOLANGCI ?= $(GOBIN)/golangci-lint
 CUE      ?= cue
+
+# Version stamping (internal/buildinfo). A release build sets VERSION from the tag.
+PKG     := github.com/infrashift/vizzini-pr-reviewer/internal/buildinfo
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT  ?= $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -s -w -X $(PKG).Version=$(VERSION) -X $(PKG).Commit=$(COMMIT) -X $(PKG).Date=$(DATE)
+BINARIES := pr-review vizzini-bot vizzini-webhook
 
 # Pure Go everywhere (ADR-0002). The one exception is `test`: Go's race
 # detector runtime needs cgo on Linux, so it re-enables cgo for that target only.
@@ -29,15 +37,36 @@ lint:
 	$(GOLANGCI) run
 	go mod tidy -diff
 
-## build: static CLI binaries
+## build: static CLI binaries with version information
 build:
-	go build -o bin/pr-review ./cmd/pr-review
-	go build -o bin/vizzini-bot ./cmd/vizzini-bot
+	@for b in $(BINARIES); do go build -trimpath -ldflags "$(LDFLAGS)" -o bin/$$b ./cmd/$$b || exit 1; done
+
+# Release targets: Linux on amd64 and arm64 (ADR-0025). Pure Go, so both
+# cross-compile from any host.
+PLATFORMS  ?= linux/amd64 linux/arm64
+RELVERSION := $(VERSION:v%=%)
+
+## dist: build one release archive in dist/ for GOOS/GOARCH (default: the host)
+dist:
+	@goos=$${GOOS:-$$(go env GOOS)}; goarch=$${GOARCH:-$$(go env GOARCH)}; \
+	name=vizzini_$(RELVERSION)_$${goos}_$${goarch}; \
+	rm -rf dist/stage/$$name && mkdir -p dist/stage/$$name && \
+	for b in $(BINARIES); do \
+		GOOS=$$goos GOARCH=$$goarch go build -trimpath -ldflags "$(LDFLAGS)" -o dist/stage/$$name/$$b ./cmd/$$b || exit 1; \
+	done && \
+	cp README.md scripts/tiktoken-cache.sh dist/stage/$$name/ && \
+	tar -C dist/stage --owner=0 --group=0 --numeric-owner -czf dist/$$name.tar.gz $$name && \
+	echo "dist/$$name.tar.gz"
+
+## release: build every platform archive and dist/SHA256SUMS for VERSION
+release:
+	@for p in $(PLATFORMS); do $(MAKE) --no-print-directory dist GOOS=$${p%/*} GOARCH=$${p#*/} || exit 1; done
+	cd dist && sha256sum vizzini_$(RELVERSION)_*.tar.gz > SHA256SUMS && cat SHA256SUMS
 
 ## ci-check: lint the vizzini-bot CI templates and the webhook kit (needs shellcheck, actionlint, cue)
 ci-check:
 	shellcheck deploy/ci/install.sh deploy/webhook/ado-subscription.sh
-	$(GOBIN)/actionlint deploy/ci/github/vizzini-bot.yml
+	$(GOBIN)/actionlint deploy/ci/github/vizzini-bot.yml .github/workflows/release.yml
 	cue export --out json deploy/ci/azure-pipelines/vizzini-bot.yml >/dev/null
 	cue export --out json deploy/ci/gitlab/vizzini-bot.gitlab-ci.yml | \
 		python3 -I -c 'import json,sys; print("#!/usr/bin/env bash"); print("\n".join(json.load(sys.stdin)["vizzini-bot"]["script"]))' | \
@@ -86,4 +115,4 @@ docs-build:
 	cd docs && bun install --frozen-lockfile && bun --bun run build
 
 clean:
-	rm -rf bin/
+	rm -rf bin/ dist/

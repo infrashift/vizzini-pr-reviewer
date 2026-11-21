@@ -1,12 +1,46 @@
 ---
 title: Getting Started
-description: Build Vizzini from source and review your first diff.
+description: Install a Vizzini release or build from source, then review your first diff.
 ---
 
-Vizzini has no tagged release yet, so build it from source. The engine, the
-`pkg/reviewer` Go API and the `pr-review` CLI are complete and tested.
+Install a release archive, or build Vizzini from source. Releases are for
+Linux on amd64 and arm64.
 
-## Requirements
+## Install a release
+
+Each release has one archive per architecture. An archive holds `pr-review`,
+`vizzini-bot`, `vizzini-webhook`, `README.md` and `tiktoken-cache.sh`. Check
+the archive against the release's `SHA256SUMS` before you extract it.
+
+```sh
+VERSION=v0.1.0
+ARCH=amd64   # or arm64
+name=vizzini_${VERSION#v}_linux_${ARCH}
+url=https://github.com/infrashift/vizzini-pr-reviewer/releases/download/$VERSION
+curl -fsSLO "$url/$name.tar.gz"
+curl -fsSLO "$url/SHA256SUMS"
+grep "  $name.tar.gz\$" SHA256SUMS | sha256sum -c -
+tar -xzf "$name.tar.gz"
+install -m 0755 "$name"/pr-review "$name"/vizzini-bot "$name"/vizzini-webhook ~/.local/bin/
+pr-review --version
+```
+
+Each archive also has a SLSA build provenance attestation. To verify it:
+`gh attestation verify "$name.tar.gz" --repo infrashift/vizzini-pr-reviewer`.
+
+Seed the tokenizer cache once, so that reviews run offline:
+`"$name"/tiktoken-cache.sh ~/.cache/vizzini/tiktoken`, then set
+`TIKTOKEN_CACHE_DIR` to that directory.
+
+The `pkg/reviewer` Go API uses the same tag:
+`go get github.com/infrashift/vizzini-pr-reviewer@v0.1.0`.
+
+## Build from source
+
+The engine, the `pkg/reviewer` Go API and the `pr-review` CLI are complete
+and tested.
+
+### Requirements
 
 | Tool | Version | Used for |
 |---|---|---|
@@ -17,7 +51,7 @@ Vizzini has no tagged release yet, so build it from source. The engine, the
 | A C compiler | any | Only for `make test`, because Go's race detector needs cgo |
 | An OpenAI-compatible endpoint | | A LiteLLM proxy in front of the model you review with |
 
-## Build and test
+### Build and test
 
 ```sh
 git clone https://github.com/infrashift/vizzini-pr-reviewer
@@ -25,7 +59,7 @@ cd vizzini-pr-reviewer
 make test      # seeds .cache/tiktoken on first run, then runs go test -race
 make vet-cue   # cue vet ./schema/...
 make lint      # golangci-lint + go mod tidy check
-make build     # static bin/pr-review
+make build     # static binaries in bin/
 ```
 
 The first `make test` downloads the two tokenizer encodings (about 5.3 MB)

@@ -1,0 +1,112 @@
+name: Release
+
+# Builds the release archives for a v* tag (Linux amd64 and arm64, ADR-0025),
+# smoke-tests each archive on its own architecture, and publishes a GitHub
+# release with SHA256SUMS and a SLSA build provenance attestation.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build the archive
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: make dist GOOS="$GOOS" GOARCH="$GOARCH" VERSION="$VERSION" COMMIT="$COMMIT"
+
+      - name: Upload the archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: vizzini-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  smoke:
+    name: smoke ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64, runner: ubuntu-latest }
+          - { goos: linux, goarch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - name: Download the archive
+        uses: actions/download-artifact@v8
+        with:
+          name: vizzini-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Run the binaries
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          tar -xzf vizzini_*.tar.gz
+          dir=$(ls -d vizzini_*/)
+          for b in pr-review vizzini-bot vizzini-webhook; do
+            "$dir$b" --version | tee version.txt
+            grep -q "^$b ${TAG} " version.txt
+          done
+          # The deterministic risk mode needs no model: score a small diff.
+          printf '%s\n' 'diff --git a/a.go b/a.go' '--- a/a.go' '+++ b/a.go' \
+            '@@ -1 +1,2 @@' ' package a' '+var x = 1' > smoke.patch
+          "${dir}pr-review" --mode risk --patch-file smoke.patch --format json | tee risk.json
+          grep -q '"score"' risk.json
+
+  release:
+    needs: smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download the archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: vizzini-*
+          merge-multiple: true
+          path: dist
+
+      - name: Write SHA256SUMS
+        working-directory: dist
+        run: sha256sum vizzini_*.tar.gz > SHA256SUMS && cat SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/vizzini_*.tar.gz
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release create "$TAG" dist/* --repo "$REPO" --verify-tag \
+            --title "Vizzini $TAG" --generate-notes

@@ -231,6 +231,22 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **Verification:** Unit test validating `#ImplementationPlan` CUE unification against a mocked issue payload.
 
+## Phase 5: Releases
+
+### Milestone 5.1: Release v0.1.0 (Linux amd64 and arm64)
+
+**Tracking:** [ISSUE-033](.okfw/issues/issue-033-release-v0-1-0--01a1ffcd31b4.md)
+
+* **User Story Context:** Install a verified Vizzini build without a Go toolchain, and pin the Go module to a tag.
+* **Technical Spec (`internal/buildinfo`, `Makefile`, `.github/workflows/release.yml`, ADR-0025):**
+* [x] `--version` on `pr-review`, `vizzini-bot` and `vizzini-webhook`, stamped through `-ldflags -X`.
+* [x] `make dist` / `make release`: `vizzini_<version>_linux_{amd64,arm64}.tar.gz` and `SHA256SUMS`.
+* [x] A `v*` tag workflow: build, smoke test on each architecture, publish with `SHA256SUMS` and a SLSA provenance attestation.
+* [ ] Tag `v0.1.0` and verify the published release.
+
+
+* **Verification:** `make test && make vet-cue && make lint`, `actionlint` on the workflow, `make release VERSION=v0.1.0` locally; after the tag, `sha256sum -c` and `gh attestation verify` on a downloaded archive.
+
 ## Tools that we may want to integration with
 
 * Open Knowledge Format Wiki - https://github.com/infrashift/okf-wiki/

@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/infrashift/vizzini-pr-reviewer/internal/buildinfo"
 	"github.com/infrashift/vizzini-pr-reviewer/pkg/reviewer"
 	"github.com/infrashift/vizzini-pr-reviewer/pkg/risk"
 )
@@ -92,6 +93,10 @@ type options struct {
 }
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
+	if buildinfo.Requested(args) {
+		_, _ = fmt.Fprintln(stdout, buildinfo.String("pr-review"))
+		return exitOK
+	}
 	opts, err := parseFlags(args, stderr, getenv)
 	if errors.Is(err, flag.ErrHelp) {
 		return exitOK

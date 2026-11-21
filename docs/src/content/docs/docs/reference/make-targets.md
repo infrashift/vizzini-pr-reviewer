@@ -11,7 +11,9 @@ committed.
 | `make test` | `go test -v -race ./...` | Seeds the tokenizer cache first. Re-enables cgo for this target only, because the race detector needs it |
 | `make vet-cue` | `cue vet ./schema/...` | Validates the canonical CUE schemas |
 | `make lint` | `golangci-lint run`, `go mod tidy -diff` | Strict v2 config in `.golangci.yml` |
-| `make build` | `go build -o bin/pr-review ./cmd/pr-review` | `CGO_ENABLED=0` static binary |
+| `make build` | `go build` of `pr-review`, `vizzini-bot`, `vizzini-webhook` into `bin/` | `CGO_ENABLED=0` static binaries; `--version` shows the version, commit and build date |
+| `make dist` | One release archive in `dist/` for `GOOS`/`GOARCH` | The three binaries, `README.md` and `tiktoken-cache.sh` |
+| `make release` | `make dist` for linux/amd64 and linux/arm64, then `dist/SHA256SUMS` | Set `VERSION=vX.Y.Z`; the release workflow does the same for a `v*` tag |
 | `make tiktoken-cache` | `scripts/tiktoken-cache.sh` | Downloads and checksum-verifies the BPE encodings |
 | `make e2e-lint` | `scripts/e2e-golint.sh` | Real golangci-lint + git + `pr-review` end-to-end proof; stand-in model unless `VIZZINI_LITELLM_URL` is set |
 | `make e2e-lint-python` | `scripts/e2e-pylint.sh` | The same proof for Python with real ruff SARIF; skips without ruff or uv |

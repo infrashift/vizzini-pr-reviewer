@@ -38,6 +38,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/infrashift/vizzini-pr-reviewer/internal/buildinfo"
 )
 
 const maxBody = 1 << 20
@@ -208,6 +210,10 @@ func (s *server) ignore(ev *adoEvent) string {
 }
 
 func main() {
+	if buildinfo.Requested(os.Args[1:]) {
+		_, _ = fmt.Println(buildinfo.String("vizzini-webhook"))
+		return
+	}
 	os.Exit(run(os.Args[1:], os.Stderr, os.Getenv))
 }
 
