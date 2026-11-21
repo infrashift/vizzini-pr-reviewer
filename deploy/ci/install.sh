@@ -19,7 +19,8 @@
 #
 # Then put TOOLS_DIR/bin on PATH and set TIKTOKEN_CACHE_DIR=TOOLS_DIR/tiktoken.
 # Needs go (any version from Vizzini's go.mod on; newer toolchains a module
-# requires are fetched), curl, tar and sha256sum. Vizzini releases are for
+# requires are fetched), curl 7.71 or newer, tar and sha256sum. Downloads are
+# retried: curl up to three times on any error, go commands up to three times. Vizzini releases are for
 # Linux on amd64 and arm64 (ADR-0025); elsewhere, leave VIZZINI_VERSION unset.
 # mrman releases from v0.1.10 on are Linux amd64 and arm64 only, too.
 set -euo pipefail
@@ -29,6 +30,18 @@ MRMAN_VERSION="${MRMAN_VERSION:-v0.1.10}"
 GARMR_REF="${GARMR_REF:-bf96753b9123fc9ac667afed84eba1610d896c53}"
 
 die() { printf 'install: %s\n' "$*" >&2; exit 1; }
+
+# retry CMD...: run CMD up to three times, 10 s and then 20 s apart. Go does
+# not retry a module or toolchain download that loses its connection.
+retry() {
+	local n
+	for n in 1 2 3; do
+		"$@" && return 0
+		[[ $n -lt 3 ]] || return 1
+		printf 'install: attempt %d of 3 failed (%s); retrying in %d s\n' "$n" "$*" $((n * 10)) >&2
+		sleep $((n * 10))
+	done
+}
 [[ $# -eq 1 ]] || die "usage: $0 TOOLS_DIR"
 src="$(cd "$(dirname "$0")/../.." && pwd)"
 mkdir -p "$1/bin"
@@ -50,8 +63,8 @@ trap 'rm -rf "$tmp"' EXIT
 fetch_release() {
 	local url="$1" name="$2" dir="$tmp/$2"
 	mkdir -p "$dir"
-	curl -fsSL --retry 3 -o "$dir/$name.tar.gz" "$url/$name.tar.gz"
-	curl -fsSL --retry 3 -o "$dir/SHA256SUMS" "$url/SHA256SUMS"
+	curl -fsSL --retry 3 --retry-all-errors -o "$dir/$name.tar.gz" "$url/$name.tar.gz"
+	curl -fsSL --retry 3 --retry-all-errors -o "$dir/SHA256SUMS" "$url/SHA256SUMS"
 	grep -q "  $name.tar.gz\$" "$dir/SHA256SUMS" || die "$name.tar.gz is not in the release's SHA256SUMS"
 	(cd "$dir" && grep "  $name.tar.gz\$" SHA256SUMS | sha256sum -c --quiet -) || die "$name.tar.gz does not match SHA256SUMS"
 	tar -xzf "$dir/$name.tar.gz" -C "$dir"
@@ -71,12 +84,12 @@ if [[ -n "$VIZZINI_VERSION" ]]; then
 	fi
 else
 	echo "install: vizzini-bot from $(git -C "$src" rev-parse --short HEAD 2>/dev/null || echo "$src")"
-	(cd "$src" && go build -trimpath -o "$bin/vizzini-bot" ./cmd/vizzini-bot)
+	(cd "$src" && retry go build -trimpath -o "$bin/vizzini-bot" ./cmd/vizzini-bot)
 fi
 "$bin/vizzini-bot" --version
 
 echo "install: garmr at $GARMR_REF"
-GOBIN="$bin" go install "github.com/infrashift/garmr/cmd/garmr@$GARMR_REF"
+retry env GOBIN="$bin" go install "github.com/infrashift/garmr/cmd/garmr@$GARMR_REF"
 
 name="mrman_${MRMAN_VERSION}_${goos}_${goarch}"
 echo "install: mrman $MRMAN_VERSION ($name)"

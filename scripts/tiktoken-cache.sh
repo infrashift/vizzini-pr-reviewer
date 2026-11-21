@@ -33,7 +33,7 @@ for entry in "${encodings[@]}"; do
 	echo "tiktoken-cache: fetching $name"
 	tmp="$(mktemp "$cache_dir/.$name.XXXXXX")"
 	trap 'rm -f "$tmp"' EXIT
-	curl -fsSL --retry 3 -o "$tmp" "$url"
+	curl -fsSL --retry 3 --retry-all-errors -o "$tmp" "$url"
 	got="$(sha256sum "$tmp" | cut -d' ' -f1)"
 	if [[ "$got" != "$want" ]]; then
 		echo "tiktoken-cache: $name checksum mismatch: got $got, want $want" >&2

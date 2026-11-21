@@ -15,6 +15,8 @@ Every template does the same thing:
    - garmr at a pinned commit;
    - the mrman release, checked against its `SHA256SUMS`;
    - the tokenizer encodings, checked against pinned SHA-256 sums.
+
+   Each download is retried: curl up to three times on any error, and the Go steps up to three times, 10 s and then 20 s apart.
 3. **Run `vizzini-bot`** against the pull request.
 
 With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.10). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.

@@ -38,4 +38,5 @@
 * [ISSUE-032: Precision: about half of Vizzini's findings are not real problems](issue-032-precision-about-half-of-vizzinis-findings-are-not-real-problems--01a1d1cb7579.md) - The ISSUE-022 benchmark shows Vizzini's strict precision at about 50% on real pull requests, against 63–76% for PR-Agent at the same recall; find and measure a change that cuts the noise.
 * [ISSUE-033: Release v0.1.0](issue-033-release-v0-1-0--01a1ffcd31b4.md) - Ship Vizzini's first tagged release, v0.1.0, as Linux amd64 and arm64 archives built and published by a tag-driven workflow.
 * [ISSUE-034: Use the v0.1.0 release downstream](issue-034-use-the-v0-1-0-release-downstream--01a1fff0f982.md) - mrman pins Vizzini v0.1.0 instead of a pseudo-version, and install.sh downloads the released vizzini-bot, checked against SHA256SUMS, instead of building it.
+* [ISSUE-035: install.sh does not retry a reset download](issue-035-install-sh-does-not-retry-a-reset-download--01a2007408e3.md) - A reset connection while Go fetched garmr's toolchain failed a CI job; install.sh now retries the go steps, curl retries any error, and v0.1.2 ships it to the templates.
 

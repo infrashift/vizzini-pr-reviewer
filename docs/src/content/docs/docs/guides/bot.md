@@ -262,6 +262,8 @@ Each template:
   - garmr at a pinned commit;
   - the mrman release, checked against its `SHA256SUMS`;
   - the tokenizer encodings, checked against pinned SHA-256 sums.
+
+  The script retries each download up to three times.
 - **Runs the bot.**
 
 Resolving threads and answering `/vizzini` commands work on Azure DevOps,
