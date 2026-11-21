@@ -21,10 +21,11 @@
 # Needs go (any version from Vizzini's go.mod on; newer toolchains a module
 # requires are fetched), curl, tar and sha256sum. Vizzini releases are for
 # Linux on amd64 and arm64 (ADR-0025); elsewhere, leave VIZZINI_VERSION unset.
+# mrman releases from v0.1.10 on are Linux amd64 and arm64 only, too.
 set -euo pipefail
 
 VIZZINI_VERSION="${VIZZINI_VERSION:-}"
-MRMAN_VERSION="${MRMAN_VERSION:-v0.1.9}"
+MRMAN_VERSION="${MRMAN_VERSION:-v0.1.10}"
 GARMR_REF="${GARMR_REF:-bf96753b9123fc9ac667afed84eba1610d896c53}"
 
 die() { printf 'install: %s\n' "$*" >&2; exit 1; }

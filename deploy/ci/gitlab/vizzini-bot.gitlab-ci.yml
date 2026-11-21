@@ -35,7 +35,7 @@ vizzini-bot:
     # garmr commit. Change them in a reviewed commit.
     VIZZINI_REF: 75751285a1e531440cda465f18244d9c76f74b96 # v0.1.1
     VIZZINI_VERSION: v0.1.1
-    MRMAN_VERSION: v0.1.9
+    MRMAN_VERSION: v0.1.10
     GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
   script:
     - set -euo pipefail
