@@ -33,5 +33,11 @@ ISSUE-033 released v0.1.0, but nothing used it:
 - [x] mrman requires Vizzini v0.1.0; mrman `make check` passes (87.5% coverage, 0 lint issues).
 - [x] `install.sh` downloads and verifies the release; shellcheck passes. Checked locally: a v0.1.0 checkout with `VIZZINI_VERSION=v0.1.0` installs; a different checkout stops with the commit mismatch; no `VIZZINI_VERSION` builds from source.
 - [x] The CI README and the bot guide describe both modes.
-- [ ] mrman change merged.
-- [ ] `v0.1.1` released; the three templates pin `VIZZINI_REF` and `VIZZINI_VERSION` to it; `make ci-check` passes.
+- [ ] mrman change merged ([mrman PR #23](https://github.com/infrashift/mrman/pull/23)). It needs no mrman release: the vendored Vizzini code is the same.
+- [x] `v0.1.1` released; the three templates pin `VIZZINI_REF` and `VIZZINI_VERSION` to it; `make ci-check` passes.
+
+## Progress (2026-11-21)
+- [v0.1.1](https://github.com/infrashift/vizzini-pr-reviewer/releases/tag/v0.1.1) released from `7575128`. Release run 44950096163 passed, and both archives have a provenance attestation.
+- The templates pin `VIZZINI_REF: 75751285…` (v0.1.1) and `VIZZINI_VERSION: v0.1.1`.
+- The GitLab template's install steps ran locally on linux/amd64: a fresh clone at the pinned commit, then `install.sh`. The script installed the released `vizzini-bot` v0.1.1 with the commit check passing, then garmr, mrman v0.1.9 and the tokenizer files.
+- Not yet run: the live vizzini-lab template suites on GitHub, GitLab and Azure DevOps.

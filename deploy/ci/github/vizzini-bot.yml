@@ -34,9 +34,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Pins: the Vizzini commit the bot is built from, the mrman release, the
+  # Pins: the Vizzini release (VIZZINI_REF is its commit), the mrman release, the
   # garmr commit. Change them in a reviewed commit.
-  VIZZINI_REF: b7f55f95d0dfea3a3caf99ec0402b77ecec25f2f
+  VIZZINI_REF: 75751285a1e531440cda465f18244d9c76f74b96 # v0.1.1
+  VIZZINI_VERSION: v0.1.1
   MRMAN_VERSION: v0.1.9
   GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
 
