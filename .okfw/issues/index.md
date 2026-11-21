@@ -37,4 +37,5 @@
 * [ISSUE-031: mrman's GitHub driver does not retry a failed read](issue-031-mrmans-github-driver-does-not-retry-a-failed-read--01a1d0625d66.md) - One 503 from GitHub's API on a read failed a whole mrman command (and a vizzini-bot CI run); mrman's GitLab driver retries reads, its GitHub driver did not.
 * [ISSUE-032: Precision: about half of Vizzini's findings are not real problems](issue-032-precision-about-half-of-vizzinis-findings-are-not-real-problems--01a1d1cb7579.md) - The ISSUE-022 benchmark shows Vizzini's strict precision at about 50% on real pull requests, against 63–76% for PR-Agent at the same recall; find and measure a change that cuts the noise.
 * [ISSUE-033: Release v0.1.0](issue-033-release-v0-1-0--01a1ffcd31b4.md) - Ship Vizzini's first tagged release, v0.1.0, as Linux amd64 and arm64 archives built and published by a tag-driven workflow.
+* [ISSUE-034: Use the v0.1.0 release downstream](issue-034-use-the-v0-1-0-release-downstream--01a1fff0f982.md) - mrman pins Vizzini v0.1.0 instead of a pseudo-version, and install.sh downloads the released vizzini-bot, checked against SHA256SUMS, instead of building it.
 

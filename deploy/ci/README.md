@@ -11,7 +11,7 @@ These templates run [vizzini-bot](../../docs/src/content/docs/docs/guides/bot.md
 Every template does the same thing:
 1. **Check out** the pull request with full history.
 2. **Install** pinned tools with [`install.sh`](install.sh):
-   - `vizzini-bot`, built from a pinned Vizzini commit;
+   - `vizzini-bot`: the Vizzini release that `VIZZINI_VERSION` names, checked against its `SHA256SUMS` and against the commit that `VIZZINI_REF` pins. Without `VIZZINI_VERSION`, the script builds it from the pinned commit. Releases are for Linux on amd64 and arm64;
    - garmr at a pinned commit;
    - the mrman release, checked against its `SHA256SUMS`;
    - the tokenizer encodings, checked against pinned SHA-256 sums.
@@ -61,4 +61,4 @@ With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answer
 
 - **Forks:** the GitHub workflow runs only for pull requests from branches of the repository itself. Pull requests from forks get no secrets on `pull_request`. Never switch the workflow to `pull_request_target`, which would run with secrets on the fork's code.
 - **Exposure:** the bot never executes code from the pull request; it reads the diff and the checkout. Its tokens can comment on pull requests in the repository, and its LiteLLM key spends against your proxy. Give it a virtual key with a budget.
-- **Pins:** `VIZZINI_REF`, `MRMAN_VERSION` and `GARMR_REF` are pinned in the template. Change them in a reviewed commit.
+- **Pins:** `VIZZINI_REF`, `VIZZINI_VERSION`, `MRMAN_VERSION` and `GARMR_REF` are pinned in the template. Change them in a reviewed commit. `VIZZINI_REF` must be the commit of the `VIZZINI_VERSION` release, or `install.sh` stops.

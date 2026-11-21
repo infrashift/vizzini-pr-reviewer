@@ -255,7 +255,10 @@ Allowing `approve` is a deliberate, recorded decision.
 Each template:
 - **Checks out** the pull request with full history.
 - **Installs pinned tools** with `deploy/ci/install.sh`, verifying each:
-  - `vizzini-bot`, built from a pinned Vizzini commit;
+  - `vizzini-bot`: the Vizzini release that `VIZZINI_VERSION` names,
+    checked against its `SHA256SUMS` and against the commit that
+    `VIZZINI_REF` pins. Without `VIZZINI_VERSION`, the script builds it from
+    the pinned commit. Releases are for Linux on amd64 and arm64;
   - garmr at a pinned commit;
   - the mrman release, checked against its `SHA256SUMS`;
   - the tokenizer encodings, checked against pinned SHA-256 sums.

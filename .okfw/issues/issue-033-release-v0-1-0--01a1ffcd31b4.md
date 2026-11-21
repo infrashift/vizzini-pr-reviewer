@@ -40,4 +40,4 @@ The release holds `vizzini_0.1.0_linux_amd64.tar.gz`, `vizzini_0.1.0_linux_arm64
 - The amd64 binaries report `v0.1.0` and commit `5675b7e`. The smoke job ran the arm64 binaries on an arm64 runner.
 - The Go module proxy serves `github.com/infrashift/vizzini-pr-reviewer@v0.1.0`.
 
-**Follow-ups:** move mrman's pin from the pseudo-version to `v0.1.0`. `deploy/ci/install.sh` could download a verified `vizzini-bot` instead of building it from a checkout.
+**Follow-ups ([ISSUE-034](/issues/issue-034-use-the-v0-1-0-release-downstream--01a1fff0f982.md)):** move mrman's pin from the pseudo-version to `v0.1.0`. `deploy/ci/install.sh` could download a verified `vizzini-bot` instead of building it from a checkout.
