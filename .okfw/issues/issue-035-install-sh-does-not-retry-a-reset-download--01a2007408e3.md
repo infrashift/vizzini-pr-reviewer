@@ -31,5 +31,5 @@ vizzini-lab's GitLab template suite failed once, on run 20261121T225224Z, job 2.
 ## Acceptance criteria
 - [x] shellcheck passes. A fake `go` that fails its first `install` call is retried once and the install completes. A command that always fails stops after three attempts with exit 1.
 - [x] The CI README and the bot guide say that downloads are retried.
-- [ ] v0.1.2 released; the templates pin it; `make ci-check` passes.
+- [x] v0.1.2 released (run 44962299434; checksums and attestations checked); the templates pin it; `make ci-check` passes.
 - [ ] vizzini-lab's three template suites pass live on v0.1.2.
