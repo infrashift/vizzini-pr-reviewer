@@ -242,7 +242,7 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 * [x] `--version` on `pr-review`, `vizzini-bot` and `vizzini-webhook`, stamped through `-ldflags -X`.
 * [x] `make dist` / `make release`: `vizzini_<version>_linux_{amd64,arm64}.tar.gz` and `SHA256SUMS`.
 * [x] A `v*` tag workflow: build, smoke test on each architecture, publish with `SHA256SUMS` and a SLSA provenance attestation.
-* [ ] Tag `v0.1.0` and verify the published release.
+* [x] Tag `v0.1.0` and verify the published release.
 
 
 * **Verification:** `make test && make vet-cue && make lint`, `actionlint` on the workflow, `make release VERSION=v0.1.0` locally; after the tag, `sha256sum -c` and `gh attestation verify` on a downloaded archive.
