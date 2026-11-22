@@ -42,7 +42,9 @@ vizzini-bot:
     - tools="$CI_BUILDS_DIR/.vizzini-$CI_JOB_ID"
     - git clone --quiet --no-checkout https://github.com/infrashift/vizzini-pr-reviewer.git "$tools-src"
     - git -C "$tools-src" checkout --quiet "$VIZZINI_REF"
-    - '"$tools-src/deploy/ci/install.sh" "$tools"'
+    # The builds directory stays between jobs on a shell executor, so later
+    # jobs skip the downloads (deploy/ci/README.md, Tools cache).
+    - VIZZINI_TOOLS_CACHE="$CI_BUILDS_DIR/.vizzini-cache" "$tools-src/deploy/ci/install.sh" "$tools"
     - export PATH="$tools/bin:$PATH" TIKTOKEN_CACHE_DIR="$tools/tiktoken"
     # A self-managed instance: list it in mrman's config (see above).
     - |

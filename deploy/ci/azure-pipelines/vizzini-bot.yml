@@ -46,7 +46,10 @@ steps:
       set -euo pipefail
       git clone --quiet --no-checkout https://github.com/infrashift/vizzini-pr-reviewer.git "$AGENT_TEMPDIRECTORY/vizzini-src"
       git -C "$AGENT_TEMPDIRECTORY/vizzini-src" checkout --quiet "$VIZZINI_REF"
-      "$AGENT_TEMPDIRECTORY/vizzini-src/deploy/ci/install.sh" "$AGENT_TEMPDIRECTORY/vizzini"
+      # The tools directory stays between jobs on a self-hosted agent, so later
+      # jobs skip the downloads (deploy/ci/README.md, Tools cache).
+      VIZZINI_TOOLS_CACHE="$AGENT_TOOLSDIRECTORY/vizzini" \
+        "$AGENT_TEMPDIRECTORY/vizzini-src/deploy/ci/install.sh" "$AGENT_TEMPDIRECTORY/vizzini"
       echo "##vso[task.prependpath]$AGENT_TEMPDIRECTORY/vizzini/bin"
       echo "##vso[task.setvariable variable=TIKTOKEN_CACHE_DIR]$AGENT_TEMPDIRECTORY/vizzini/tiktoken"
     displayName: Install vizzini-bot, mrman and garmr (pinned, verified)

@@ -263,7 +263,10 @@ Each template:
   - the mrman release, checked against its `SHA256SUMS`;
   - the tokenizer encodings, checked against pinned SHA-256 sums.
 
-  The script retries each download up to three times.
+  The script retries each download up to three times. On a self-hosted
+  agent, it keeps each verified binary in a cache under its pin
+  (`VIZZINI_TOOLS_CACHE`), and later jobs skip the downloads. See *Tools
+  cache* in `deploy/ci/README.md`.
 - **Runs the bot.**
 
 Resolving threads and answering `/vizzini` commands work on Azure DevOps,

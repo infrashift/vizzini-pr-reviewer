@@ -18,6 +18,15 @@
 #                               pinned SHA-256 sums (scripts/tiktoken-cache.sh)
 #
 # Then put TOOLS_DIR/bin on PATH and set TIKTOKEN_CACHE_DIR=TOOLS_DIR/tiktoken.
+#
+# On an agent that runs many jobs, set VIZZINI_TOOLS_CACHE to a directory
+# that stays between jobs. Each verified release binary and garmr build is
+# kept there under its pin, and later jobs copy it from there and skip the
+# download. A cached binary is used only if it still matches the SHA-256 that
+# was recorded when it was cached. Entries never change, so jobs that share
+# the cache with other pins do not interfere. The cache is only as
+# trustworthy as the agent: any job that runs as the agent's user can write
+# it. The recorded SHA-256 catches a damaged file, not a changed one.
 # Needs go (any version from Vizzini's go.mod on; newer toolchains a module
 # requires are fetched), curl 7.71 or newer, tar and sha256sum. Downloads are
 # retried: curl up to three times on any error, go commands up to three times. Vizzini releases are for
@@ -57,6 +66,7 @@ goos="$(go env GOOS)"
 goarch="$(go env GOARCH)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+cache="${VIZZINI_TOOLS_CACHE:-}"
 
 # fetch_release URL NAME: download NAME.tar.gz and SHA256SUMS from the release
 # at URL into $tmp/NAME, check the archive against SHA256SUMS, and extract it.
@@ -70,14 +80,57 @@ fetch_release() {
 	tar -xzf "$dir/$name.tar.gz" -C "$dir"
 }
 
+# cached TOOL KEY CMD...: install TOOL into $bin. CMD must write $tmp/TOOL.
+# With a cache, an entry $cache/TOOL/KEY whose binary still matches its
+# recorded SHA-256 replaces CMD; otherwise CMD runs and its binary becomes
+# the entry. A new entry is written to a temporary directory and renamed into
+# place, so a job never sees part of an entry, and an existing one never
+# changes.
+cached() {
+	local tool="$1" key="$2" entry new
+	shift 2
+	if [[ -n "$cache" ]]; then
+		entry="$cache/$tool/$key"
+		if [[ -d "$entry" ]]; then
+			if (cd "$entry" && sha256sum -c --quiet --strict sha256 >/dev/null 2>&1); then
+				echo "install: $tool $key from the cache ($cache)"
+				install -m 0755 "$entry/$tool" "$bin/$tool"
+				return
+			fi
+			echo "install: the cached $tool $key does not match its recorded SHA-256; replacing it" >&2
+			rm -rf "$entry"
+		fi
+	fi
+	"$@"
+	install -m 0755 "$tmp/$tool" "$bin/$tool"
+	if [[ -n "$cache" ]]; then
+		mkdir -p "$cache/$tool"
+		new="$(mktemp -d "$cache/$tool/.new.XXXXXX")"
+		install -m 0755 "$tmp/$tool" "$new/$tool"
+		(cd "$new" && sha256sum "$tool" >sha256)
+		# Another job may have added the same entry first; keep that one.
+		mv -T "$new" "$entry" 2>/dev/null || rm -rf "$new"
+	fi
+}
+
+fetch_vizzini() {
+	fetch_release "https://github.com/infrashift/vizzini-pr-reviewer/releases/download/$VIZZINI_VERSION" "$name"
+	mv "$tmp/$name/$name/vizzini-bot" "$tmp/vizzini-bot"
+}
+
+fetch_mrman() {
+	fetch_release "https://github.com/infrashift/mrman/releases/download/$MRMAN_VERSION" "$name"
+	mv "$tmp/$name/$name/mrman" "$tmp/mrman"
+}
+
 if [[ -n "$VIZZINI_VERSION" ]]; then
 	[[ "$goos" == linux ]] || die "Vizzini releases are for Linux only; unset VIZZINI_VERSION to build vizzini-bot from this checkout"
 	name="vizzini_${VIZZINI_VERSION#v}_${goos}_${goarch}"
 	echo "install: vizzini-bot $VIZZINI_VERSION ($name)"
-	fetch_release "https://github.com/infrashift/vizzini-pr-reviewer/releases/download/$VIZZINI_VERSION" "$name"
-	install -m 0755 "$tmp/$name/$name/vizzini-bot" "$bin/vizzini-bot"
+	cached vizzini-bot "$name" fetch_vizzini
 	# The release must be the commit this checkout is at: the templates pin
-	# both, and the scripts here must match the binary.
+	# both, and the scripts here must match the binary. Checked on every run,
+	# for a cached binary too.
 	if head="$(git -C "$src" rev-parse HEAD 2>/dev/null)"; then
 		"$bin/vizzini-bot" --version | grep -q "(commit $head," ||
 			die "vizzini-bot $VIZZINI_VERSION is not built from this checkout ($head); pin VIZZINI_REF to the release's commit"
@@ -89,14 +142,20 @@ fi
 "$bin/vizzini-bot" --version
 
 echo "install: garmr at $GARMR_REF"
-retry env GOBIN="$bin" go install "github.com/infrashift/garmr/cmd/garmr@$GARMR_REF"
+cached garmr "${GARMR_REF}_${goos}_${goarch}" retry env GOBIN="$tmp" go install "github.com/infrashift/garmr/cmd/garmr@$GARMR_REF"
 
 name="mrman_${MRMAN_VERSION}_${goos}_${goarch}"
 echo "install: mrman $MRMAN_VERSION ($name)"
-fetch_release "https://github.com/infrashift/mrman/releases/download/$MRMAN_VERSION" "$name"
-install -m 0755 "$tmp/$name/$name/mrman" "$bin/mrman"
+cached mrman "$name" fetch_mrman
 
 echo "install: tokenizer encodings"
+# tiktoken-cache.sh checks each file against its pinned SHA-256 and fetches
+# only a missing or wrong one.
+if [[ -n "$cache" ]]; then
+	"$src/scripts/tiktoken-cache.sh" "$cache/tiktoken" >/dev/null
+	mkdir -p "$tools/tiktoken"
+	cp "$cache/tiktoken/"* "$tools/tiktoken/"
+fi
 "$src/scripts/tiktoken-cache.sh" "$tools/tiktoken" >/dev/null
 
 "$bin/mrman" --version

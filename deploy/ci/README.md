@@ -16,7 +16,7 @@ Every template does the same thing:
    - the mrman release, checked against its `SHA256SUMS`;
    - the tokenizer encodings, checked against pinned SHA-256 sums.
 
-   Each download is retried: curl up to three times on any error, and the Go steps up to three times, 10 s and then 20 s apart.
+   Each download is retried: curl up to three times on any error, and the Go steps up to three times, 10 s and then 20 s apart. On a self-hosted agent, later jobs take the tools from a cache and skip the downloads (see [Tools cache](#tools-cache)).
 3. **Run `vizzini-bot`** against the pull request.
 
 With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.10). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.
@@ -58,6 +58,24 @@ With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answer
   - It then runs an incremental job with a `/vizzini explain` command, which goes unanswered: mrman cannot reply on GitLab yet, and the bot reports that and carries on.
   - gitlab.com itself is not run; there the job skips the mrman host entry and mrman reads `GITLAB_TOKEN`.
 - **Lint:** `make ci-check` shellchecks `install.sh` and the GitLab job's script, runs actionlint on the GitHub workflow, and parses the Azure and GitLab YAML.
+
+## Tools cache
+
+`install.sh` keeps each verified binary in the directory that `VIZZINI_TOOLS_CACHE` names, under its pin. A later job with the same pin copies the binary from the cache and skips the download. The templates set the cache to a directory that stays between jobs on a self-hosted agent:
+
+| Platform | `VIZZINI_TOOLS_CACHE` | Stays between jobs |
+|---|---|---|
+| GitHub Actions | `$RUNNER_TOOL_CACHE/vizzini` | on a self-hosted runner |
+| Azure Pipelines | `$AGENT_TOOLSDIRECTORY/vizzini` | on a self-hosted agent |
+| GitLab CI | `$CI_BUILDS_DIR/.vizzini-cache` | on a shell executor, or with a persistent builds volume |
+
+Hosted runners start each job on a new machine, so the cache is always empty there and every job installs the tools.
+
+- **Layout:** `<cache>/vizzini-bot/vizzini_<version>_<os>_<arch>/`, `<cache>/mrman/mrman_<version>_<os>_<arch>/`, `<cache>/garmr/<commit>_<os>_<arch>/` and `<cache>/tiktoken/`. Each binary entry holds the binary and a `sha256` file.
+- **Checks:** the script uses an entry only if the binary still matches the SHA-256 recorded when it was cached. Otherwise it replaces the entry. The `vizzini-bot` commit check runs on every job, for a cached binary too. The tokenizer encodings are checked against their pinned SHA-256 sums on every job.
+- **Shared agents:** an entry never changes after the script writes it. The script writes a new entry to a temporary directory and renames it into place. Jobs with different pins get different entries, and jobs that run at the same time do not see a partial entry.
+- **Trust:** the cache is only as trustworthy as the agent. Any job that runs as the agent's user can write the cache, and the recorded SHA-256 catches a damaged file, not a changed one. On an agent that also runs untrusted code, remove `VIZZINI_TOOLS_CACHE` from the template.
+- **Clean-up:** the script does not remove old entries. Delete the directory to clear the cache.
 
 ## Security notes
 

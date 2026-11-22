@@ -115,3 +115,12 @@ binaries show the version, commit and build date with `--version`. The release
 workflow runs each archive on its own architecture before it publishes. The
 release has `SHA256SUMS` and a SLSA build provenance attestation. macOS and
 Windows users build from source. See [Getting Started](../../getting-started/).
+
+## ADR-0026: install.sh keeps verified tools in a cache under their pins
+
+On a self-hosted agent, `install.sh` keeps each verified binary in the
+directory that `VIZZINI_TOOLS_CACHE` names, under its pin. Later jobs with the
+same pin copy the binary from the cache and skip the download. An entry never
+changes after the script writes it, and the script uses it only while the
+binary matches the SHA-256 recorded with it. The cache is only as trustworthy
+as the agent. See [vizzini-bot](../../guides/bot/).

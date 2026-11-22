@@ -72,7 +72,9 @@ jobs:
 
       - name: Install vizzini-bot, mrman and garmr (pinned, verified)
         run: |
-          .vizzini-src/deploy/ci/install.sh "$RUNNER_TEMP/vizzini"
+          # The tool cache stays between jobs on a self-hosted runner, so later
+          # jobs skip the downloads (deploy/ci/README.md, Tools cache).
+          VIZZINI_TOOLS_CACHE="$RUNNER_TOOL_CACHE/vizzini" .vizzini-src/deploy/ci/install.sh "$RUNNER_TEMP/vizzini"
           echo "$RUNNER_TEMP/vizzini/bin" >> "$GITHUB_PATH"
           echo "TIKTOKEN_CACHE_DIR=$RUNNER_TEMP/vizzini/tiktoken" >> "$GITHUB_ENV"
 

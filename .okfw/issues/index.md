@@ -39,4 +39,5 @@
 * [ISSUE-033: Release v0.1.0](issue-033-release-v0-1-0--01a1ffcd31b4.md) - Ship Vizzini's first tagged release, v0.1.0, as Linux amd64 and arm64 archives built and published by a tag-driven workflow.
 * [ISSUE-034: Use the v0.1.0 release downstream](issue-034-use-the-v0-1-0-release-downstream--01a1fff0f982.md) - mrman pins Vizzini v0.1.0 instead of a pseudo-version, and install.sh downloads the released vizzini-bot, checked against SHA256SUMS, instead of building it.
 * [ISSUE-035: install.sh does not retry a reset download](issue-035-install-sh-does-not-retry-a-reset-download--01a2007408e3.md) - A reset connection while Go fetched garmr's toolchain failed a CI job; install.sh now retries the go steps, curl retries any error, and v0.1.2 ships it to the templates.
+* [ISSUE-036: install.sh downloads every tool on every job, also on a self-hosted agent](issue-036-install-sh-downloads-every-tool-on-every-job-also-on-a-self-hosted-agent--01a205a97301.md) - Every job on a persistent self-hosted agent downloads and verifies the same pinned tools again; install.sh now keeps them in a cache under their pins.
 
