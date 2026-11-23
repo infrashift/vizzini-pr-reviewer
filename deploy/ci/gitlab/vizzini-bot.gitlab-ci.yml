@@ -33,8 +33,8 @@ vizzini-bot:
     GIT_DEPTH: "0" # full history, for incremental review
     # Pins: the Vizzini release (VIZZINI_REF is its commit), the mrman release and
     # the garmr release. Change them in a reviewed commit.
-    VIZZINI_REF: ebb7322b883e378a8bbfd12e07401e6202d0af00 # v0.1.3
-    VIZZINI_VERSION: v0.1.3
+    VIZZINI_REF: 07d100bf46ea1c7ae0c39444c32068ede1c98ba1 # v0.1.4
+    VIZZINI_VERSION: v0.1.4
     MRMAN_VERSION: v0.1.11
     GARMR_VERSION: v0.1.0
   script:

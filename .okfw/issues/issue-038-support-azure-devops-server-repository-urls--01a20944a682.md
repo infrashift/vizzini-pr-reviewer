@@ -35,7 +35,7 @@ Azure DevOps Server URLs have the shape `https://tfs.example.com/tfs/DefaultColl
 ## Notes
 - Minimum version: Azure DevOps Server 2022.1 (REST api-version 7.1).
 - A plain HTTP or non-default-port server needs `api_base` in mrman's config. The webhook clones over HTTPS only.
-- mrman v0.1.11 (2026-11-23, mrman PR #24) ships the Server parsing. The templates pin it.
+- mrman v0.1.11 (2026-11-23, mrman PR #24) ships the Server parsing, and Vizzini v0.1.4 ships the webhook and bot changes. The templates pin both.
 
 ## Resolution
 Done as [ADR-0029](/decisions/adr-0029-on-azure-devops-server-the-collection-path-takes-the-organizations-place--01a209447b95.md) describes. The collection path takes the organization's place, and every parser anchors on `_git`. Follow-ups: an api-version fallback for Server before 2022.1, webhook clones over HTTP, and the vizzini-lab UAT scripts (they hard-code dev.azure.com).
