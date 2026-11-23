@@ -124,3 +124,11 @@ same pin copy the binary from the cache and skip the download. An entry never
 changes after the script writes it, and the script uses it only while the
 binary matches the SHA-256 recorded with it. The cache is only as trustworthy
 as the agent. See [vizzini-bot](../../guides/bot/).
+
+## ADR-0027: The CI templates install only release binaries and need no Go
+
+`install.sh` downloads garmr from its release, like mrman, and checks it
+against the release's `SHA256SUMS`. Go was needed only to build garmr, so the
+templates no longer set it up. The GitLab job uses a small image with bash,
+git and curl. Go is still needed to build `vizzini-bot` from source. See
+[vizzini-bot](../../guides/bot/).

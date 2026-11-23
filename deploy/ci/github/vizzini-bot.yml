@@ -34,12 +34,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Pins: the Vizzini release (VIZZINI_REF is its commit), the mrman release, the
-  # garmr commit. Change them in a reviewed commit.
+  # Pins: the Vizzini release (VIZZINI_REF is its commit), the mrman release and
+  # the garmr release. Change them in a reviewed commit.
   VIZZINI_REF: bfe7f12f7ce6a80726821c794f417b62b76e9671 # v0.1.2
   VIZZINI_VERSION: v0.1.2
   MRMAN_VERSION: v0.1.10
-  GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
+  GARMR_VERSION: v0.1.0
 
 jobs:
   review:
@@ -64,11 +64,6 @@ jobs:
           ref: ${{ env.VIZZINI_REF }}
           path: .vizzini-src
           persist-credentials: false
-
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: .vizzini-src/go.mod
-          cache: false
 
       - name: Install vizzini-bot, mrman and garmr (pinned, verified)
         run: |

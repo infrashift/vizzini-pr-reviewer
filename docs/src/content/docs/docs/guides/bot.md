@@ -259,7 +259,7 @@ Each template:
     checked against its `SHA256SUMS` and against the commit that
     `VIZZINI_REF` pins. Without `VIZZINI_VERSION`, the script builds it from
     the pinned commit. Releases are for Linux on amd64 and arm64;
-  - garmr at a pinned commit;
+  - the garmr release, checked against its `SHA256SUMS`;
   - the mrman release, checked against its `SHA256SUMS`;
   - the tokenizer encodings, checked against pinned SHA-256 sums.
 

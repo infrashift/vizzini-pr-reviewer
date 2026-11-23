@@ -22,7 +22,7 @@ The CI templates run `deploy/ci/install.sh` in every job. On a hosted runner, ea
 
 ## Decision
 - **Opt-in:** `VIZZINI_TOOLS_CACHE` names a cache directory. Without it, `install.sh` works as before. The templates set it to a directory that stays between jobs on a self-hosted agent: `$RUNNER_TOOL_CACHE/vizzini`, `$AGENT_TOOLSDIRECTORY/vizzini` or `$CI_BUILDS_DIR/.vizzini-cache`.
-- **Entries under their pins:** `<cache>/<tool>/<key>/`, where the key is the release archive name (`vizzini_<version>_<os>_<arch>`, `mrman_<version>_<os>_<arch>`) or `<commit>_<os>_<arch>` for garmr. The job still gets its own copy in `TOOLS_DIR/bin`, so a job never runs a binary that another job can change.
+- **Entries under their pins:** `<cache>/<tool>/<key>/`, where the key is the release archive name (`vizzini_<version>_<os>_<arch>`, `mrman_<version>_<os>_<arch>`, `garmr_<version>_<os>_<arch>`; garmr comes from a release since [ADR-0027]({ADR27})). The job still gets its own copy in `TOOLS_DIR/bin`, so a job never runs a binary that another job can change.
 - **Entries never change:** a new entry is written to a temporary directory in the cache and renamed into place. If another job added it first, the script keeps that one. Damaged entries are replaced.
 - **Checks on every job:** an entry is used only if its binary matches the SHA-256 recorded when it was cached. The `vizzini-bot` commit check runs on a cached binary too. `tiktoken-cache.sh` checks the cached encodings against their pinned sums.
 - **No version probe:** the script does not trust a binary on `PATH` because its `--version` matches. The pin selects the entry, and the recorded hash checks it.
@@ -33,7 +33,6 @@ The CI templates run `deploy/ci/install.sh` in every job. On a hosted runner, ea
 - **The platforms' cache tasks (`Cache@2`, `actions/cache`):** they differ on each platform, they upload and download the cache over the network, and a hosted runner gains nothing from them.
 
 ## Consequences
-- A warm self-hosted job installs the tools in under 1 s, without the network. The Go toolchain download for garmr is skipped too.
+- A warm self-hosted job installs the tools in under 1 s, without the network.
 - The cache is only as trustworthy as the agent: any job that runs as the agent's user can write it, and the recorded SHA-256 catches damage, not a change. On an agent that also runs untrusted code, remove `VIZZINI_TOOLS_CACHE` from the template.
 - The script never removes old entries. Operators delete the directory to clear it.
-- When garmr has releases, its entry key changes to the release archive name, like mrman's.

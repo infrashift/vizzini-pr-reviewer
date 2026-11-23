@@ -24,9 +24,11 @@ The CI templates run `install.sh` in every job. It downloads `vizzini-bot`, mrma
 - `install.sh` keeps each verified binary in `VIZZINI_TOOLS_CACHE` under its pin, and later jobs copy it from there ([ADR-0026](/decisions/adr-0026-install-sh-keeps-verified-tools-in-a-cache-under-their-pins--01a205a972f2.md)). It uses an entry only while its binary matches the SHA-256 recorded with it, and replaces a damaged entry.
 - The three templates set `VIZZINI_TOOLS_CACHE` to a directory that stays between jobs on a self-hosted agent.
 - `deploy/ci/README.md` has a *Tools cache* section, and the bot guide mentions it.
+- garmr v0.1.0 is released, so `install.sh` downloads it like mrman, and the templates need no Go ([ADR-0027]({ADR27})).
 
 ## Acceptance criteria
 - [x] shellcheck and `make ci-check` pass.
 - [x] Local test (v0.1.2 commit, this `install.sh`): a cold cache installs everything (44 s); a warm cache installs from the cache (0.3 s) and the commit check still runs; a damaged mrman or garmr entry is replaced; another mrman pin gets its own entry; two cold jobs at the same time both pass and leave whole entries and no temporary directories; without the variable, nothing changes; a cached `vizzini-bot` with a checkout at another commit stops with the commit error.
-- [ ] Released, and the templates pin the release. To ship with garmr's first release, so that garmr comes from a release archive too.
+- [x] garmr from its v0.1.0 release. Tested in `buildpack-deps:bookworm-scm` (no Go): a cold cache downloads and checks all three releases; a warm cache takes all three from the cache. The source build of `vizzini-bot` still works.
+- [ ] Released, and the templates pin the release.
 - [ ] vizzini-lab's three template suites pass live. The Azure suite runs three jobs on one agent, so jobs 2 and 3 can show `from the cache`.

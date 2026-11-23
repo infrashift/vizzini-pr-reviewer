@@ -12,11 +12,11 @@ Every template does the same thing:
 1. **Check out** the pull request with full history.
 2. **Install** pinned tools with [`install.sh`](install.sh):
    - `vizzini-bot`: the Vizzini release that `VIZZINI_VERSION` names, checked against its `SHA256SUMS` and against the commit that `VIZZINI_REF` pins. Without `VIZZINI_VERSION`, the script builds it from the pinned commit. Releases are for Linux on amd64 and arm64;
-   - garmr at a pinned commit;
+   - the garmr release, checked against its `SHA256SUMS`;
    - the mrman release, checked against its `SHA256SUMS`;
    - the tokenizer encodings, checked against pinned SHA-256 sums.
 
-   Each download is retried: curl up to three times on any error, and the Go steps up to three times, 10 s and then 20 s apart. On a self-hosted agent, later jobs take the tools from a cache and skip the downloads (see [Tools cache](#tools-cache)).
+   The jobs need no Go: every tool comes from a release. curl retries each download up to three times on any error. On a self-hosted agent, later jobs take the tools from a cache and skip the downloads (see [Tools cache](#tools-cache)).
 3. **Run `vizzini-bot`** against the pull request.
 
 With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.10). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.
@@ -71,7 +71,7 @@ With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answer
 
 Hosted runners start each job on a new machine, so the cache is always empty there and every job installs the tools.
 
-- **Layout:** `<cache>/vizzini-bot/vizzini_<version>_<os>_<arch>/`, `<cache>/mrman/mrman_<version>_<os>_<arch>/`, `<cache>/garmr/<commit>_<os>_<arch>/` and `<cache>/tiktoken/`. Each binary entry holds the binary and a `sha256` file.
+- **Layout:** `<cache>/vizzini-bot/vizzini_<version>_<os>_<arch>/`, `<cache>/mrman/mrman_<version>_<os>_<arch>/`, `<cache>/garmr/garmr_<version>_<os>_<arch>/` and `<cache>/tiktoken/`. Each binary entry holds the binary and a `sha256` file.
 - **Checks:** the script uses an entry only if the binary still matches the SHA-256 recorded when it was cached. Otherwise it replaces the entry. The `vizzini-bot` commit check runs on every job, for a cached binary too. The tokenizer encodings are checked against their pinned SHA-256 sums on every job.
 - **Shared agents:** an entry never changes after the script writes it. The script writes a new entry to a temporary directory and renames it into place. Jobs with different pins get different entries, and jobs that run at the same time do not see a partial entry.
 - **Trust:** the cache is only as trustworthy as the agent. Any job that runs as the agent's user can write the cache, and the recorded SHA-256 catches a damaged file, not a changed one. On an agent that also runs untrusted code, remove `VIZZINI_TOOLS_CACHE` from the template.
@@ -81,4 +81,4 @@ Hosted runners start each job on a new machine, so the cache is always empty the
 
 - **Forks:** the GitHub workflow runs only for pull requests from branches of the repository itself. Pull requests from forks get no secrets on `pull_request`. Never switch the workflow to `pull_request_target`, which would run with secrets on the fork's code.
 - **Exposure:** the bot never executes code from the pull request; it reads the diff and the checkout. Its tokens can comment on pull requests in the repository, and its LiteLLM key spends against your proxy. Give it a virtual key with a budget.
-- **Pins:** `VIZZINI_REF`, `VIZZINI_VERSION`, `MRMAN_VERSION` and `GARMR_REF` are pinned in the template. Change them in a reviewed commit. `VIZZINI_REF` must be the commit of the `VIZZINI_VERSION` release, or `install.sh` stops.
+- **Pins:** `VIZZINI_REF`, `VIZZINI_VERSION`, `MRMAN_VERSION` and `GARMR_VERSION` are pinned in the template. Change them in a reviewed commit. `VIZZINI_REF` must be the commit of the `VIZZINI_VERSION` release, or `install.sh` stops.

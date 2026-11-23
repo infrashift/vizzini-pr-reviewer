@@ -11,7 +11,8 @@
 #                               the release's SHA256SUMS and against this
 #                               checkout's commit; without VIZZINI_VERSION,
 #                               built from this checkout (CGO_ENABLED=0)
-#   TOOLS_DIR/bin/garmr         go install of infrashift/garmr at $GARMR_REF
+#   TOOLS_DIR/bin/garmr         the $GARMR_VERSION release, checked against
+#                               the release's SHA256SUMS
 #   TOOLS_DIR/bin/mrman         the $MRMAN_VERSION release, checked against
 #                               the release's SHA256SUMS
 #   TOOLS_DIR/tiktoken          the tokenizer encodings, checked against
@@ -20,23 +21,24 @@
 # Then put TOOLS_DIR/bin on PATH and set TIKTOKEN_CACHE_DIR=TOOLS_DIR/tiktoken.
 #
 # On an agent that runs many jobs, set VIZZINI_TOOLS_CACHE to a directory
-# that stays between jobs. Each verified release binary and garmr build is
-# kept there under its pin, and later jobs copy it from there and skip the
-# download. A cached binary is used only if it still matches the SHA-256 that
+# that stays between jobs. Each verified release binary is kept there under
+# its pin, and later jobs copy it from there and skip the download. A cached binary is used only if it still matches the SHA-256 that
 # was recorded when it was cached. Entries never change, so jobs that share
 # the cache with other pins do not interfere. The cache is only as
 # trustworthy as the agent: any job that runs as the agent's user can write
 # it. The recorded SHA-256 catches a damaged file, not a changed one.
-# Needs go (any version from Vizzini's go.mod on; newer toolchains a module
-# requires are fetched), curl 7.71 or newer, tar and sha256sum. Downloads are
-# retried: curl up to three times on any error, go commands up to three times. Vizzini releases are for
-# Linux on amd64 and arm64 (ADR-0025); elsewhere, leave VIZZINI_VERSION unset.
-# mrman releases from v0.1.10 on are Linux amd64 and arm64 only, too.
+#
+# Needs curl 7.71 or newer, tar and sha256sum. curl retries each download up
+# to three times on any error. Vizzini and mrman releases are for Linux on
+# amd64 and arm64 (ADR-0025). Elsewhere, leave VIZZINI_VERSION unset: the
+# script then builds vizzini-bot from this checkout, which needs go (the
+# version in Vizzini's go.mod or newer); the build is retried up to three
+# times.
 set -euo pipefail
 
 VIZZINI_VERSION="${VIZZINI_VERSION:-}"
 MRMAN_VERSION="${MRMAN_VERSION:-v0.1.10}"
-GARMR_REF="${GARMR_REF:-bf96753b9123fc9ac667afed84eba1610d896c53}"
+GARMR_VERSION="${GARMR_VERSION:-v0.1.0}"
 
 die() { printf 'install: %s\n' "$*" >&2; exit 1; }
 
@@ -52,18 +54,19 @@ retry() {
 	done
 }
 [[ $# -eq 1 ]] || die "usage: $0 TOOLS_DIR"
+[[ -z "${GARMR_REF:-}" ]] || echo "install: GARMR_REF is no longer used; garmr comes from the $GARMR_VERSION release (set GARMR_VERSION to pin another)" >&2
 src="$(cd "$(dirname "$0")/../.." && pwd)"
 mkdir -p "$1/bin"
 tools="$(cd "$1" && pwd)"
 bin="$tools/bin"
-export CGO_ENABLED=0
-# Each module may require a newer Go than the one installed (garmr needs
-# 1.26.11): let go fetch that toolchain, which it verifies against the Go
-# checksum database. CI setups often pin GOTOOLCHAIN=local, which would fail.
-export GOTOOLCHAIN=auto
 
-goos="$(go env GOOS)"
-goarch="$(go env GOARCH)"
+# The release archives are named with Go's names for the OS and architecture.
+goos="$(uname -s | tr '[:upper:]' '[:lower:]')"
+case "$(uname -m)" in
+x86_64 | amd64) goarch=amd64 ;;
+aarch64 | arm64) goarch=arm64 ;;
+*) goarch="$(uname -m)" ;;
+esac
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 cache="${VIZZINI_TOOLS_CACHE:-}"
@@ -118,6 +121,11 @@ fetch_vizzini() {
 	mv "$tmp/$name/$name/vizzini-bot" "$tmp/vizzini-bot"
 }
 
+fetch_garmr() {
+	fetch_release "https://github.com/infrashift/garmr/releases/download/$GARMR_VERSION" "$name"
+	mv "$tmp/$name/$name/garmr" "$tmp/garmr"
+}
+
 fetch_mrman() {
 	fetch_release "https://github.com/infrashift/mrman/releases/download/$MRMAN_VERSION" "$name"
 	mv "$tmp/$name/$name/mrman" "$tmp/mrman"
@@ -137,12 +145,13 @@ if [[ -n "$VIZZINI_VERSION" ]]; then
 	fi
 else
 	echo "install: vizzini-bot from $(git -C "$src" rev-parse --short HEAD 2>/dev/null || echo "$src")"
-	(cd "$src" && retry go build -trimpath -o "$bin/vizzini-bot" ./cmd/vizzini-bot)
+	(cd "$src" && CGO_ENABLED=0 GOTOOLCHAIN=auto retry go build -trimpath -o "$bin/vizzini-bot" ./cmd/vizzini-bot)
 fi
 "$bin/vizzini-bot" --version
 
-echo "install: garmr at $GARMR_REF"
-cached garmr "${GARMR_REF}_${goos}_${goarch}" retry env GOBIN="$tmp" go install "github.com/infrashift/garmr/cmd/garmr@$GARMR_REF"
+name="garmr_${GARMR_VERSION#v}_${goos}_${goarch}"
+echo "install: garmr $GARMR_VERSION ($name)"
+cached garmr "$name" fetch_garmr
 
 name="mrman_${MRMAN_VERSION}_${goos}_${goarch}"
 echo "install: mrman $MRMAN_VERSION ($name)"
@@ -159,4 +168,6 @@ fi
 "$src/scripts/tiktoken-cache.sh" "$tools/tiktoken" >/dev/null
 
 "$bin/mrman" --version
+"$bin/garmr" version | grep -q "Version: *$GARMR_VERSION\$" || die "garmr does not report $GARMR_VERSION"
+echo "garmr $GARMR_VERSION"
 echo "install: done; PATH=$bin:\$PATH TIKTOKEN_CACHE_DIR=$tools/tiktoken"

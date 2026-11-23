@@ -24,23 +24,17 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  # Pins: the Vizzini release (VIZZINI_REF is its commit), the mrman release, the
-  # garmr commit, and the Go version Vizzini's go.mod requires. Change them in
-  # a reviewed commit.
+  # Pins: the Vizzini release (VIZZINI_REF is its commit), the mrman release and
+  # the garmr release. Change them in a reviewed commit.
   VIZZINI_REF: bfe7f12f7ce6a80726821c794f417b62b76e9671 # v0.1.2
   VIZZINI_VERSION: v0.1.2
   MRMAN_VERSION: v0.1.10
-  GARMR_REF: bf96753b9123fc9ac667afed84eba1610d896c53
-  GO_VERSION: 1.25.4
+  GARMR_VERSION: v0.1.0
 
 steps:
   - checkout: self
     fetchDepth: 0 # full history, for incremental review
     persistCredentials: false
-
-  - task: GoTool@0
-    inputs:
-      version: $(GO_VERSION)
 
   - bash: |
       set -euo pipefail
