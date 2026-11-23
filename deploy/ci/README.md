@@ -10,8 +10,8 @@ These templates run [vizzini-bot](../../docs/src/content/docs/docs/guides/bot.md
 
 Every template does the same thing:
 1. **Check out** the pull request with full history.
-2. **Install** pinned tools with [`install.sh`](install.sh):
-   - `vizzini-bot`: the Vizzini release that `VIZZINI_VERSION` names, checked against its `SHA256SUMS` and against the commit that `VIZZINI_REF` pins. Without `VIZZINI_VERSION`, the script builds it from the pinned commit. Releases are for Linux on amd64 and arm64;
+2. **Install** pinned tools with [`install.sh`](install.sh), from a checkout of Vizzini at `VIZZINI_REF`. The job fetches only that commit, and only the files of `deploy/ci` and `scripts` (about 260 KB instead of 4 MB):
+   - `vizzini-bot`: the Vizzini release that `VIZZINI_VERSION` names, checked against its `SHA256SUMS` and against the commit that `VIZZINI_REF` pins. Without `VIZZINI_VERSION`, the script builds it from the pinned commit; then remove the template's sparse checkout, because the build needs the whole commit. Releases are for Linux on amd64 and arm64;
    - the garmr release, checked against its `SHA256SUMS`;
    - the mrman release, checked against its `SHA256SUMS`;
    - the tokenizer encodings, checked against pinned SHA-256 sums.

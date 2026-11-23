@@ -64,6 +64,12 @@ jobs:
           ref: ${{ env.VIZZINI_REF }}
           path: .vizzini-src
           persist-credentials: false
+          # Only the files of deploy/ci and scripts (a blobless, depth-1 fetch):
+          # enough while VIZZINI_VERSION is set. To build vizzini-bot from
+          # source instead, remove sparse-checkout.
+          sparse-checkout: |
+            deploy/ci
+            scripts
 
       - name: Install vizzini-bot, mrman and garmr (pinned, verified)
         run: |

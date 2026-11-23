@@ -38,8 +38,15 @@ steps:
 
   - bash: |
       set -euo pipefail
-      git clone --quiet --no-checkout https://github.com/infrashift/vizzini-pr-reviewer.git "$AGENT_TEMPDIRECTORY/vizzini-src"
-      git -C "$AGENT_TEMPDIRECTORY/vizzini-src" checkout --quiet "$VIZZINI_REF"
+      # Only the pinned commit, and only the files of deploy/ci and scripts:
+      # enough while VIZZINI_VERSION is set. To build vizzini-bot from source
+      # instead, remove the sparse-checkout line.
+      src="$AGENT_TEMPDIRECTORY/vizzini-src"
+      git -c init.defaultBranch=main init --quiet "$src"
+      git -C "$src" remote add origin https://github.com/infrashift/vizzini-pr-reviewer.git
+      git -C "$src" sparse-checkout set deploy/ci scripts
+      git -C "$src" fetch --quiet --depth 1 --filter=blob:none origin "$VIZZINI_REF"
+      git -C "$src" checkout --quiet FETCH_HEAD
       # The tools directory stays between jobs on a self-hosted agent, so later
       # jobs skip the downloads (deploy/ci/README.md, Tools cache).
       VIZZINI_TOOLS_CACHE="$AGENT_TOOLSDIRECTORY/vizzini" \

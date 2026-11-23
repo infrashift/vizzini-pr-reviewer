@@ -40,8 +40,15 @@ vizzini-bot:
   script:
     - set -euo pipefail
     - tools="$CI_BUILDS_DIR/.vizzini-$CI_JOB_ID"
-    - git clone --quiet --no-checkout https://github.com/infrashift/vizzini-pr-reviewer.git "$tools-src"
-    - git -C "$tools-src" checkout --quiet "$VIZZINI_REF"
+    # Only the pinned commit, and only the files of deploy/ci and scripts:
+    # enough while VIZZINI_VERSION is set. To build vizzini-bot from source
+    # instead, remove the sparse-checkout line.
+    - |
+      git -c init.defaultBranch=main init --quiet "$tools-src"
+      git -C "$tools-src" remote add origin https://github.com/infrashift/vizzini-pr-reviewer.git
+      git -C "$tools-src" sparse-checkout set deploy/ci scripts
+      git -C "$tools-src" fetch --quiet --depth 1 --filter=blob:none origin "$VIZZINI_REF"
+      git -C "$tools-src" checkout --quiet FETCH_HEAD
     # The builds directory stays between jobs on a shell executor, so later
     # jobs skip the downloads (deploy/ci/README.md, Tools cache).
     - VIZZINI_TOOLS_CACHE="$CI_BUILDS_DIR/.vizzini-cache" "$tools-src/deploy/ci/install.sh" "$tools"
