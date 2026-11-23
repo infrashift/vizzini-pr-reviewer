@@ -56,6 +56,10 @@ vizzini-bot \
 6. **Answer.** `/vizzini` commands people wrote in the PR's threads are
    answered in those threads through `mrman review reply` (event `reply`).
    See [commands in threads](#commands-in-threads).
+7. **Record.** A review that posts nothing records the head it reviewed in
+   one status comment on the pull request. The bot posts it once (event
+   `comment`) and then edits it through `mrman review edit` (event `edit`).
+   See [incremental review](#incremental-review).
 
 stdout is one JSON object for the run:
 
@@ -63,10 +67,13 @@ stdout is one JSON object for the run:
 {"run_id":"…","head":"…","mode":"incremental","since":"…","reviewed_files":["src/a.cs"],
  "findings":2,"posted":1,"already_posted":["v1:…"],"resolved":["197"],"kept_open":[],
  "carried":["195"],"suppressed":["legacy-frozen src/Legacy/ReportFormatter.cs:7"],"suggested":[],
- "answered":["4021"],"command_failures":[],"submit":{…},"resolve":{…}}
+ "answered":["4021"],"command_failures":[],"status":"edited","submit":{…},"resolve":{…}}
 ```
 
 `mode` is `full`, `incremental` or `unchanged` (no review was needed).
+`status` is `posted` or `edited` when the run recorded its head in the
+status comment, `failed` when it could not, and absent when no record was
+needed.
 
 | exit | meaning |
 |---|---|
@@ -98,9 +105,19 @@ The bot does not re-review the whole pull request on every push.
   whole pull request is reviewed.
 
 Every comment the bot posts (a finding, a resolution, an answer) records the
-head its run reviewed. A run that posts nothing at all leaves no trace, so
-the next run reviews from the last head that did post: more than needed,
-never less. On the UAT's C#
+head its run reviewed. A review that posts none of these records its head
+in the **status comment** instead: one pull-request-level comment that the
+bot posts once and then edits. It keeps the last 20 reviewed heads in
+hidden markers. On Azure DevOps the bot resolves the status comment's
+thread when it posts it, so a policy that requires resolved comments does
+not block the pull request. A `--commands-only` run reviews nothing, so its
+answers record no head.
+
+The status comment needs mrman v0.1.11 or later, and `edit` in the
+policy's `_allowedEvents`. Without them the bot records nothing for a quiet
+review. The next run then reviews from the last head that a comment
+records: more than needed, never less. A failed status write is reported
+(`status: "failed"`) and does not fail the run. On the UAT's C#
 fixture, an incremental review of a one-file push cost about 1/7 of a full
 review.
 
@@ -228,7 +245,7 @@ from `deploy/ci/grant-policy/agent-submit.cue` (mrman's pack), commit it as
 `.vizzini/grant-policy/agent-submit.cue`, and set its values:
 
 ```cue
-_allowedEvents:     ["comment", "resolve", "reply"]  // never approve / request-changes unattended by default
+_allowedEvents:     ["comment", "resolve", "reply", "edit"]  // never approve / request-changes unattended by default
 _allowedIdentities: ["github-actions[bot]"]          // the identity your CI posts as
 _maxComments:       50                                // a runaway review fails instead of flooding the PR
 ```

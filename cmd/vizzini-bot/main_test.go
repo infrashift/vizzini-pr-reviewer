@@ -65,12 +65,17 @@ func mockProxy(t *testing.T) *llmtest.Server {
 type fakeMrman struct {
 	calls      [][]string
 	threadsOut string // `review threads` answer; default no threads
-	submitOut  string
-	submitErr  error
-	resolveOut string
-	resolveErr error
-	replyOut   string
-	replyErr   error
+	// threadsLater, when set, answers every `review threads` call after
+	// the first.
+	threadsLater string
+	submitOut    string
+	submitErr    error
+	resolveOut   string
+	resolveErr   error
+	replyOut     string
+	replyErr     error
+	editOut      string
+	editErr      error
 	// inputs holds each --input @file's content, read when mrman is called.
 	inputs map[string]string
 	// policy is agent-submit.cue as handed to the last submit.
@@ -89,6 +94,9 @@ func (f *fakeMrman) install(t *testing.T) {
 		case args[0] == "pr":
 			return []byte(`{"slug":"ado-org-proj-repo-7"}`), nil, nil
 		case args[1] == "threads":
+			if f.threadsLater != "" && len(calledWith(f, "threads")) > 1 {
+				return []byte(f.threadsLater), nil, nil
+			}
 			return []byte(cmp.Or(f.threadsOut, `{"threads":[]}`)), nil, nil
 		case args[1] == "submit":
 			// The policy as mrman would read it, captured while it exists.
@@ -112,6 +120,8 @@ func (f *fakeMrman) install(t *testing.T) {
 				}
 			}
 			return []byte(cmp.Or(f.replyOut, `{"thread":"77","comment_id":"99"}`)), nil, f.replyErr
+		case args[1] == "edit":
+			return []byte(cmp.Or(f.editOut, `{"summary":"9"}`)), nil, f.editErr
 		}
 		return nil, nil, nil
 	}

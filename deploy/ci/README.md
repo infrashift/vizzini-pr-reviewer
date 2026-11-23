@@ -24,7 +24,7 @@ With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answer
 ## Setup
 
 1. **Commit a grant policy to your default branch.** Copy [`grant-policy/agent-submit.cue`](grant-policy/agent-submit.cue) to `.vizzini/grant-policy/agent-submit.cue`.
-   - It allows `comment`, `resolve` and `reply`, never `approve` or `request-changes`, at most 50 comments per post, and only for the identities it lists.
+   - It allows `comment`, `resolve`, `reply` and `edit`, never `approve` or `request-changes`, at most 50 comments per post, and only for the identities it lists.
    - It ships with **no** identities, so nothing is posted until you add yours (step 4).
    - The bot reads the policy from the **base branch**, so only a reviewed, merged policy change takes effect. A pull request cannot loosen the policy it is judged by.
 2. **Add the template** for your platform and set its variables: the LiteLLM URL, the model, and a LiteLLM virtual key for the bot. Platform specifics:

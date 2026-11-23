@@ -39,6 +39,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -218,6 +219,7 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 	var slug string
 	var mine []botThread
 	var threads []remoteThread
+	rec := &recalled{}
 	if !opts.dryRun {
 		var err error
 		dir, cleanup, perr := basePolicy(ctx, opts)
@@ -226,9 +228,10 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 		}
 		defer cleanup()
 		opts.policyDir = dir
-		if slug, threads, err = recall(ctx, opts, stderr); err != nil {
+		if rec, err = recall(ctx, opts, stderr); err != nil {
 			return err
 		}
+		slug, threads = rec.slug, rec.threads
 		mine = botThreads(ctx, threads, opts.attr.Iteration, gitLineMapper(opts.repo))
 	}
 	if opts.commandsOnly {
@@ -248,14 +251,24 @@ func botReview(ctx context.Context, opts *options, res *botResult, stdout, stder
 	if err != nil {
 		return err
 	}
-	if rerr := reviewAndPost(ctx, opts, engine, slug, mine, reviewedHeads(threads), res, stdout, stderr); rerr != nil || opts.dryRun {
+	heads := reviewedHeads(threads)
+	for _, h := range statusHeads(rec.summaries) {
+		if !slices.Contains(heads, h) {
+			heads = append(heads, h)
+		}
+	}
+	if rerr := reviewAndPost(ctx, opts, engine, slug, mine, heads, res, stdout, stderr); rerr != nil || opts.dryRun {
 		return rerr
 	}
 	policy := opts.policyDir
 	if serr := suggestSuppressions(ctx, opts, slug, policy, threads, res, stderr); serr != nil {
 		return serr
 	}
-	return answerPending(ctx, opts, slug, policy, threads, engine, res, stderr)
+	if aerr := answerPending(ctx, opts, slug, policy, threads, engine, res, stderr); aerr != nil {
+		return aerr
+	}
+	recordHead(ctx, opts, rec, heads, res, stderr)
+	return nil
 }
 
 // answerPending answers the pull request's pending /vizzini commands, with
@@ -383,6 +396,10 @@ type botResult struct {
 	// Withdrawn are the threads /reconsider resolved: their finding was
 	// withdrawn on reconsideration (ISSUE-029).
 	Withdrawn []string `json:"withdrawn"`
+	// Status says what became of the status comment that records a head no
+	// other comment of the run records: "posted", "edited" or "failed";
+	// empty when none was needed (ADR-0028).
+	Status string `json:"status,omitempty"`
 	// Submit and Resolve are mrman's own JSON answers, when it was called.
 	Submit  json.RawMessage `json:"submit,omitempty"`
 	Resolve json.RawMessage `json:"resolve,omitempty"`
@@ -495,31 +512,38 @@ func mrman(ctx context.Context, opts *options, stderr io.Writer, args ...string)
 	}
 }
 
-// recall opens the PR in mrman and reads its threads back.
-func recall(ctx context.Context, opts *options, stderr io.Writer) (string, []remoteThread, error) {
+// recall opens the PR in mrman and reads its threads and
+// pull-request-level comments back.
+func recall(ctx context.Context, opts *options, stderr io.Writer) (*recalled, error) {
 	opened, errOut, err := mrman(ctx, opts, stderr, "pr", opts.prURL, "--json")
 	if err != nil {
-		return "", nil, fmt.Errorf("mrman pr: %w: %s", err, strings.TrimSpace(string(errOut)))
+		return nil, fmt.Errorf("mrman pr: %w: %s", err, strings.TrimSpace(string(errOut)))
 	}
 	var session struct {
 		Slug string `json:"slug"`
 	}
 	if jerr := json.Unmarshal(opened, &session); jerr != nil || session.Slug == "" {
-		return "", nil, errors.New("mrman pr: no session slug in its output")
+		return nil, errors.New("mrman pr: no session slug in its output")
 	}
 	_, _ = fmt.Fprintf(stderr, "vizzini-bot: mrman session %s\n", session.Slug)
 
 	listed, errOut, err := mrman(ctx, opts, stderr, "review", "threads", "--session", session.Slug)
 	if err != nil {
-		return "", nil, fmt.Errorf("mrman review threads: %w: %s", err, strings.TrimSpace(string(errOut)))
+		return nil, fmt.Errorf("mrman review threads: %w: %s", err, strings.TrimSpace(string(errOut)))
 	}
 	var remote struct {
 		Threads []remoteThread `json:"threads"`
+		// Summaries is absent (nil) from mrman before review edit.
+		Summaries *[]remoteSummary `json:"summaries"`
 	}
 	if jerr := json.Unmarshal(listed, &remote); jerr != nil {
-		return "", nil, fmt.Errorf("mrman review threads: %w", jerr)
+		return nil, fmt.Errorf("mrman review threads: %w", jerr)
 	}
-	return session.Slug, remote.Threads, nil
+	rec := &recalled{slug: session.Slug, threads: remote.Threads, listsSummaries: remote.Summaries != nil}
+	if remote.Summaries != nil {
+		rec.summaries = *remote.Summaries
+	}
+	return rec, nil
 }
 
 // post drafts and submits only the new findings and resolves the threads

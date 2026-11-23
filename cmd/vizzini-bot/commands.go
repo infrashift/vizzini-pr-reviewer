@@ -121,6 +121,17 @@ func threadCommand(text string, t *remoteThread) (*reviewer.Command, error) {
 
 var errNotAFinding = fmt.Errorf("%w: /vizzini reconsider works only in a thread vizzini-bot opened for a finding", reviewer.ErrBadCommand)
 
+// answerHead is the head an answer's marker records (" head=SHA"): the
+// head this run reviewed. A --commands-only run reviews nothing, so its
+// answers record none; otherwise the next review would start after a head
+// no review covered (ADR-0028).
+func answerHead(opts *options, res *botResult) string {
+	if res.Mode == modeCommands {
+		return ""
+	}
+	return " head=" + opts.attr.Iteration
+}
+
 // commandUsage is the reply to a command that could not be understood.
 func commandUsage(err error) string {
 	msg := strings.TrimPrefix(err.Error(), reviewer.ErrBadCommand.Error()+": ")
@@ -162,8 +173,8 @@ func answerCommands(ctx context.Context, opts *options, slug, policy string, dif
 			res.CommandFailures = append(res.CommandFailures, p.Comment.ID)
 			continue
 		}
-		body += fmt.Sprintf("\n\n_Answered by %s._\n\n<!-- vizzini:reply-to=%s run=%s head=%s -->",
-			agentName, p.Comment.ID, opts.attr.RunID, opts.attr.Iteration)
+		body += fmt.Sprintf("\n\n_Answered by %s._\n\n<!-- vizzini:reply-to=%s run=%s%s -->",
+			agentName, p.Comment.ID, opts.attr.RunID, answerHead(opts, res))
 		post := reply
 		if err == nil && out != nil && out.Command.Kind == reviewer.CommandReconsider && out.Verdict == reviewer.VerdictWithdrawn {
 			// A withdrawn finding: the answer goes in as the resolution's reply.

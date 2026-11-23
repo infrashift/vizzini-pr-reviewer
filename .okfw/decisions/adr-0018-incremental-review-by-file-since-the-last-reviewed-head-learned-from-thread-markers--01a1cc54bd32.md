@@ -41,6 +41,6 @@ Before this change, every push re-reviewed the whole pull request. That was cost
   - An incremental review of a one-file push cost $0.0081 (1,994 input tokens), against $0.051–$0.059 for a full review.
   - It took 16s instead of 43–50s.
   - An unchanged head cost nothing.
-- **Runs that post nothing leave no marker.** The next run then reviews from the last head that did post: more than needed, never less. A summary marker could record every reviewed head, but mrman cannot edit a comment yet.
+- **Runs that post nothing leave no marker.** The next run then reviews from the last head that did post: more than needed, never less. A summary marker could record every reviewed head, but mrman cannot edit a comment yet. *Superseded by [ADR-0028](/decisions/adr-0028-a-review-that-posts-nothing-records-its-head-in-one-edited-status-comment--01a206f0275f.md) (2026-11-22): a quiet review records its head in one edited status comment.*
 - **File granularity.** A one-line push to a large file re-reviews that file's whole PR diff. Hunk-level scoping is possible later.
 - **CI needs full history** (`fetch-depth: 0`). This is the same requirement as resolution.

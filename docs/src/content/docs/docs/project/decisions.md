@@ -132,3 +132,15 @@ against the release's `SHA256SUMS`. Go was needed only to build garmr, so the
 templates no longer set it up. The GitLab job uses a small image with bash,
 git and curl. Go is still needed to build `vizzini-bot` from source. See
 [vizzini-bot](../../guides/bot/).
+
+## ADR-0028: A review that posts nothing records its head in one status comment
+
+Each comment the bot posts records the head that its run reviewed. A review
+that posts nothing records its head in one status comment on the pull
+request. The bot posts this comment once and then edits it with
+`mrman review edit` (event `edit`). The next run then starts from that head
+and does not review the same files again. This needs mrman v0.1.11 and
+`edit` in the grant policy. Without them the bot records nothing, and the
+next run reviews more than it must, never less. A `--commands-only` run
+reviews nothing, so its answers record no head. See
+[vizzini-bot](../../guides/bot/#incremental-review).

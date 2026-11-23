@@ -205,6 +205,15 @@ func TestBot_CommandsOnly(t *testing.T) {
 	if res.Mode != modeCommands || !slices.Equal(res.Answered, []string{"2"}) || res.Findings != 0 || len(res.ReviewedFiles) != 0 {
 		t.Errorf("result %s", stdout)
 	}
+	// It reviewed nothing, so its answer records no reviewed head.
+	for _, body := range f.inputs {
+		if !strings.Contains(body, "<!-- vizzini:reply-to=2 run=") || strings.Contains(body, " head=") {
+			t.Errorf("--commands-only answer %q must record no head", body)
+		}
+	}
+	if len(f.inputs) != 1 || res.Status != "" {
+		t.Errorf("inputs %v, status %q", f.inputs, res.Status)
+	}
 	for _, c := range f.calls {
 		if len(c) > 1 && (c[1] == "submit" || c[1] == "resolve" || c[1] == "add") {
 			t.Errorf("--commands-only called mrman %v", c)

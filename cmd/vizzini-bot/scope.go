@@ -24,9 +24,10 @@ import (
 // its threads are still reconciled, and resolved, since their code changed
 // and their finding is gone.
 //
-// A run that posts nothing at all (no finding, no resolution, no answer)
-// leaves no trace, so the next run reviews from the last head that did:
-// more than needed, never less.
+// A review that posts nothing at all (no finding, no resolution, no answer)
+// records its head in the bot's status comment instead (status.go,
+// ADR-0028). When it cannot, the next run reviews from the last head that
+// is recorded: more than needed, never less.
 //
 // With no earlier head in this checkout (a first run, a rebased or
 // force-pushed branch, a shallow clone) or with --full, the whole pull

@@ -46,7 +46,7 @@ All five slices shipped in a single day. Each was verified live on an Azure DevO
 **Still out of scope:**
 - **Triggers:** the CI step is the entry point, and a webhook receiver was not built. Published CI templates followed the same day: GitHub Actions, Azure Pipelines and GitLab CI in `deploy/ci/`, with the GitHub template verified live ([ADR-0021](/decisions/adr-0021-ci-templates-install-pinned-verified-tools-the-grant-policy-is-read-from-the-base-branch--01a1ccc9f271.md)).
 - **Other forges:** thread resolution and replies are implemented for Azure DevOps only. Other forges report them as unsupported until their drivers gain them.
-- **Silent runs:** a run that posts nothing leaves no reviewed-head marker (ADR-0018).
+- **Silent runs:** a run that posts nothing leaves no reviewed-head marker (ADR-0018). Fixed by [ADR-0028](/decisions/adr-0028-a-review-that-posts-nothing-records-its-head-in-one-edited-status-comment--01a206f0275f.md): the status comment.
 
 ## Design decided (2026-11-11): [ADR-0016](/decisions/adr-0016-automation-mode-by-composition-vizzini-bot-mrmans-forge-cli-garmr-authorized-posting--01a1cbedb12e.md)
 - **Composition** (user's choice): `vizzini-bot` (Vizzini) reviews; mrman's CLI does all forge work.
