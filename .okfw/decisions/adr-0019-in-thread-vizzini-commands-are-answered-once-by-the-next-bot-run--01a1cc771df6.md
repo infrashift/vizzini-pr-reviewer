@@ -1,13 +1,13 @@
 ---
-id: "01a1cc77-1df6-7cc6-b412-f47f6db9eaf8"
+x-okfw-id: "01a1cc77-1df6-7cc6-b412-f47f6db9eaf8"
 title: "ADR-0019: In-thread /vizzini commands are answered once, by the next bot run"
 type: "ADR"
 tags:
   - "adr"
   - "automation"
   - "commands"
-created: "2026-11-11T15:15:20-06:00"
-timestamp: "2026-11-11T15:15:20-06:00"
+x-okfw-created: "2026-11-11T15:15:20-06:00"
+x-okfw-timestamp: "2026-11-11T15:15:20-06:00"
 description: "vizzini-bot answers /vizzini explain|refactor|docstrings written on a line of their own in a PR thread, defaulting the target to the thread's lines, replying through mrman review reply under the grant policy with a reply-to marker that makes each command answered once."
 ---
 

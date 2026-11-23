@@ -1,12 +1,12 @@
 ---
-id: "01a1c9b6-1549-73d3-8307-7bbfbf932072"
+x-okfw-id: "01a1c9b6-1549-73d3-8307-7bbfbf932072"
 title: "Vizzini architecture overview"
 type: "Architecture"
 tags:
   - "architecture"
   - "overview"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:25:15-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:25:15-06:00"
 description: "Package map, review data flow and embedding targets for the Vizzini AI code review engine."
 status: "draft"
 ---

@@ -1,13 +1,13 @@
 ---
-id: "01a1cb47-f7a8-744f-bd8b-ebad9f133f97"
+x-okfw-id: "01a1cb47-f7a8-744f-bd8b-ebad9f133f97"
 title: "ADR-0013: Estimate decision points per line for C-family, Python and Ruby"
 type: "ADR"
 tags:
   - "adr"
   - "risk"
   - "analysis"
-created: "2026-11-11T09:44:13-06:00"
-timestamp: "2026-11-11T09:44:13-06:00"
+x-okfw-created: "2026-11-11T09:44:13-06:00"
+x-okfw-timestamp: "2026-11-11T09:44:13-06:00"
 description: "The risk score's complexity term counts McCabe decision points in C-family languages, Python and Ruby with a dependency-free line lexer, keeping Go's exact go/scanner count; other files count 0."
 ---
 

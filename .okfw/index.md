@@ -1,5 +1,7 @@
 ---
-okf_version: "0.2"
+okf_version: "0.3"
+description: "Vizzini's design decisions, specs, architecture, tracked issues and daily notes: read it before you change or explain the reviewer, the bot, the webhook or the CI templates."
+title: "Vizzini"
 ---
 
 # /

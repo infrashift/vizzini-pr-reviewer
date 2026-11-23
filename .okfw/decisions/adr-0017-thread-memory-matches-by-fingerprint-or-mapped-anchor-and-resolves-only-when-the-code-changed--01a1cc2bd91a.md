@@ -1,13 +1,13 @@
 ---
-id: "01a1cc2b-d91a-7559-b504-60b52d7e6db7"
+x-okfw-id: "01a1cc2b-d91a-7559-b504-60b52d7e6db7"
 title: "ADR-0017: Thread memory matches by fingerprint or mapped anchor, and resolves only when the code changed"
 type: "ADR"
 tags:
   - "adr"
   - "automation"
   - "forge"
-created: "2026-11-11T13:53:08-06:00"
-timestamp: "2026-11-11T13:53:08-06:00"
+x-okfw-created: "2026-11-11T13:53:08-06:00"
+x-okfw-timestamp: "2026-11-11T13:53:08-06:00"
 description: "vizzini-bot recognizes its earlier threads by a hidden marker, treats a finding as already posted when its fingerprint or its file, category and git-mapped lines match, and resolves a thread only when its finding is gone and the code under it changed."
 ---
 

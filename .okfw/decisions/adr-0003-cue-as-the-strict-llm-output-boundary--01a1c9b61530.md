@@ -1,5 +1,5 @@
 ---
-id: "01a1c9b6-1530-7f30-84bb-849fd2eb8a2b"
+x-okfw-id: "01a1c9b6-1530-7f30-84bb-849fd2eb8a2b"
 title: "ADR-0003: CUE as the strict LLM output boundary"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "cue"
   - "schema"
   - "llm"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:25:15-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:25:15-06:00"
 description: "Every LLM response is unified with schema/review.cue via the CUE Go API before any data reaches callers."
 ---
 

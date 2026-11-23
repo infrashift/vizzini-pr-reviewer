@@ -1,15 +1,15 @@
 ---
-id: "01a1cb45-fcde-75b8-b46f-a17b6db1c36b"
+x-okfw-id: "01a1cb45-fcde-75b8-b46f-a17b6db1c36b"
 title: "ISSUE-020: Language-neutral complexity in the risk score"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "risk"
   - "analysis"
   - "closed"
-created: "2026-11-11T09:42:03-06:00"
-timestamp: "2026-11-11T09:42:03-06:00"
+x-okfw-created: "2026-11-11T09:42:03-06:00"
+x-okfw-timestamp: "2026-11-11T09:42:03-06:00"
 description: "The risk score's complexity term counts decision points only in Go; estimate them per line for C-family languages (C#, Java, TypeScript/JavaScript, …), Python and Ruby so non-Go diffs are not under-scored."
 ---
 

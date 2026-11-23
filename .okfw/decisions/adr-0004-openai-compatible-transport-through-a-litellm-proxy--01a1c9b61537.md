@@ -1,13 +1,13 @@
 ---
-id: "01a1c9b6-1537-7128-b670-8600edb35eac"
+x-okfw-id: "01a1c9b6-1537-7128-b670-8600edb35eac"
 title: "ADR-0004: OpenAI-compatible transport through a LiteLLM proxy"
 type: "ADR"
 tags:
   - "adr"
   - "llm"
   - "transport"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:25:15-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:25:15-06:00"
 description: "LLM calls go through go-openai with a custom BaseURL targeting an internal LiteLLM proxy (or mock endpoints in tests)."
 ---
 

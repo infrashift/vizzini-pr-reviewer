@@ -1,16 +1,16 @@
 ---
-id: "01a1cf8f-51ab-7942-9c07-146aedc9c731"
+x-okfw-id: "01a1cf8f-51ab-7942-9c07-146aedc9c731"
 title: "ISSUE-026: Webhook receiver answers /vizzini commands immediately (experimental)"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "automation"
   - "webhook"
   - "experimental"
   - "open"
-created: "2026-11-12T05:40:38-06:00"
-timestamp: "2026-11-12T05:40:38-06:00"
+x-okfw-created: "2026-11-12T05:40:38-06:00"
+x-okfw-timestamp: "2026-11-12T05:40:38-06:00"
 description: "An optional, experimental receiver for Azure DevOps service hooks that answers /vizzini commands as they are written, by running vizzini-bot --commands-only, instead of waiting for the PR's next CI run."
 ---
 

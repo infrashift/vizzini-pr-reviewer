@@ -1,15 +1,15 @@
 ---
-id: "01a20074-08e3-753f-8fc5-3d26364fa107"
+x-okfw-id: "01a20074-08e3-753f-8fc5-3d26364fa107"
 title: "ISSUE-035: install.sh does not retry a reset download"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "ci"
   - "reliability"
   - "closed"
-created: "2026-11-21T17:32:14-06:00"
-timestamp: "2026-11-21T17:32:14-06:00"
+x-okfw-created: "2026-11-21T17:32:14-06:00"
+x-okfw-timestamp: "2026-11-21T17:32:14-06:00"
 description: "A reset connection while Go fetched garmr's toolchain failed a CI job; install.sh now retries the go steps, curl retries any error, and v0.1.2 ships it to the templates."
 ---
 

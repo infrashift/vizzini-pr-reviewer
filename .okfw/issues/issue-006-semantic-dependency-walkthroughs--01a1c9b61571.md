@@ -1,16 +1,16 @@
 ---
-id: "01a1c9b6-1571-7bb5-9b53-5231d88fab98"
+x-okfw-id: "01a1c9b6-1571-7bb5-9b53-5231d88fab98"
 title: "ISSUE-006: Semantic dependency walkthroughs"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "analysis"
   - "milestone-4-3"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:17:00-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:17:00-06:00"
 description: "Order changed Go files by an AST-derived dependency DAG (Kahn's algorithm) for mrman's file tree."
 ---
 

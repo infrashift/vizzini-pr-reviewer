@@ -1,16 +1,16 @@
 ---
-id: "01a1fff0-f982-753d-bc47-4044edb958aa"
+x-okfw-id: "01a1fff0-f982-753d-bc47-4044edb958aa"
 title: "ISSUE-034: Use the v0.1.0 release downstream"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "release"
   - "ci"
   - "mrman"
   - "closed"
-created: "2026-11-21T15:09:05-06:00"
-timestamp: "2026-11-21T15:09:05-06:00"
+x-okfw-created: "2026-11-21T15:09:05-06:00"
+x-okfw-timestamp: "2026-11-21T15:09:05-06:00"
 description: "mrman pins Vizzini v0.1.0 instead of a pseudo-version, and install.sh downloads the released vizzini-bot, checked against SHA256SUMS, instead of building it."
 ---
 

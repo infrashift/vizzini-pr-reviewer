@@ -1,5 +1,5 @@
 ---
-id: "01a1ca32-58e2-7823-af24-f7133759d4f4"
+x-okfw-id: "01a1ca32-58e2-7823-af24-f7133759d4f4"
 title: "ADR-0011: Public LLM-free pkg/risk; bands in the policy; RiskAssessment report"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "risk"
   - "api"
   - "mrman"
-created: "2026-11-11T04:40:59-06:00"
-timestamp: "2026-11-11T04:40:59-06:00"
+x-okfw-created: "2026-11-11T04:40:59-06:00"
+x-okfw-timestamp: "2026-11-11T04:40:59-06:00"
 description: "Expose the deterministic risk score as a dependency-leaf pkg/risk with one shared implementation, policy-defined bands (high_threshold), pr-review --mode risk, and ParseReport for embedders like mrman."
 ---
 

@@ -1,15 +1,15 @@
 ---
-id: "01a1c9b6-1556-730d-be97-8791754a9bef"
+x-okfw-id: "01a1c9b6-1556-730d-be97-8791754a9bef"
 title: "ISSUE-002: CUE validation and LiteLLM pipeline"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-2"
   - "schema"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:49:18-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:49:18-06:00"
 description: "Author schema/review.cue, the embedded CUE validator, and the go-openai LiteLLM client with templates and retries."
 ---
 

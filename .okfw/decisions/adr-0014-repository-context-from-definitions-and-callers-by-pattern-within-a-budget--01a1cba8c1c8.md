@@ -1,13 +1,13 @@
 ---
-id: "01a1cba8-c1c8-751c-a15f-ae497eb3911b"
+x-okfw-id: "01a1cba8-c1c8-751c-a15f-ae497eb3911b"
 title: "ADR-0014: Repository context from definitions and callers, by pattern, within a budget"
 type: "ADR"
 tags:
   - "adr"
   - "review"
   - "context"
-created: "2026-11-11T11:29:56-06:00"
-timestamp: "2026-11-11T11:29:56-06:00"
+x-okfw-created: "2026-11-11T11:29:56-06:00"
+x-okfw-timestamp: "2026-11-11T11:29:56-06:00"
 description: "With a repository given, each chunk's prompt gains the definitions of symbols it uses and the callers of symbols it changes, found by language-family patterns in one deterministic scan, within MaxContextTokens; findings stay anchored to the diff."
 ---
 

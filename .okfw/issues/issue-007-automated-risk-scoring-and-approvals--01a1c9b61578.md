@@ -1,16 +1,16 @@
 ---
-id: "01a1c9b6-1578-77da-bd6f-a5383618572a"
+x-okfw-id: "01a1c9b6-1578-77da-bd6f-a5383618572a"
 title: "ISSUE-007: Automated risk scoring and approvals"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "risk"
   - "milestone-4-4"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:21:56-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:21:56-06:00"
 description: "Deterministic 0–100 blast-radius score from lines, complexity delta and CUE path weights; gated AutoApprove."
 ---
 

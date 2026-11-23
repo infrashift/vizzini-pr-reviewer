@@ -1,8 +1,8 @@
 ---
-id: "01a1caee-2585-7d3e-8cf5-79ad95208f38"
+x-okfw-id: "01a1caee-2585-7d3e-8cf5-79ad95208f38"
 title: "ISSUE-016: Cross-tool UAT on C# with live Claude Sonnet 5.5 and Opus 5.5"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "uat"
@@ -12,8 +12,8 @@ tags:
   - "mrman"
   - "garmr"
   - "closed"
-created: "2026-11-11T08:06:07-06:00"
-timestamp: "2026-11-11T08:06:07-06:00"
+x-okfw-created: "2026-11-11T08:06:07-06:00"
+x-okfw-timestamp: "2026-11-11T08:06:07-06:00"
 description: "Validate Vizzini against C# with live claude-sonnet-5-5 and claude-opus-5-5 through a podman LiteLLM proxy, together with garmr, okf-wiki and mrman on Azure DevOps; the harness lives in the vizzini-lab repository."
 ---
 

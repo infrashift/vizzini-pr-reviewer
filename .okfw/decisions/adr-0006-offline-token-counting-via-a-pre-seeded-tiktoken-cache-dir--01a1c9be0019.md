@@ -1,5 +1,5 @@
 ---
-id: "01a1c9be-0019-78c2-b7cf-934660a024d3"
+x-okfw-id: "01a1c9be-0019-78c2-b7cf-934660a024d3"
 title: "ADR-0006: Offline token counting via a pre-seeded TIKTOKEN_CACHE_DIR"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "tokenizer"
   - "offline"
   - "build"
-created: "2026-11-11T02:33:54-06:00"
-timestamp: "2026-11-11T02:33:54-06:00"
+x-okfw-created: "2026-11-11T02:33:54-06:00"
+x-okfw-timestamp: "2026-11-11T02:33:54-06:00"
 description: "tiktoken encodings are checksum-pinned and pre-seeded into TIKTOKEN_CACHE_DIR so token counting never needs the network."
 ---
 

@@ -1,13 +1,13 @@
 ---
-id: "01a1c9b6-1543-70dc-a659-f0e527e911e3"
+x-okfw-id: "01a1c9b6-1543-70dc-a659-f0e527e911e3"
 title: "Review output schema"
 type: "Spec"
 tags:
   - "spec"
   - "cue"
   - "schema"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:49:18-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:49:18-06:00"
 description: "The CUE contract (#Severity, #Category, #Finding, #ReviewOutput) every LLM review response must satisfy."
 status: "stable"
 ---

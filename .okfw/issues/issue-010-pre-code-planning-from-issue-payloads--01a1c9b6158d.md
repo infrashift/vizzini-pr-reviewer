@@ -1,16 +1,16 @@
 ---
-id: "01a1c9b6-158d-7963-8118-844321e157f4"
+x-okfw-id: "01a1c9b6-158d-7963-8118-844321e157f4"
 title: "ISSUE-010: Pre-code planning from issue payloads"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "planner"
   - "milestone-4-7"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:38:26-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:38:26-06:00"
 description: "Turn an IssuePayload plus repo tree and OKF index into a CUE-validated #ImplementationPlan for coding agents."
 ---
 

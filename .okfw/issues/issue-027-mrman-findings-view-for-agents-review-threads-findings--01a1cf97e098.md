@@ -1,16 +1,16 @@
 ---
-id: "01a1cf97-e098-7df6-abf1-d19e782553b9"
+x-okfw-id: "01a1cf97-e098-7df6-abf1-d19e782553b9"
 title: "ISSUE-027: mrman findings view for agents (review threads --findings)"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "mrman"
   - "automation"
   - "agents"
   - "closed"
-created: "2026-11-12T05:49:59-06:00"
-timestamp: "2026-11-12T05:49:59-06:00"
+x-okfw-created: "2026-11-12T05:49:59-06:00"
+x-okfw-timestamp: "2026-11-12T05:49:59-06:00"
 description: "A structured view of vizzini-bot's threads for developer agents: mrman review threads --findings decodes each thread's hidden marker into fingerprint, file, lines, category, suggestion and status, so agents never parse comment text."
 ---
 

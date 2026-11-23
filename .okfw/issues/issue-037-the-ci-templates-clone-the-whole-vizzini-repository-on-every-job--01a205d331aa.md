@@ -1,15 +1,15 @@
 ---
-id: "01a205d3-31aa-7958-a98e-71bf88df0f3b"
+x-okfw-id: "01a205d3-31aa-7958-a98e-71bf88df0f3b"
 title: "ISSUE-037: The CI templates clone the whole Vizzini repository on every job"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "ci"
   - "performance"
   - "closed"
-created: "2026-11-22T18:34:16-06:00"
-timestamp: "2026-11-22T18:34:16-06:00"
+x-okfw-created: "2026-11-22T18:34:16-06:00"
+x-okfw-timestamp: "2026-11-22T18:34:16-06:00"
 description: "On a warm self-hosted agent the tools install in under a second, but the job still clones Vizzini's full history to run install.sh, 11 to 39 s in vizzini-lab; a shallow fetch of the pinned commit would do."
 ---
 

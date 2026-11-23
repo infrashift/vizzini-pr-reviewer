@@ -1,16 +1,16 @@
 ---
-id: "01a1c9b6-157f-76c0-90e9-3519d6f983b2"
+x-okfw-id: "01a1c9b6-157f-76c0-90e9-3519d6f983b2"
 title: "ISSUE-008: Knowledge base grounding (OKF RAG)"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "okf"
   - "milestone-4-5"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:31:06-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:31:06-06:00"
 description: "Load OKF index.md and frontmatter, match diff paths to relevant knowledge, and require citations on architectural findings."
 ---
 

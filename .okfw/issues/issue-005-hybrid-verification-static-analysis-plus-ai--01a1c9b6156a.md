@@ -1,16 +1,16 @@
 ---
-id: "01a1c9b6-156a-7d62-8393-ef4d75e2dccb"
+x-okfw-id: "01a1c9b6-156a-7d62-8393-ef4d75e2dccb"
 title: "ISSUE-005: Hybrid verification: static analysis plus AI"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "analysis"
   - "milestone-4-2"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:13:19-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:13:19-06:00"
 description: "Ingest golangci-lint JSON, keep diagnostics on modified lines, and inject them into the review prompt."
 ---
 

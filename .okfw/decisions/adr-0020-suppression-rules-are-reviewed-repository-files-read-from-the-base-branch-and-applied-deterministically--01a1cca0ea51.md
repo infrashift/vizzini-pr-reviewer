@@ -1,13 +1,13 @@
 ---
-id: "01a1cca0-ea51-7ce8-a6a5-6477c461de8e"
+x-okfw-id: "01a1cca0-ea51-7ce8-a6a5-6477c461de8e"
 title: "ADR-0020: Suppression rules are reviewed repository files, read from the base branch and applied deterministically"
 type: "ADR"
 tags:
   - "adr"
   - "automation"
   - "suppression"
-created: "2026-11-11T16:01:00-06:00"
-timestamp: "2026-11-11T16:01:00-06:00"
+x-okfw-created: "2026-11-11T16:01:00-06:00"
+x-okfw-timestamp: "2026-11-11T16:01:00-06:00"
 description: "Findings a team decided not to see again are recorded as CUE-validated rules in .vizzini/suppressions.yaml, read by vizzini-bot from the base revision and applied after the model answers; a dismissal earns a suggested rule, never an automatic one."
 ---
 

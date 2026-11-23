@@ -1,14 +1,14 @@
 ---
-id: "01a1ffcd-31b4-79d9-9401-64ad0fd71b6d"
+x-okfw-id: "01a1ffcd-31b4-79d9-9401-64ad0fd71b6d"
 title: "ISSUE-033: Release v0.1.0"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "release"
   - "closed"
-created: "2026-11-21T14:30:00-06:00"
-timestamp: "2026-11-21T14:30:00-06:00"
+x-okfw-created: "2026-11-21T14:30:00-06:00"
+x-okfw-timestamp: "2026-11-21T14:30:00-06:00"
 description: "Ship Vizzini's first tagged release, v0.1.0, as Linux amd64 and arm64 archives built and published by a tag-driven workflow."
 ---
 

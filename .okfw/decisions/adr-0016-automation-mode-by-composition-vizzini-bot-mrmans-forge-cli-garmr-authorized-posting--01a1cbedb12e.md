@@ -1,5 +1,5 @@
 ---
-id: "01a1cbed-b12e-7f08-bb18-3702c02f4119"
+x-okfw-id: "01a1cbed-b12e-7f08-bb18-3702c02f4119"
 title: "ADR-0016: Automation mode by composition: vizzini-bot, mrman's forge CLI, garmr-authorized posting"
 type: "ADR"
 tags:
@@ -9,8 +9,8 @@ tags:
   - "mrman"
   - "garmr"
   - "security"
-created: "2026-11-11T12:45:14-06:00"
-timestamp: "2026-11-11T12:45:14-06:00"
+x-okfw-created: "2026-11-11T12:45:14-06:00"
+x-okfw-timestamp: "2026-11-11T12:45:14-06:00"
 description: "Unattended PR review is a thin vizzini-bot orchestrator that reviews with the Vizzini library and does all forge work through mrman's CLI; mrman submits without a human only when a committed garmr policy allows the forge-verified bot identity's action, and every decision is audited."
 ---
 

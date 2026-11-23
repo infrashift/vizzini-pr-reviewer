@@ -1,8 +1,8 @@
 ---
-id: "01a1cb1c-9e84-7e31-9aab-fce99d9b3e10"
+x-okfw-id: "01a1cb1c-9e84-7e31-9aab-fce99d9b3e10"
 title: "ISSUE-018: Prove SARIF lint input with real ESLint (TypeScript/JavaScript) output"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
@@ -12,8 +12,8 @@ tags:
   - "typescript"
   - "javascript"
   - "closed"
-created: "2026-11-11T08:56:52-06:00"
-timestamp: "2026-11-11T08:56:52-06:00"
+x-okfw-created: "2026-11-11T08:56:52-06:00"
+x-okfw-timestamp: "2026-11-11T08:56:52-06:00"
 description: "Add TypeScript/JavaScript lint support by proving ESLint + typescript-eslint SARIF (via @microsoft/eslint-formatter-sarif) end to end, with a captured fixture, docs, and a seeded TypeScript fixture in the vizzini-lab live suite."
 ---
 

@@ -1,5 +1,5 @@
 ---
-id: "01a1c9f2-5bc8-7a9e-86c7-e6bcd14a9575"
+x-okfw-id: "01a1c9f2-5bc8-7a9e-86c7-e6bcd14a9575"
 title: "ADR-0009: Architecture findings must cite provided knowledge documents"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "okf"
   - "schema"
   - "knowledge"
-created: "2026-11-11T03:31:06-06:00"
-timestamp: "2026-11-11T03:31:06-06:00"
+x-okfw-created: "2026-11-11T03:31:06-06:00"
+x-okfw-timestamp: "2026-11-11T03:31:06-06:00"
 description: "A fifth category, Architecture, requires citations by CUE rule, and every citation must name an OKF document given to that chunk."
 ---
 

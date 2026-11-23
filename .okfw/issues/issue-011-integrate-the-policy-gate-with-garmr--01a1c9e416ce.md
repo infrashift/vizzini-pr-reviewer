@@ -1,16 +1,16 @@
 ---
-id: "01a1c9e4-16ce-71a4-8f15-615e7138a0bc"
+x-okfw-id: "01a1c9e4-16ce-71a4-8f15-615e7138a0bc"
 title: "ISSUE-011: Integrate the policy gate with garmr"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "policy"
   - "garmr"
   - "closed"
-created: "2026-11-11T03:15:30-06:00"
-timestamp: "2026-11-11T03:56:35-06:00"
+x-okfw-created: "2026-11-11T03:15:30-06:00"
+x-okfw-timestamp: "2026-11-11T03:56:35-06:00"
 description: "Make pr-review JSON a first-class garmr input and ship a vizzini policy pack, keeping the built-in #PolicyGate as the offline default."
 ---
 

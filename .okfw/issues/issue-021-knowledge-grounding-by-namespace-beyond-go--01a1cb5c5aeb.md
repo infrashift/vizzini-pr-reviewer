@@ -1,16 +1,16 @@
 ---
-id: "01a1cb5c-5aeb-7c7d-ba7d-76a418c0d6a8"
+x-okfw-id: "01a1cb5c-5aeb-7c7d-ba7d-76a418c0d6a8"
 title: "ISSUE-021: Knowledge grounding by namespace beyond Go"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "knowledge"
   - "okf"
   - "analysis"
   - "closed"
-created: "2026-11-11T10:06:29-06:00"
-timestamp: "2026-11-11T10:06:29-06:00"
+x-okfw-created: "2026-11-11T10:06:29-06:00"
+x-okfw-timestamp: "2026-11-11T10:06:29-06:00"
 description: "Knowledge documents' domain and tags match only Go package clauses and directory names; read C#, Java/Kotlin/Scala, PHP, C++ and TypeScript namespace/package declarations too, and let qualified domains match nested namespaces."
 ---
 

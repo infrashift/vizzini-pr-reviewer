@@ -1,5 +1,5 @@
 ---
-id: "01a1cbc7-d120-7b47-a9f4-b011f4ab4612"
+x-okfw-id: "01a1cbc7-d120-7b47-a9f4-b011f4ab4612"
 title: "ADR-0015: Cost attribution through LiteLLM spend logs, correlated by run and pull request"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "cost"
   - "observability"
   - "litellm"
-created: "2026-11-11T12:03:52-06:00"
-timestamp: "2026-11-11T12:03:52-06:00"
+x-okfw-created: "2026-11-11T12:03:52-06:00"
+x-okfw-timestamp: "2026-11-11T12:03:52-06:00"
 description: "Vizzini keeps no ledger: it sends each request's attribution (run, PR, iteration, mode, requester, agent, attempt, repair) as LiteLLM spend-log metadata, tags, end user and W3C traceparent, reports a usage block per review, and ships SQL views that roll costs up per run and per PR."
 ---
 

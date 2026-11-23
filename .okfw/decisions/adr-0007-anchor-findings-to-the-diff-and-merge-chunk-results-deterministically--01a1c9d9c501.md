@@ -1,5 +1,5 @@
 ---
-id: "01a1c9d9-c501-7a64-be3a-c62758f875f6"
+x-okfw-id: "01a1c9d9-c501-7a64-be3a-c62758f875f6"
 title: "ADR-0007: Anchor findings to the diff and merge chunk results deterministically"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "api"
   - "llm"
   - "schema"
-created: "2026-11-11T03:04:14-06:00"
-timestamp: "2026-11-11T03:04:14-06:00"
+x-okfw-created: "2026-11-11T03:04:14-06:00"
+x-okfw-timestamp: "2026-11-11T03:04:14-06:00"
 description: "Findings and suggestions must point at files and new-line ranges the model saw; chunk results merge into one sorted, deterministic output."
 ---
 

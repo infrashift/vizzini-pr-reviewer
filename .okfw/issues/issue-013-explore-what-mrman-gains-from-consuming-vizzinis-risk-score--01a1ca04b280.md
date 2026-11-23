@@ -1,8 +1,8 @@
 ---
-id: "01a1ca04-b280-7cba-844c-b2c3898772c2"
+x-okfw-id: "01a1ca04-b280-7cba-844c-b2c3898772c2"
 title: "ISSUE-013: Explore what mrman gains from consuming Vizzini's risk score"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "open"
@@ -10,8 +10,8 @@ tags:
   - "discovery"
   - "risk"
   - "mrman"
-created: "2026-11-11T03:51:07-06:00"
-timestamp: "2026-11-11T03:51:07-06:00"
+x-okfw-created: "2026-11-11T03:51:07-06:00"
+x-okfw-timestamp: "2026-11-11T03:51:07-06:00"
 description: "Discovery: decide which mrman views would use risk_score, base/model split, risk_files and auto_approve, and what LLM-free API that needs."
 ---
 

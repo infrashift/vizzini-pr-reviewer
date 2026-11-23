@@ -1,16 +1,16 @@
 ---
-id: "01a1c9b6-1563-7c4b-abb4-c0af5c50bd81"
+x-okfw-id: "01a1c9b6-1563-7c4b-abb4-c0af5c50bd81"
 title: "ISSUE-004: Triage and severity policy gate"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "policy"
   - "milestone-4-1"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:10:32-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:10:32-06:00"
 description: "CUE #PolicyGate with fail_on severities; pr-review exits 2 when blocking findings exist."
 ---
 

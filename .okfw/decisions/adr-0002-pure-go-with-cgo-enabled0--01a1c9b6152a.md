@@ -1,13 +1,13 @@
 ---
-id: "01a1c9b6-152a-7eb5-90f2-5e272253c3f2"
+x-okfw-id: "01a1c9b6-152a-7eb5-90f2-5e272253c3f2"
 title: "ADR-0002: Pure Go with CGO_ENABLED=0"
 type: "ADR"
 tags:
   - "adr"
   - "build"
   - "portability"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:25:15-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:25:15-06:00"
 description: "Vizzini is strictly pure Go and ships as a static CGO_ENABLED=0 binary for UBI9 containers and QEMU microVMs."
 ---
 

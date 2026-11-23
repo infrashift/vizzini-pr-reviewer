@@ -1,13 +1,13 @@
 ---
-id: "01a1c9e9-69a2-7c4b-ab39-736cdce32dc6"
+x-okfw-id: "01a1c9e9-69a2-7c4b-ab39-736cdce32dc6"
 title: "ADR-0008: Deterministic risk score, model can only raise it, sensitive paths never auto-approve"
 type: "ADR"
 tags:
   - "adr"
   - "risk"
   - "policy"
-created: "2026-11-11T03:21:19-06:00"
-timestamp: "2026-11-11T03:21:19-06:00"
+x-okfw-created: "2026-11-11T03:21:19-06:00"
+x-okfw-timestamp: "2026-11-11T03:21:19-06:00"
 description: "Risk is max(diff-derived score, model score); auto-approval also requires no sensitive-path files, nothing skipped and something reviewed."
 ---
 

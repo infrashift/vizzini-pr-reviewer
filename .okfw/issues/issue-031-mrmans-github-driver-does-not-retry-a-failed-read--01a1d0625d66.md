@@ -1,16 +1,16 @@
 ---
-id: "01a1d062-5d66-7c0b-b9ce-c78616b9419f"
+x-okfw-id: "01a1d062-5d66-7c0b-b9ce-c78616b9419f"
 title: "ISSUE-031: mrman's GitHub driver does not retry a failed read"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "mrman"
   - "github"
   - "reliability"
   - "closed"
-created: "2026-11-12T09:31:09-06:00"
-timestamp: "2026-11-12T09:31:09-06:00"
+x-okfw-created: "2026-11-12T09:31:09-06:00"
+x-okfw-timestamp: "2026-11-12T09:31:09-06:00"
 description: "One 503 from GitHub's API on a read failed a whole mrman command (and a vizzini-bot CI run); mrman's GitLab driver retries reads, its GitHub driver did not."
 ---
 

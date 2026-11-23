@@ -1,15 +1,15 @@
 ---
-id: "01a1c9b6-154f-7a07-9b0d-3db790515b1e"
+x-okfw-id: "01a1c9b6-154f-7a07-9b0d-3db790515b1e"
 title: "ISSUE-001: Diff parsing and token-aware chunking"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-1"
   - "diff"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:34:16-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:34:16-06:00"
 description: "Parse unified diffs, filter generated files, annotate line numbers, and pack hunks into token-bounded chunks."
 ---
 

@@ -1,16 +1,16 @@
 ---
-id: "01a1cba3-ca8f-722d-a3bb-2d8f4ada063b"
+x-okfw-id: "01a1cba3-ca8f-722d-a3bb-2d8f4ada063b"
 title: "ISSUE-022: Head-to-head review benchmark against PR-Agent and Kodus"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "uat"
   - "benchmark"
   - "quality"
   - "closed"
-created: "2026-11-11T11:24:31-06:00"
-timestamp: "2026-11-11T11:24:31-06:00"
+x-okfw-created: "2026-11-11T11:24:31-06:00"
+x-okfw-timestamp: "2026-11-11T11:24:31-06:00"
 description: "Turn 'better than open-source alternatives' into numbers: run PR-Agent (and Kodus if practical) on the same fixtures and on hand-labelled real PRs through the same LiteLLM proxy, and report precision as well as recall."
 ---
 

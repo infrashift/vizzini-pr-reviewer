@@ -1,16 +1,16 @@
 ---
-id: "01a1caee-2572-7c47-9639-88673aef5cef"
+x-okfw-id: "01a1caee-2572-7c47-9639-88673aef5cef"
 title: "ISSUE-017: Typed review findings in pkg/risk for mrman"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "risk"
   - "mrman"
   - "api"
   - "closed"
-created: "2026-11-11T08:06:07-06:00"
-timestamp: "2026-11-11T08:06:07-06:00"
+x-okfw-created: "2026-11-11T08:06:07-06:00"
+x-okfw-timestamp: "2026-11-11T08:06:07-06:00"
 description: "risk.ParseReport also returns the review's findings, summary and knowledge docs as CUE-free types, so mrman can show Vizzini findings without linking pkg/reviewer."
 ---
 

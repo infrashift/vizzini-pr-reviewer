@@ -1,15 +1,15 @@
 ---
-id: "01a1d1cb-7579-7d52-854d-079bfeea9e12"
+x-okfw-id: "01a1d1cb-7579-7d52-854d-079bfeea9e12"
 title: "ISSUE-032: Precision: about half of Vizzini's findings are not real problems"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "quality"
   - "benchmark"
   - "closed"
-created: "2026-11-12T16:05:34-06:00"
-timestamp: "2026-11-12T16:05:34-06:00"
+x-okfw-created: "2026-11-12T16:05:34-06:00"
+x-okfw-timestamp: "2026-11-12T16:05:34-06:00"
 description: "The ISSUE-022 benchmark shows Vizzini's strict precision at about 50% on real pull requests, against 63–76% for PR-Agent at the same recall; find and measure a change that cuts the noise."
 ---
 

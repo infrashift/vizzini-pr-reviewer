@@ -1,13 +1,13 @@
 ---
-id: "01a206f0-275f-7187-b9c8-7d2c7c28d52c"
+x-okfw-id: "01a206f0-275f-7187-b9c8-7d2c7c28d52c"
 title: "ADR-0028: A review that posts nothing records its head in one edited status comment"
 type: "ADR"
 tags:
   - "adr"
   - "automation"
   - "cost"
-created: "2026-11-22T23:45:31-06:00"
-timestamp: "2026-11-22T23:45:31-06:00"
+x-okfw-created: "2026-11-22T23:45:31-06:00"
+x-okfw-timestamp: "2026-11-22T23:45:31-06:00"
 description: "A quiet review records the head it reviewed in one pull-request-level status comment that the bot posts once and then edits through mrman review edit; commands-only answers record no head."
 ---
 

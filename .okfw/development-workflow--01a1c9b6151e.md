@@ -1,13 +1,13 @@
 ---
-id: "01a1c9b6-151e-7df2-84f0-f1d8344c96d9"
+x-okfw-id: "01a1c9b6-151e-7df2-84f0-f1d8344c96d9"
 title: "Development workflow"
 type: "Guide"
 tags:
   - "conventions"
   - "workflow"
   - "meta"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:25:15-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:25:15-06:00"
 description: "The one-phase-at-a-time implement, verify, update-wiki, commit loop for Vizzini."
 ---
 

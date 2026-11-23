@@ -1,13 +1,13 @@
 ---
-id: "01a1cc54-bd32-726f-910d-1744be43ff5d"
+x-okfw-id: "01a1cc54-bd32-726f-910d-1744be43ff5d"
 title: "ADR-0018: Incremental review by file since the last reviewed head, learned from thread markers"
 type: "ADR"
 tags:
   - "adr"
   - "automation"
   - "cost"
-created: "2026-11-11T14:37:47-06:00"
-timestamp: "2026-11-11T14:37:47-06:00"
+x-okfw-created: "2026-11-11T14:37:47-06:00"
+x-okfw-timestamp: "2026-11-11T14:37:47-06:00"
 description: "vizzini-bot learns the last reviewed head from its own thread markers and reviews only the pull request's files changed since then (the base...head diff, limited to those files); it carries threads on other files and falls back to a full review when no earlier head is usable."
 ---
 

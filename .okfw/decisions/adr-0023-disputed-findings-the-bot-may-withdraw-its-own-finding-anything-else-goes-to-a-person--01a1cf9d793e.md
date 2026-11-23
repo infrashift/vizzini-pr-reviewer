@@ -1,5 +1,5 @@
 ---
-id: "01a1cf9d-793e-7781-8d31-0c4e2243b060"
+x-okfw-id: "01a1cf9d-793e-7781-8d31-0c4e2243b060"
 title: "ADR-0023: Disputed findings: the bot may withdraw its own finding; anything else goes to a person"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "automation"
   - "commands"
   - "agents"
-created: "2026-11-12T05:56:06-06:00"
-timestamp: "2026-11-12T05:56:06-06:00"
+x-okfw-created: "2026-11-12T05:56:06-06:00"
+x-okfw-timestamp: "2026-11-12T05:56:06-06:00"
 description: "/vizzini reconsider lets the bot re-evaluate its finding: a withdrawal resolves only the bot's own thread, a finding that stands stays open for a person, and a developer's identity can never resolve the bot's threads (mrman's own-thread rule)."
 ---
 

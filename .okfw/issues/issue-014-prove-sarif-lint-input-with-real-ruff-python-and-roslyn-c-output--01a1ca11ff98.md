@@ -1,8 +1,8 @@
 ---
-id: "01a1ca11-ff98-760f-bc10-ff0f952fb965"
+x-okfw-id: "01a1ca11-ff98-760f-bc10-ff0f952fb965"
 title: "ISSUE-014: Prove SARIF lint input with real ruff (Python) and Roslyn (C#) output"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
@@ -12,8 +12,8 @@ tags:
   - "python"
   - "csharp"
   - "closed"
-created: "2026-11-11T04:05:39-06:00"
-timestamp: "2026-11-11T04:23:49-06:00"
+x-okfw-created: "2026-11-11T04:05:39-06:00"
+x-okfw-timestamp: "2026-11-11T04:23:49-06:00"
 description: "Capture real ruff and Roslyn SARIF as fixtures and add Python and C# end-to-end proofs mirroring make e2e-lint."
 ---
 

@@ -1,15 +1,15 @@
 ---
-id: "01a205a9-7301-7c0a-9a6e-fa09658727ba"
+x-okfw-id: "01a205a9-7301-7c0a-9a6e-fa09658727ba"
 title: "ISSUE-036: install.sh downloads every tool on every job, also on a self-hosted agent"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "ci"
   - "reliability"
   - "closed"
-created: "2026-11-22T17:48:40-06:00"
-timestamp: "2026-11-22T17:48:40-06:00"
+x-okfw-created: "2026-11-22T17:48:40-06:00"
+x-okfw-timestamp: "2026-11-22T17:48:40-06:00"
 description: "Every job on a persistent self-hosted agent downloads and verifies the same pinned tools again; install.sh now keeps them in a cache under their pins."
 ---
 

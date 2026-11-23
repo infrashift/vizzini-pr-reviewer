@@ -1,8 +1,8 @@
 ---
-id: "01a1cf97-e0b0-7237-a44e-a476e6f1f3e8"
+x-okfw-id: "01a1cf97-e0b0-7237-a44e-a476e6f1f3e8"
 title: "ISSUE-028: mrman reply and resolve on GitHub and GitLab"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "mrman"
@@ -10,8 +10,8 @@ tags:
   - "gitlab"
   - "automation"
   - "closed"
-created: "2026-11-12T05:49:59-06:00"
-timestamp: "2026-11-12T05:49:59-06:00"
+x-okfw-created: "2026-11-12T05:49:59-06:00"
+x-okfw-timestamp: "2026-11-12T05:49:59-06:00"
 description: "Implement mrman's ThreadReplier and ThreadResolver for GitHub (GraphQL reviewThreads) and GitLab (discussions), with the same own-thread-only resolve rule as Azure DevOps, so vizzini-bot resolves fixed findings and answers commands on every forge."
 ---
 

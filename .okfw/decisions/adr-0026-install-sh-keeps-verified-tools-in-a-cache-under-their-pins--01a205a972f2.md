@@ -1,13 +1,13 @@
 ---
-id: "01a205a9-72f2-7581-92f0-b003bb7f0e54"
+x-okfw-id: "01a205a9-72f2-7581-92f0-b003bb7f0e54"
 title: "ADR-0026: install.sh keeps verified tools in a cache under their pins"
 type: "ADR"
 tags:
   - "adr"
   - "ci"
   - "security"
-created: "2026-11-22T17:48:40-06:00"
-timestamp: "2026-11-22T17:48:40-06:00"
+x-okfw-created: "2026-11-22T17:48:40-06:00"
+x-okfw-timestamp: "2026-11-22T17:48:40-06:00"
 description: "On a self-hosted agent, install.sh keeps each verified binary in VIZZINI_TOOLS_CACHE under its pin, in entries that never change, and uses one only while it matches its recorded SHA-256."
 ---
 

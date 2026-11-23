@@ -1,5 +1,5 @@
 ---
-id: "01a1ccc9-f271-7be2-a04b-014e802cf3f6"
+x-okfw-id: "01a1ccc9-f271-7be2-a04b-014e802cf3f6"
 title: "ADR-0021: CI templates install pinned, verified tools; the grant policy is read from the base branch"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "automation"
   - "ci"
   - "security"
-created: "2026-11-11T16:45:49-06:00"
-timestamp: "2026-11-11T16:45:49-06:00"
+x-okfw-created: "2026-11-11T16:45:49-06:00"
+x-okfw-timestamp: "2026-11-11T16:45:49-06:00"
 description: "vizzini-bot ships GitHub Actions, Azure Pipelines and GitLab CI templates that install pinned, checksum-verified tools and post under a policy read from the base branch, with no identity allowed until the first, denied run names it."
 ---
 

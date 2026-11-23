@@ -1,15 +1,15 @@
 ---
-id: "01a1c9b6-155c-7e00-b795-9e63340a2941"
+x-okfw-id: "01a1c9b6-155c-7e00-b795-9e63340a2941"
 title: "ISSUE-003: Public API (pkg/reviewer) and CLI entrypoint"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-3"
   - "api"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:04:14-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:04:14-06:00"
 description: "Expose Describe/Review/Improve via pkg/reviewer and a static pr-review CLI with json/markdown output."
 ---
 

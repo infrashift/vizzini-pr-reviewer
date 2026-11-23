@@ -1,8 +1,8 @@
 ---
-id: "01a1c9ed-12c7-7cce-9d55-6cc0dba6720c"
+x-okfw-id: "01a1c9ed-12c7-7cce-9d55-6cc0dba6720c"
 title: "ISSUE-012: Multi-language lint input via SARIF"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
@@ -10,8 +10,8 @@ tags:
   - "lint"
   - "sarif"
   - "closed"
-created: "2026-11-11T03:25:19-06:00"
-timestamp: "2026-11-11T04:05:39-06:00"
+x-okfw-created: "2026-11-11T03:25:19-06:00"
+x-okfw-timestamp: "2026-11-11T04:05:39-06:00"
 description: "Accept SARIF reports (ruff, Roslyn analyzers, Semgrep, CodeQL) alongside golangci-lint JSON so lint-aware reviews work beyond Go."
 ---
 

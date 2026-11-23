@@ -1,13 +1,13 @@
 ---
-id: "01a1c9b6-153c-7f34-87fd-66a5131def65"
+x-okfw-id: "01a1c9b6-153c-7f34-87fd-66a5131def65"
 title: "ADR-0005: Stateless library-first API with minimal abstractions"
 type: "ADR"
 tags:
   - "adr"
   - "api"
   - "architecture"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T02:25:15-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T02:25:15-06:00"
 description: "pkg/reviewer is a stateless Go API embedded by mrman; the CLI is a thin wrapper; no unrequested interfaces or dependencies."
 ---
 

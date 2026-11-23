@@ -1,16 +1,16 @@
 ---
-id: "01a1cb34-1ed5-735b-ba03-e2fa83519875"
+x-okfw-id: "01a1cb34-1ed5-735b-ba03-e2fa83519875"
 title: "ISSUE-019: Deduplicate same-span findings (Security + Architecture pairs)"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "review"
   - "llm"
   - "findings"
   - "closed"
-created: "2026-11-11T09:22:33-06:00"
-timestamp: "2026-11-11T09:22:33-06:00"
+x-okfw-created: "2026-11-11T09:22:33-06:00"
+x-okfw-timestamp: "2026-11-11T09:22:33-06:00"
 description: "A model sometimes reports one problem twice on the same lines, once by its nature (Security) and once as an ADR violation (Architecture); Vizzini's merge only sorts, so both reach the report, mrman and the PR."
 ---
 

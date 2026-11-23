@@ -1,5 +1,5 @@
 ---
-id: "01a1ca09-b067-7384-92bf-6546328afceb"
+x-okfw-id: "01a1ca09-b067-7384-92bf-6546328afceb"
 title: "ADR-0010: JSON reports carry an apiVersion/kind envelope; garmr consumes them"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "policy"
   - "garmr"
   - "api"
-created: "2026-11-11T03:56:35-06:00"
-timestamp: "2026-11-11T03:56:35-06:00"
+x-okfw-created: "2026-11-11T03:56:35-06:00"
+x-okfw-timestamp: "2026-11-11T03:56:35-06:00"
 description: "pr-review JSON is a schema-validated report with apiVersion vizzini.infrashift.io/v1 and a kind; org policy runs in garmr over that contract, the built-in gate stays the offline default."
 ---
 

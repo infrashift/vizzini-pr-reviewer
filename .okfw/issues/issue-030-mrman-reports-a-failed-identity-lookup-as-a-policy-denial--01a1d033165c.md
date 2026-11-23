@@ -1,15 +1,15 @@
 ---
-id: "01a1d033-165c-7dea-9818-8dfe2c93956c"
+x-okfw-id: "01a1d033-165c-7dea-9818-8dfe2c93956c"
 title: "ISSUE-030: mrman reports a failed identity lookup as a policy denial"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "mrman"
   - "reliability"
   - "closed"
-created: "2026-11-12T08:39:31-06:00"
-timestamp: "2026-11-12T08:39:31-06:00"
+x-okfw-created: "2026-11-12T08:39:31-06:00"
+x-okfw-timestamp: "2026-11-12T08:39:31-06:00"
 description: "When mrman cannot ask the forge who its token is, it evaluated the grant policy with an empty identity and reported a policy denial that nothing retries; it should return the forge's (retryable) error and evaluate nothing."
 ---
 

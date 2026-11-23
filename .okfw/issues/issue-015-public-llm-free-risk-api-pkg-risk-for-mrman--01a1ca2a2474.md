@@ -1,16 +1,16 @@
 ---
-id: "01a1ca2a-2474-707d-9729-d7f488f9e241"
+x-okfw-id: "01a1ca2a-2474-707d-9729-d7f488f9e241"
 title: "ISSUE-015: Public LLM-free risk API (pkg/risk) for mrman"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "risk"
   - "mrman"
   - "api"
   - "closed"
-created: "2026-11-11T04:32:01-06:00"
-timestamp: "2026-11-11T04:41:16-06:00"
+x-okfw-created: "2026-11-11T04:32:01-06:00"
+x-okfw-timestamp: "2026-11-11T04:41:16-06:00"
 description: "Expose an LLM-free pkg/risk (AssessRisk, Policy, Band, ParseReport) that mrman can embed without linking the LLM client; the prerequisite for ISSUE-013."
 ---
 

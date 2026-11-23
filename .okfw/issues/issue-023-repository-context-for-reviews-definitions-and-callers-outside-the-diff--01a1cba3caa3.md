@@ -1,16 +1,16 @@
 ---
-id: "01a1cba3-caa3-77d9-8efc-e74549bc6fea"
+x-okfw-id: "01a1cba3-caa3-77d9-8efc-e74549bc6fea"
 title: "ISSUE-023: Repository context for reviews (definitions and callers outside the diff)"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "review"
   - "context"
   - "quality"
   - "closed"
-created: "2026-11-11T11:24:31-06:00"
-timestamp: "2026-11-11T11:24:31-06:00"
+x-okfw-created: "2026-11-11T11:24:31-06:00"
+x-okfw-timestamp: "2026-11-11T11:24:31-06:00"
 description: "Give the model the definitions of symbols the diff uses and the callers of symbols it changes, read from the repository at the PR head within a token budget, so reviews can reason beyond the diff."
 ---
 

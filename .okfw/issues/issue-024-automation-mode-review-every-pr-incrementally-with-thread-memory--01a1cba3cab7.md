@@ -1,16 +1,16 @@
 ---
-id: "01a1cba3-cab7-7980-8a95-e7ac7ef7008f"
+x-okfw-id: "01a1cba3-cab7-7980-8a95-e7ac7ef7008f"
 title: "ISSUE-024: Automation mode: review every PR, incrementally, with thread memory"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "automation"
   - "forge"
   - "mrman"
   - "closed"
-created: "2026-11-11T11:24:31-06:00"
-timestamp: "2026-11-11T11:24:31-06:00"
+x-okfw-created: "2026-11-11T11:24:31-06:00"
+x-okfw-timestamp: "2026-11-11T11:24:31-06:00"
 description: "Review PRs automatically on open and push (CI action or webhook), re-review only new changes, track Vizzini's own threads (skip duplicates, resolve fixed ones), and learn from dismissed findings — keeping mrman's human grant for anything beyond comments."
 ---
 

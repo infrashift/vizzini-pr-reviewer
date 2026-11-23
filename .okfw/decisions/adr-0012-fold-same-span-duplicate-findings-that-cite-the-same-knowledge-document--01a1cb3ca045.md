@@ -1,5 +1,5 @@
 ---
-id: "01a1cb3c-a045-7e51-bf6e-abd7c8d2d5ec"
+x-okfw-id: "01a1cb3c-a045-7e51-bf6e-abd7c8d2d5ec"
 title: "ADR-0012: Fold same-span duplicate findings that cite the same knowledge document"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "review"
   - "llm"
   - "findings"
-created: "2026-11-11T09:31:50-06:00"
-timestamp: "2026-11-11T09:31:50-06:00"
+x-okfw-created: "2026-11-11T09:31:50-06:00"
+x-okfw-timestamp: "2026-11-11T09:31:50-06:00"
 description: "When one problem is reported both by its nature and as the ADR it violates (same file, overlapping lines, a shared citation, exactly one Architecture), Vizzini folds the pair into one Architecture finding with the higher severity."
 ---
 

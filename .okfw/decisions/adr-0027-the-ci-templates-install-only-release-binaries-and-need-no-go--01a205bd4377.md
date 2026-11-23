@@ -1,13 +1,13 @@
 ---
-id: "01a205bd-4377-7e39-8217-aae2525b53c3"
+x-okfw-id: "01a205bd-4377-7e39-8217-aae2525b53c3"
 title: "ADR-0027: The CI templates install only release binaries and need no Go"
 type: "ADR"
 tags:
   - "adr"
   - "ci"
   - "release"
-created: "2026-11-22T18:10:19-06:00"
-timestamp: "2026-11-22T18:10:19-06:00"
+x-okfw-created: "2026-11-22T18:10:19-06:00"
+x-okfw-timestamp: "2026-11-22T18:10:19-06:00"
 description: "With garmr v0.1.0 released, install.sh downloads every tool from a checksummed release, so the templates drop their Go setup and GitLab uses a small image with git and curl."
 ---
 

@@ -1,16 +1,16 @@
 ---
-id: "01a1c9b6-1586-76e1-9fd7-b8c0f997ed8e"
+x-okfw-id: "01a1c9b6-1586-76e1-9fd7-b8c0f997ed8e"
 title: "ISSUE-009: Interactive PR slash commands"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "phase-4"
   - "commands"
   - "milestone-4-6"
   - "closed"
-created: "2026-11-11T02:25:15-06:00"
-timestamp: "2026-11-11T03:35:08-06:00"
+x-okfw-created: "2026-11-11T02:25:15-06:00"
+x-okfw-timestamp: "2026-11-11T03:35:08-06:00"
 description: "Parse /explain, /refactor and /docstrings with file:line-range targets and route each to a scoped template."
 ---
 

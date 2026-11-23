@@ -1,13 +1,13 @@
 ---
-id: "01a1d20e-2c7a-7f09-8f58-1c3567f603b1"
+x-okfw-id: "01a1d20e-2c7a-7f09-8f58-1c3567f603b1"
 title: "ADR-0024: A default noise floor, and categories defined by runtime behaviour"
 type: "ADR"
 tags:
   - "adr"
   - "review"
   - "quality"
-created: "2026-11-12T17:18:26-06:00"
-timestamp: "2026-11-12T17:18:26-06:00"
+x-okfw-created: "2026-11-12T17:18:26-06:00"
+x-okfw-timestamp: "2026-11-12T17:18:26-06:00"
 description: "Trivial and Minor Performance findings move to the report's filtered list by default (never posted, still gated on), and the review prompt defines categories by runtime behaviour; chosen and validated on the ISSUE-022 benchmark."
 ---
 

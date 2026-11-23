@@ -1,16 +1,16 @@
 ---
-id: "01a1cba3-cacc-75d4-94c0-5bb2f8fbf1b7"
+x-okfw-id: "01a1cba3-cacc-75d4-94c0-5bb2f8fbf1b7"
 title: "ISSUE-025: Usage and cost attribution per request, review run and PR lifecycle"
 type: "Issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "cost"
   - "observability"
   - "litellm"
   - "closed"
-created: "2026-11-11T11:24:31-06:00"
-timestamp: "2026-11-11T11:24:31-06:00"
+x-okfw-created: "2026-11-11T11:24:31-06:00"
+x-okfw-timestamp: "2026-11-11T11:24:31-06:00"
 description: "Attribute LLM usage and dollar cost to who asked (human), what asked (agent/tool), why (mode, PR, iteration) and how (model, effort, retries/repairs), correlated per request, per review run and across a PR's lifecycle, building on LiteLLM's spend logs rather than duplicating them."
 ---
 

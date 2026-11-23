@@ -1,13 +1,13 @@
 ---
-id: "01a1ffcd-31a4-7808-87b6-39c922aebb97"
+x-okfw-id: "01a1ffcd-31a4-7808-87b6-39c922aebb97"
 title: "ADR-0025: Release archives for Linux amd64 and arm64"
 type: "ADR"
 tags:
   - "adr"
   - "release"
   - "build"
-created: "2026-11-21T14:30:00-06:00"
-timestamp: "2026-11-21T14:30:00-06:00"
+x-okfw-created: "2026-11-21T14:30:00-06:00"
+x-okfw-timestamp: "2026-11-21T14:30:00-06:00"
 description: "A v* tag builds one archive per Linux architecture (amd64, arm64) holding all three binaries, stamped with the version, checked by SHA256SUMS and a SLSA provenance attestation."
 ---
 

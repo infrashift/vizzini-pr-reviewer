@@ -1,5 +1,5 @@
 ---
-id: "01a1cf8f-51be-792d-a004-a82560f61243"
+x-okfw-id: "01a1cf8f-51be-792d-a004-a82560f61243"
 title: "ADR-0022: Commands are answered from a forge webhook by a commands-only bot run"
 type: "ADR"
 tags:
@@ -7,8 +7,8 @@ tags:
   - "automation"
   - "webhook"
   - "experimental"
-created: "2026-11-12T05:40:38-06:00"
-timestamp: "2026-11-12T05:40:38-06:00"
+x-okfw-created: "2026-11-12T05:40:38-06:00"
+x-okfw-timestamp: "2026-11-12T05:40:38-06:00"
 description: "An optional receiver turns Azure DevOps comment events into vizzini-bot --commands-only runs: replies only, authorized by the base branch's policy, with reviews left to CI."
 ---
 

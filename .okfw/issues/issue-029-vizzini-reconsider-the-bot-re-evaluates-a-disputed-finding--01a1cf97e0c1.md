@@ -1,16 +1,16 @@
 ---
-id: "01a1cf97-e0c1-7af8-a933-b282b8f38858"
+x-okfw-id: "01a1cf97-e0c1-7af8-a933-b282b8f38858"
 title: "ISSUE-029: /vizzini reconsider: the bot re-evaluates a disputed finding"
 type: "issue"
-kind: "issue"
+x-okfw-kind: "issue"
 tags:
   - "issue"
   - "automation"
   - "commands"
   - "agents"
   - "closed"
-created: "2026-11-12T05:49:59-06:00"
-timestamp: "2026-11-12T05:49:59-06:00"
+x-okfw-created: "2026-11-12T05:49:59-06:00"
+x-okfw-timestamp: "2026-11-12T05:49:59-06:00"
 description: "A structured disagreement: a developer argues in the bot's thread and writes /vizzini reconsider; the bot re-evaluates the finding against the code and the argument, then withdraws it (resolving its own thread) or explains why it stands, leaving the dispute to a person."
 ---
 
