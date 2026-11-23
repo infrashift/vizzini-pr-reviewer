@@ -27,9 +27,11 @@ Azure Pipelines (a PR build of an Azure Repos repository):
 
 ```yaml
 - bash: |
-    org="$(basename "${SYSTEM_COLLECTIONURI%/}")"
+    # HOST/ORG/PROJECT/REPO from the repository URL. On Azure DevOps Server,
+    # the collection path (tfs/DefaultCollection) takes the place of ORG.
+    rest="$(sed -E 's#^https?://([^/@]+@)?##' <<<"$SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI")"
     git diff "origin/${SYSTEM_PULLREQUEST_TARGETBRANCH#refs/heads/}...HEAD" | pr-review --mode review --format json \
-      --pr "ado:dev.azure.com/$org/$SYSTEM_TEAMPROJECT/$BUILD_REPOSITORY_NAME#$SYSTEM_PULLREQUEST_PULLREQUESTID" \
+      --pr "ado:${rest%%/_git/*}/${rest##*/_git/}#$SYSTEM_PULLREQUEST_PULLREQUESTID" \
       --iteration "$BUILD_SOURCEVERSION" --requester "$BUILD_REQUESTEDFOREMAIL" --agent azure-pipelines
 ```
 

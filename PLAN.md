@@ -231,6 +231,21 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 
 * **Verification:** Unit test validating `#ImplementationPlan` CUE unification against a mocked issue payload.
 
+### Milestone 4.8: Azure DevOps Server
+
+**Tracking:** [ISSUE-038](.okfw/issues/issue-038-support-azure-devops-server-repository-urls--01a20944a682.md)
+
+* **User Story Context:** Run Vizzini on Azure DevOps Server, where repository URLs put a collection path (often `tfs/DefaultCollection`) in the organization's place.
+* **Technical Spec (`cmd/vizzini-webhook/ado.go`, `cmd/vizzini-bot/status.go`, `deploy/ci/azure-pipelines`, `deploy/webhook`, ADR-0029):**
+* [x] The webhook keys a repository as `HOST/COLLECTION-PATH/PROJECT/REPO`, anchored on `_git`, for any host. Services keys do not change.
+* [x] The bot resolves its status thread on a Server pull request.
+* [x] The Azure Pipelines template lists a Server host in mrman's config from `System.CollectionUri`.
+* [x] `ado-subscription.sh` takes `ADO_COLLECTION_URL`; the cost-attribution example uses the template's key.
+* [x] mrman parses Server remotes, PR URLs and coordinates (mrman `feature/ado-server`).
+
+
+* **Verification:** `make test && make vet-cue && make lint`; unit tests on Server URLs with and without a virtual directory.
+
 ## Phase 5: Releases
 
 ### Milestone 5.1: Release v0.1.0 (Linux amd64 and arm64)

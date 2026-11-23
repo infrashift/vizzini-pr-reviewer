@@ -157,10 +157,16 @@ func TestAzureDevOps(t *testing.T) {
 	for u, want := range map[string]bool{
 		"https://dev.azure.com/o/p/_git/r/pullrequest/7":      true,
 		"https://org.visualstudio.com/p/_git/r/pullrequest/7": true,
-		"https://github.com/o/r/pull/7":                       false,
-		"https://gitlab.example.com/g/r/-/merge_requests/7":   false,
-		"https://dev.azure.com.evil.example/x":                false,
-		"u":                                                   false,
+		// Azure DevOps Server, with and without a virtual directory.
+		"https://tfs.example.com/tfs/DefaultCollection/p/_git/r/pullrequest/7": true,
+		"https://tfs.example.com/DefaultCollection/p/_git/r/pullrequest/7":     true,
+		"https://tfs.example.com/p/_git/r/pullrequest/7":                       false,
+		"https://tfs.example.com/c/p/_git/r/pullrequest/x":                     false,
+		"/c/p/_git/r/pullrequest/7":                                            false,
+		"https://github.com/o/r/pull/7":                                        false,
+		"https://gitlab.example.com/g/r/-/merge_requests/7":                    false,
+		"https://dev.azure.com.evil.example/x":                                 false,
+		"u":                                                                    false,
 	} {
 		if got := azureDevOps(u); got != want {
 			t.Errorf("azureDevOps(%q) = %v", u, got)

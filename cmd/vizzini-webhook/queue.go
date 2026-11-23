@@ -9,7 +9,7 @@ import (
 // job is one vizzini-bot --commands-only run for one pull request.
 type job struct {
 	Key       string // "ado:dev.azure.com/ORG/PROJECT/REPO#ID"
-	Repo      string // "dev.azure.com/ORG/PROJECT/REPO"
+	Repo      string // "dev.azure.com/ORG/PROJECT/REPO" or "SERVER/tfs/COLLECTION/PROJECT/REPO"
 	CloneURL  string
 	PRID      int
 	Target    string

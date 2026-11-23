@@ -151,15 +151,24 @@ func recordHead(ctx context.Context, opts *options, rec *recalled, heads []strin
 	}
 }
 
-// azureDevOps reports whether prURL is an Azure DevOps pull request.
+// azureDevOps reports whether prURL is an Azure DevOps pull request: on
+// Azure DevOps Services by its host, on Azure DevOps Server (any host) by
+// its path, .../{project}/_git/{repo}/pullrequest/{id}.
 func azureDevOps(prURL string) bool {
 	u, err := url.Parse(prURL)
 	if err != nil {
 		return false
 	}
 	host := strings.ToLower(u.Hostname())
-	return host == "dev.azure.com" || strings.HasSuffix(host, ".visualstudio.com")
+	if host == "dev.azure.com" || strings.HasSuffix(host, ".visualstudio.com") {
+		return true
+	}
+	return host != "" && adoServerPRPath.MatchString(u.Path)
 }
+
+// adoServerPRPath matches an Azure DevOps Server pull request path:
+// /[{virtual dir}/]{collection}/{project}/_git/{repo}/pullrequest/{id}.
+var adoServerPRPath = regexp.MustCompile(`^(/[^/]+){2,}/_git/[^/]+/pullrequest/\d+/?$`)
 
 // resolveStatus resolves the Azure DevOps thread that holds the status
 // comment just posted, so it cannot block the pull request. Failure is

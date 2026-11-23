@@ -67,6 +67,12 @@ func TestNormalizeRepo(t *testing.T) {
 		"dev.azure.com/org/proj/repo":                   testRepo,
 		"DEV.AZURE.COM/org/proj/repo":                   testRepo,
 		"https://dev.azure.com/org/My%20Project/_git/r": "dev.azure.com/org/My%20Project/r",
+		// Azure DevOps Server: the collection path takes the organization's
+		// place, with or without a virtual directory (ADR-0029).
+		"https://tfs.example.com/tfs/DefaultCollection/proj/_git/repo": "tfs.example.com/tfs/DefaultCollection/proj/repo",
+		"https://u@TFS.example.com/DefaultCollection/proj/_git/repo":   "tfs.example.com/DefaultCollection/proj/repo",
+		"tfs.example.com/tfs/DefaultCollection/proj/repo":              "tfs.example.com/tfs/DefaultCollection/proj/repo",
+		"https://tfs.example.com:8443/tfs/Coll/proj/_git/repo":         "tfs.example.com:8443/tfs/Coll/proj/repo",
 	} {
 		if got, err := normalizeRepo(in); err != nil || got != want {
 			t.Errorf("%s: %q, %v; want %q", in, got, err, want)
@@ -75,6 +81,10 @@ func TestNormalizeRepo(t *testing.T) {
 	for _, bad := range []string{
 		"https://fabrikam.visualstudio.com/DefaultCollection/_git/Fabrikam", // legacy host: not supported
 		"https://github.com/o/r", "dev.azure.com/org/proj", "dev.azure.com/org/-x/repo", "dev.azure.com/org/proj/_git/a/b",
+		"https://tfs.example.com/DefaultCollection/_git/repo", // no project before _git
+		"https://tfs.example.com/tfs/Coll/proj/_git",
+		"https://tfs.example.com/tfs/../proj/_git/repo",
+		"https://-x.example.com/org/proj/_git/repo",
 	} {
 		if got, err := normalizeRepo(bad); err == nil {
 			t.Errorf("%s: accepted as %q", bad, got)
@@ -95,6 +105,21 @@ func TestParseADOEvent(t *testing.T) {
 	}
 	if ev.key() != "ado:dev.azure.com/org/proj/repo#1" || ev.job().WebURL != "https://dev.azure.com/org/proj/_git/repo/pullrequest/1" {
 		t.Errorf("key %s, job %+v", ev.key(), ev.job())
+	}
+
+	// An Azure DevOps Server remote keeps its collection path in the key,
+	// the clone URL and the web URL.
+	ev, err = parseADOEvent(sample(t, func(m map[string]any) {
+		field(pullRequest(m), "repository")["remoteUrl"] = "https://tfs.example.com/tfs/DefaultCollection/proj/_git/repo"
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.Repo != "tfs.example.com/tfs/DefaultCollection/proj/repo" ||
+		ev.CloneURL != "https://tfs.example.com/tfs/DefaultCollection/proj/_git/repo" ||
+		ev.key() != "ado:tfs.example.com/tfs/DefaultCollection/proj/repo#1" ||
+		ev.job().WebURL != "https://tfs.example.com/tfs/DefaultCollection/proj/_git/repo/pullrequest/1" {
+		t.Errorf("server event %+v, key %s, web %s", *ev, ev.key(), ev.job().WebURL)
 	}
 
 	// The unedited sample's legacy visualstudio.com host is refused.

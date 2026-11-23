@@ -6,7 +6,8 @@ description: An optional receiver that answers /vizzini commands on Azure DevOps
 :::caution[Experimental and optional]
 `vizzini-webhook` is an experiment. Without it, nothing changes: the CI
 templates review every push, and a `/vizzini` command is answered by the
-next pipeline run. It supports **Azure DevOps Services only**, and its
+next pipeline run. It supports **Azure DevOps Services and Azure DevOps
+Server 2022.1 or later**, and its
 flags and files can change between releases.
 :::
 
@@ -53,7 +54,10 @@ subscription (script or UI), verification, operations and troubleshooting.
 
 ## Limits
 - **Azure DevOps only.** mrman cannot reply in GitHub or GitLab threads yet.
-  Organizations on legacy `*.visualstudio.com` URLs are not supported.
+  On Azure DevOps Server, the collection path takes the place of the
+  organization: `tfs.example.com/tfs/DefaultCollection/PROJECT/REPO`.
+  Legacy `*.visualstudio.com` URLs work only with `DefaultCollection` in the path.
+- **HTTPS clone only.** The receiver clones a Server repository over HTTPS.
 - **Public HTTPS required.** Azure DevOps does not deliver to localhost,
   private addresses or plain HTTP.
 - **Rare double answers.** A CI run and a receiver job that start at the same

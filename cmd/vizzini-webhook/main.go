@@ -78,7 +78,7 @@ func parseConfig(args []string, stderr io.Writer, getenv func(string) string) (*
 	fs.StringVar(&c.tlsKey, "tls-key", "", "the certificate's key (PEM)")
 	fs.StringVar(&c.user, "user", "vizzini", "the basic-auth user name the service hook sends")
 	fs.StringVar(&secretFile, "secret-file", getenv("VIZZINI_WEBHOOK_SECRET_FILE"), "file holding the basic-auth password (or set VIZZINI_WEBHOOK_SECRET)")
-	fs.Var(&repos, "repo", `an allowed repository, "dev.azure.com/ORG/PROJECT/REPO" (repeatable; at least one)`)
+	fs.Var(&repos, "repo", `an allowed repository, "dev.azure.com/ORG/PROJECT/REPO" or on Azure DevOps Server "SERVER/tfs/COLLECTION/PROJECT/REPO" (repeatable; at least one)`)
 	fs.StringVar(&c.work, "work", "", "directory for the cached clones and job data (required)")
 	fs.StringVar(&c.bot, "bot", "vizzini-bot", "the vizzini-bot binary")
 	fs.StringVar(&c.git, "git", "git", "the git binary")

@@ -9,6 +9,10 @@
 #
 # Configuration (environment; nothing secret on a command line):
 #   ADO_ORG, ADO_PROJECT, ADO_REPO   the repository the hook watches
+#   ADO_COLLECTION_URL               optional: the collection URL on Azure
+#                                    DevOps Server, e.g.
+#                                    https://tfs.example.com/tfs/DefaultCollection
+#                                    (default: https://dev.azure.com/$ADO_ORG)
 #   ADO_BRANCH                       optional: only PRs into this branch
 #   WEBHOOK_URL                      https://HOST/hooks/azure-devops
 #   WEBHOOK_USER                     basic-auth user (default: vizzini)
@@ -20,11 +24,13 @@ set -euo pipefail
 
 die() { printf 'ado-subscription: %s\n' "$*" >&2; exit 1; }
 need() { [[ -n ${!1:-} ]] || die "set $1"; }
-need ADO_ORG
+[[ -n ${ADO_COLLECTION_URL:-} ]] || need ADO_ORG
 need ADO_PROJECT
 need ADO_ADMIN_PAT_FILE
 [[ -r $ADO_ADMIN_PAT_FILE ]] || die "cannot read ADO_ADMIN_PAT_FILE"
-hooks="https://dev.azure.com/$ADO_ORG/_apis/hooks"
+collection="${ADO_COLLECTION_URL:-https://dev.azure.com/${ADO_ORG:-}}"
+collection="${collection%/}"
+hooks="$collection/_apis/hooks"
 
 # api METHOD URL [JSON]: the body; fails on a non-2xx status. The PAT goes
 # to curl in a config on stdin; a request body (it may hold the webhook
@@ -57,8 +63,8 @@ create)
 	need WEBHOOK_SECRET_FILE
 	[[ $WEBHOOK_URL == https://* ]] || die "WEBHOOK_URL must be https:// (ADO sends basic auth only over HTTPS)"
 	[[ -r $WEBHOOK_SECRET_FILE ]] || die "cannot read WEBHOOK_SECRET_FILE"
-	project_id="$(api GET "https://dev.azure.com/$ADO_ORG/_apis/projects/$ADO_PROJECT?api-version=7.1" | py 'import json,sys; print(json.load(sys.stdin)["id"])')"
-	repo_id="$(api GET "https://dev.azure.com/$ADO_ORG/$ADO_PROJECT/_apis/git/repositories/$ADO_REPO?api-version=7.1" | py 'import json,sys; print(json.load(sys.stdin)["id"])')"
+	project_id="$(api GET "$collection/_apis/projects/$ADO_PROJECT?api-version=7.1" | py 'import json,sys; print(json.load(sys.stdin)["id"])')"
+	repo_id="$(api GET "$collection/$ADO_PROJECT/_apis/git/repositories/$ADO_REPO?api-version=7.1" | py 'import json,sys; print(json.load(sys.stdin)["id"])')"
 	# The body carries the webhook password, so it is built from the file
 	# and handed to curl on stdin, never on a command line.
 	body="$(WEBHOOK_USER="${WEBHOOK_USER:-vizzini}" py '
@@ -89,7 +95,7 @@ print(json.dumps({
 		py 'import json,sys; d=json.load(sys.stdin); print("created subscription", d["id"], "status", d["status"])'
 	;;
 list)
-	project_id="$(api GET "https://dev.azure.com/$ADO_ORG/_apis/projects/$ADO_PROJECT?api-version=7.1" | py 'import json,sys; print(json.load(sys.stdin)["id"])')"
+	project_id="$(api GET "$collection/_apis/projects/$ADO_PROJECT?api-version=7.1" | py 'import json,sys; print(json.load(sys.stdin)["id"])')"
 	api GET "$hooks/subscriptions?publisherId=tfs&eventType=ms.vss-code.git-pullrequest-comment-event&consumerId=webHooks&api-version=7.1" |
 		py '
 import json, sys

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ type adoEvent struct {
 	Author      string
 	PRID        int
 	Status      string
-	Repo        string // "dev.azure.com/ORG/PROJECT/REPO"
+	Repo        string // "dev.azure.com/ORG/PROJECT/REPO" or "SERVER/tfs/COLLECTION/PROJECT/REPO"
 	CloneURL    string // "https://dev.azure.com/ORG/PROJECT/_git/REPO"
 	Target      string // "main" (from refs/heads/main)
 }
@@ -77,8 +78,7 @@ func parseADOEvent(body []byte) (*adoEvent, error) {
 	}
 	ev.PRID, ev.Status = pr.PullRequestID, pr.Status
 	ev.Repo = repo
-	parts := strings.Split(repo, "/")
-	ev.CloneURL = fmt.Sprintf("https://%s/%s/%s/_git/%s", parts[0], parts[1], parts[2], parts[3])
+	ev.CloneURL = cloneURL(repo)
 	ev.Target = strings.TrimPrefix(pr.TargetRefName, "refs/heads/")
 	if !safeBranch(ev.Target) {
 		return nil, fmt.Errorf("target branch %q: not a plain branch name", ev.Target)
@@ -99,10 +99,16 @@ func (ev *adoEvent) job() *job {
 		WebURL: fmt.Sprintf("%s/pullrequest/%d", ev.CloneURL, ev.PRID), Requester: ev.Author}
 }
 
-// normalizeRepo turns a repository given as a remote URL
-// (https://ORG@dev.azure.com/ORG/PROJECT/_git/REPO) or a key
-// (dev.azure.com/ORG/PROJECT/REPO) into the key. Only dev.azure.com is
-// accepted: the receiver builds clone URLs from it.
+// normalizeRepo turns a repository given as a remote URL or a key into the
+// key: the host, the collection path, the project and the repository, with
+// no _git marker. Azure DevOps Services and Azure DevOps Server differ only
+// in the collection path (ADR-0029):
+//
+//	https://ORG@dev.azure.com/ORG/PROJECT/_git/REPO        -> dev.azure.com/ORG/PROJECT/REPO
+//	https://SERVER/tfs/COLLECTION/PROJECT/_git/REPO        -> SERVER/tfs/COLLECTION/PROJECT/REPO
+//
+// This is the key the CI template forms. Any host is accepted: the --repo
+// allowlist decides which repositories the receiver serves.
 func normalizeRepo(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	if !strings.Contains(s, "://") {
@@ -112,23 +118,41 @@ func normalizeRepo(s string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("repository %q: %w", s, err)
 	}
-	if !strings.EqualFold(u.Host, "dev.azure.com") {
-		return "", fmt.Errorf("repository host %q: only dev.azure.com is supported", u.Host)
+	host := strings.ToLower(u.Host)
+	if !safeHost.MatchString(host) {
+		return "", fmt.Errorf("repository host %q: not a host name", u.Host)
 	}
 	parts := strings.Split(strings.Trim(u.EscapedPath(), "/"), "/")
-	if len(parts) == 4 && parts[2] == "_git" {
-		parts = []string{parts[0], parts[1], parts[3]}
+	if g := slices.Index(parts, "_git"); g >= 0 {
+		if g != len(parts)-2 {
+			return "", fmt.Errorf("repository %q: want %s", s, repoShapes)
+		}
+		parts = append(parts[:g], parts[g+1])
 	}
-	if len(parts) != 3 {
-		return "", fmt.Errorf("repository %q: want dev.azure.com/ORG/PROJECT/REPO", s)
+	// At least one collection-path segment, the project and the repository.
+	if len(parts) < 3 {
+		return "", fmt.Errorf("repository %q: want %s", s, repoShapes)
 	}
 	for _, p := range parts {
 		if p == "" || !safeSegment.MatchString(p) {
 			return "", fmt.Errorf("repository %q: unexpected path segment %q", s, p)
 		}
 	}
-	return "dev.azure.com/" + strings.Join(parts, "/"), nil
+	return host + "/" + strings.Join(parts, "/"), nil
 }
+
+// repoShapes names the accepted repository forms in errors.
+const repoShapes = "https://dev.azure.com/ORG/PROJECT/_git/REPO or https://SERVER/[VDIR/]COLLECTION/PROJECT/_git/REPO"
+
+// cloneURL builds the HTTPS clone URL from a key made by normalizeRepo:
+// the _git marker goes back in before the repository.
+func cloneURL(repo string) string {
+	i := strings.LastIndex(repo, "/")
+	return "https://" + repo[:i] + "/_git/" + repo[i+1:]
+}
+
+// safeHost admits a lowercase host name with an optional port.
+var safeHost = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d{1,5})?$`)
 
 // safeSegment admits ADO organization, project and repository names
 // (letters, digits, '.', '_', '-', and %-escaped spaces) and nothing a

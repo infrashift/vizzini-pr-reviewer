@@ -1,6 +1,6 @@
 # vizzini-webhook: answer `/vizzini` commands immediately
 
-> **EXPERIMENTAL and OPTIONAL.** Without this receiver, nothing changes: the CI templates in [`deploy/ci/`](../ci/) review every push, and a `/vizzini` command is answered by the next pipeline run. Deploy the receiver only if you want commands answered as they are written. It supports **Azure DevOps Services only** (`dev.azure.com`), because mrman cannot reply in GitHub or GitLab threads yet. Flags, files and behavior can change between releases.
+> **EXPERIMENTAL and OPTIONAL.** Without this receiver, nothing changes: the CI templates in [`deploy/ci/`](../ci/) review every push, and a `/vizzini` command is answered by the next pipeline run. Deploy the receiver only if you want commands answered as they are written. It supports **Azure DevOps only**: Azure DevOps Services (`dev.azure.com`) and Azure DevOps Server 2022.1 or later. mrman cannot reply in GitHub or GitLab threads yet. Flags, files and behavior can change between releases.
 
 ## What it does
 ```
@@ -24,7 +24,7 @@ reverse proxy (TLS) ──► vizzini-webhook ──► vizzini-bot --commands-o
 |---|---|
 | A Linux host with systemd, reachable from the internet on HTTPS | Azure DevOps cannot deliver to localhost, private addresses or plain HTTP. |
 | A DNS name and a TLS certificate for it (the Caddy example gets one automatically) | ADO sends basic auth only over HTTPS. |
-| Outbound access from the host to `dev.azure.com`, your LiteLLM proxy, `github.com` and `proxy.golang.org` (install only) | Fetching, replying, model calls, installing. |
+| Outbound access from the host to `dev.azure.com` (or your Azure DevOps Server), your LiteLLM proxy, `github.com` and `proxy.golang.org` (install only) | Fetching, replying, model calls, installing. |
 | Go (any version from Vizzini's `go.mod` on), git, curl, python3 | Installing and running. |
 | A **dedicated Azure DevOps account** for the bot, with access to the repository | Replies appear under this account. Do not use a person's account. |
 | A **PAT for that account**, scope *Code (Read & Write)* | Fetching the repository and replying in threads. |
@@ -54,7 +54,17 @@ install -m 0600 deploy/webhook/secrets.env.example        /etc/vizzini-webhook/s
 head -c 32 /dev/urandom | base64 | tr -d '\n' > /etc/vizzini-webhook/webhook.secret
 chmod 0600 /etc/vizzini-webhook/webhook.secret
 ```
-- **Repository:** in `vizzini-webhook.env`, set `WEBHOOK_REPO=dev.azure.com/ORG/PROJECT/REPO`, plus `VIZZINI_LITELLM_URL` and `VIZZINI_MODEL`. For more than one repository, add more `--repo` flags to `ExecStart` in the unit.
+- **Repository:** in `vizzini-webhook.env`, set `WEBHOOK_REPO=dev.azure.com/ORG/PROJECT/REPO`, plus `VIZZINI_LITELLM_URL` and `VIZZINI_MODEL`. For more than one repository, add more `--repo` flags to `ExecStart` in the unit. You can also give the clone URL: `https://dev.azure.com/ORG/PROJECT/_git/REPO`.
+- **Azure DevOps Server:** the collection path takes the place of `ORG`. For `https://tfs.example.com/tfs/DefaultCollection/PROJECT/_git/REPO`, set `WEBHOOK_REPO=tfs.example.com/tfs/DefaultCollection/PROJECT/REPO`. The receiver clones over HTTPS. Also list the server in mrman's config (`~/.config/mrman/config.toml` of the service user):
+
+  ```toml
+  [[forge.hosts]]
+  host = "tfs.example.com"
+  forge = "azuredevops"
+  token = "$AZURE_DEVOPS_EXT_PAT"
+  ```
+
+  To create the service hook with `ado-subscription.sh`, set `ADO_COLLECTION_URL=https://tfs.example.com/tfs/DefaultCollection`.
 - **Secrets:** in `secrets.env`, set `AZURE_DEVOPS_EXT_PAT` (the bot account's PAT) and `VIZZINI_API_KEY`. Use an editor, never `echo` on a shared shell.
 - **Password:** `webhook.secret` is the basic-auth password. It must be at least 16 characters. Keep it: step 6 needs it.
 
@@ -127,9 +137,9 @@ Write down the host, the Vizzini commit, the subscription id and the date. Every
 |---|---|---|
 | ADO history: `401` | The password or user differs between the subscription and `webhook.secret` | Set both to the same values. |
 | ADO cannot deliver, or the subscription goes on probation | The URL is not public HTTPS, or the certificate is not trusted | Use a public name with a valid certificate; check `/healthz` from outside. |
-| Log: `delivery ignored` with `repository not allowlisted` | The repository is not in `--repo` | Add `--repo dev.azure.com/ORG/PROJECT/REPO`. |
+| Log: `delivery ignored` with `repository not allowlisted` | The repository is not in `--repo` | Add `--repo dev.azure.com/ORG/PROJECT/REPO` (on Azure DevOps Server, `SERVER/COLLECTION-PATH/PROJECT/REPO`). |
 | Log: `delivery refused: bad payload … resource details` | The subscription sends minimal or no resource details | Set *Resource details to send* to **All**. |
-| Log: `delivery refused: bad payload … only dev.azure.com` | The organization uses a legacy `*.visualstudio.com` URL | Not supported yet. |
+| Log: `delivery refused: bad payload … want https://dev.azure.com/ORG/PROJECT/_git/REPO or …` | The repository URL has no project before `_git`, for example a legacy `https://ORG.visualstudio.com/PROJECT/_git/REPO` URL | Not supported. Legacy URLs with `DefaultCollection` work. |
 | Log: `the grant policy denied the reply … add "<name>"` | The bot account is not in the base branch's policy | Step 5, with the name from the log. |
 | Log: `job failed … git fetch` | The PAT cannot read the repository, or it expired | Check the bot account's access and the PAT's scope and expiry. |
 | A command is answered twice | A CI run and a receiver job answered at the same moment | Rare; a known limit of the experiment. Delete one reply. |
