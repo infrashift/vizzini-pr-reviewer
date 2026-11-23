@@ -30,5 +30,5 @@ The CI templates run `install.sh` in every job. It downloads `vizzini-bot`, mrma
 - [x] shellcheck and `make ci-check` pass.
 - [x] Local test (v0.1.2 commit, this `install.sh`): a cold cache installs everything (44 s); a warm cache installs from the cache (0.3 s) and the commit check still runs; a damaged mrman or garmr entry is replaced; another mrman pin gets its own entry; two cold jobs at the same time both pass and leave whole entries and no temporary directories; without the variable, nothing changes; a cached `vizzini-bot` with a checkout at another commit stops with the commit error.
 - [x] garmr from its v0.1.0 release. Tested in `buildpack-deps:bookworm-scm` (no Go): a cold cache downloads and checks all three releases; a warm cache takes all three from the cache. The source build of `vizzini-bot` still works.
-- [ ] Released, and the templates pin the release.
+- [x] v0.1.3 released (run 45087867085; checksums and one attestation per archive checked; the binaries have no code changes since v0.1.2). The templates pin it.
 - [ ] vizzini-lab's three template suites pass live. The Azure suite runs three jobs on one agent, so jobs 2 and 3 can show `from the cache`.

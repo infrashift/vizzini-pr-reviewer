@@ -26,8 +26,8 @@ pool:
 variables:
   # Pins: the Vizzini release (VIZZINI_REF is its commit), the mrman release and
   # the garmr release. Change them in a reviewed commit.
-  VIZZINI_REF: bfe7f12f7ce6a80726821c794f417b62b76e9671 # v0.1.2
-  VIZZINI_VERSION: v0.1.2
+  VIZZINI_REF: ebb7322b883e378a8bbfd12e07401e6202d0af00 # v0.1.3
+  VIZZINI_VERSION: v0.1.3
   MRMAN_VERSION: v0.1.10
   GARMR_VERSION: v0.1.0
 
