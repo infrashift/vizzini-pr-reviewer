@@ -241,7 +241,7 @@ Execute each sub-milestone below as a separate commit cycle after Phases 1–3 a
 * [x] The bot resolves its status thread on a Server pull request.
 * [x] The Azure Pipelines template lists a Server host in mrman's config from `System.CollectionUri`.
 * [x] `ado-subscription.sh` takes `ADO_COLLECTION_URL`; the cost-attribution example uses the template's key.
-* [x] mrman parses Server remotes, PR URLs and coordinates (mrman `feature/ado-server`).
+* [x] mrman parses Server remotes, PR URLs and coordinates (mrman v0.1.11).
 
 
 * **Verification:** `make test && make vet-cue && make lint`; unit tests on Server URLs with and without a virtual directory.

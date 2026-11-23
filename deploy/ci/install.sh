@@ -37,7 +37,7 @@
 set -euo pipefail
 
 VIZZINI_VERSION="${VIZZINI_VERSION:-}"
-MRMAN_VERSION="${MRMAN_VERSION:-v0.1.10}"
+MRMAN_VERSION="${MRMAN_VERSION:-v0.1.11}"
 GARMR_VERSION="${GARMR_VERSION:-v0.1.0}"
 
 die() { printf 'install: %s\n' "$*" >&2; exit 1; }

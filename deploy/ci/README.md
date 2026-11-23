@@ -19,7 +19,7 @@ Every template does the same thing:
    The jobs need no Go: every tool comes from a release. curl retries each download up to three times on any error. On a self-hosted agent, later jobs take the tools from a cache and skip the downloads (see [Tools cache](#tools-cache)).
 3. **Run `vizzini-bot`** against the pull request.
 
-With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.10). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.
+With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answers `/vizzini` commands (the templates pin v0.1.11). With an older mrman, GitHub and GitLab report those two as unsupported, and the bot still reviews, posts and deduplicates.
 
 ## Setup
 
@@ -29,7 +29,7 @@ With mrman v0.1.6 on, every platform resolves the bot's fixed threads and answer
    - The bot reads the policy from the **base branch**, so only a reviewed, merged policy change takes effect. A pull request cannot loosen the policy it is judged by.
 2. **Add the template** for your platform and set its variables: the LiteLLM URL, the model, and a LiteLLM virtual key for the bot. Platform specifics:
    - **GitHub Actions:** to let the bot resolve its fixed threads, change the workflow's `contents: read` to `contents: write`. GitHub allows `GITHUB_TOKEN` to resolve review threads only with it, and it also lets the token push. Without it, the bot reports resolving as refused and goes on.
-   - **Azure Pipelines:** grant the build service *Contribute to pull requests*. On Azure DevOps Server (2022.1 or later), the job lists the server in mrman's config itself, from `System.CollectionUri`; with a private CA, add `ca_file` to that entry. Replace `vmImage` with a self-hosted agent pool. Server support needs an mrman release later than v0.1.10.
+   - **Azure Pipelines:** grant the build service *Contribute to pull requests*. On Azure DevOps Server (2022.1 or later), the job lists the server in mrman's config itself, from `System.CollectionUri`; with a private CA, add `ca_file` to that entry. Replace `vmImage` with a self-hosted agent pool. Server support needs mrman v0.1.11 or later (the templates pin it).
    - **GitLab:** create a project access token with role Reporter or higher and scope `api`, and save it as the masked CI/CD variable `VIZZINI_GITLAB_TOKEN`. On a self-managed instance, the job lists the instance in mrman's config itself; with a private CA, add `ca_file` to that entry.
 3. **Open a pull request.**
    - The bot reviews it and stops with exit code 3: *the grant policy denied posting; nothing was posted*.

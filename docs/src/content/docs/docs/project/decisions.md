@@ -144,3 +144,14 @@ and does not review the same files again. This needs mrman v0.1.11 and
 next run reviews more than it must, never less. A `--commands-only` run
 reviews nothing, so its answers record no head. See
 [vizzini-bot](../../guides/bot/#incremental-review).
+
+## ADR-0029: On Azure DevOps Server the collection path takes the organization's place
+
+Azure DevOps Server URLs put a collection path where Azure DevOps Services
+puts the organization. A virtual directory often comes first:
+`https://tfs.example.com/tfs/DefaultCollection/PROJECT/_git/REPO`. Vizzini
+and mrman treat the whole collection path as the organization, and they find
+the project and the repository from the `_git` segment. The repository key
+is `HOST/COLLECTION-PATH/PROJECT/REPO`. Keys on Azure DevOps Services do not
+change. The API base is `https://HOST/COLLECTION-PATH`. Azure DevOps Server
+2022.1 or later is necessary. See [Webhook Receiver](../../guides/webhook/).

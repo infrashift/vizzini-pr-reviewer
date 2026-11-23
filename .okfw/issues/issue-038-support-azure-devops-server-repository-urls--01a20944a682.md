@@ -23,7 +23,7 @@ description: "The webhook, the bot, the CI template and mrman accepted only Azur
 Azure DevOps Server URLs have the shape `https://tfs.example.com/tfs/DefaultCollection/{project}/_git/{repo}`. vizzini-webhook accepted only `dev.azure.com/{org}/{project}/_git/{repo}`. vizzini-bot resolved its status thread only on Services hosts. The cost-attribution example built a wrong key on Server. mrman counted path segments, so the extra `tfs/` segment failed its remote, PR URL and coordinate parsers.
 
 ## Acceptance Criteria
-- [x] mrman: remotes, PR URLs and host-qualified coordinates with a collection path resolve, with the collection path as the owner. The org URL is the collection URL (mrman `9d3940a`, branch `feature/ado-server`).
+- [x] mrman: remotes, PR URLs and host-qualified coordinates with a collection path resolve, with the collection path as the owner. The org URL is the collection URL (mrman PR #24, released in v0.1.11).
 - [x] vizzini-webhook: `normalizeRepo` accepts any host and anchors on `_git`. Keys and clone URLs keep the collection path. Services keys do not change.
 - [x] vizzini-bot: `azureDevOps` recognizes a Server pull request URL by its path.
 - [x] Azure Pipelines template: on a Server host, the job writes a `[[forge.hosts]]` entry from `System.CollectionUri`.
@@ -35,7 +35,7 @@ Azure DevOps Server URLs have the shape `https://tfs.example.com/tfs/DefaultColl
 ## Notes
 - Minimum version: Azure DevOps Server 2022.1 (REST api-version 7.1).
 - A plain HTTP or non-default-port server needs `api_base` in mrman's config. The webhook clones over HTTPS only.
-- The CI template needs an mrman release later than v0.1.10.
+- mrman v0.1.11 (2026-11-23, mrman PR #24) ships the Server parsing. The templates pin it.
 
 ## Resolution
-Done as [ADR-0029](/decisions/adr-0029-on-azure-devops-server-the-collection-path-takes-the-organizations-place--01a209447b95.md) describes. The collection path takes the organization's place, and every parser anchors on `_git`. Follow-ups: an mrman release and a pin bump, an api-version fallback for Server before 2022.1, webhook clones over HTTP, and the vizzini-lab UAT scripts (they hard-code dev.azure.com).
+Done as [ADR-0029](/decisions/adr-0029-on-azure-devops-server-the-collection-path-takes-the-organizations-place--01a209447b95.md) describes. The collection path takes the organization's place, and every parser anchors on `_git`. Follow-ups: an api-version fallback for Server before 2022.1, webhook clones over HTTP, and the vizzini-lab UAT scripts (they hard-code dev.azure.com).
