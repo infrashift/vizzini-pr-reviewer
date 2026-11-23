@@ -8,7 +8,7 @@ tags:
   - "mrman"
   - "automation"
   - "agents"
-  - "open"
+  - "closed"
 created: "2026-11-12T05:49:59-06:00"
 timestamp: "2026-11-12T05:49:59-06:00"
 description: "A structured view of vizzini-bot's threads for developer agents: mrman review threads --findings decodes each thread's hidden marker into fingerprint, file, lines, category, suggestion and status, so agents never parse comment text."
@@ -16,7 +16,7 @@ description: "A structured view of vizzini-bot's threads for developer agents: m
 
 # ISSUE-027: mrman findings view for agents (review threads --findings)
 
-**Status:** open (implemented; mrman PR pending) · **Raised:** 2026-11-12 · **Related:** [ISSUE-028](/issues/issue-028-mrman-reply-and-resolve-on-github-and-gitlab--01a1cf97e0b0.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md)
+**Status:** closed · **Raised:** 2026-11-12 · **Related:** [ISSUE-028](/issues/issue-028-mrman-reply-and-resolve-on-github-and-gitlab--01a1cf97e0b0.md), [ISSUE-029](/issues/issue-029-vizzini-reconsider-the-bot-re-evaluates-a-disputed-finding--01a1cf97e0c1.md)
 
 ## Context: the developer-agent workflow
 These three issues come from one workflow: Vizzini reviews, and a developer, a person or an agent, either fixes or argues back. Any disagreement still goes to a person to decide. What already works:
@@ -44,3 +44,6 @@ A developer agent needs the findings, not prose. Today it would have to regex th
 - **Vizzini `0187f14`:** `pkg/marker`.
 - **mrman, branch `feature/review-threads-findings`:** `review threads --findings`, behind `internal/risk`. mrman's architecture test now admits `pkg/marker` beside `pkg/risk`.
 - **Live:** the vizzini-lab suite TS-WF passes 26/26. Its developer agent reads the findings only through this view.
+
+## Resolution (2026-11-22)
+Done. mrman PR #17 (`c498cab`) merged `review threads --findings` on 2026-11-12, and mrman v0.1.6 is the first release with it. The CI templates pin mrman v0.1.10, which includes it. The vizzini-lab suite TS-WF reads findings only through this view and still passes. This issue stayed open only because its status was not updated after the merge.
